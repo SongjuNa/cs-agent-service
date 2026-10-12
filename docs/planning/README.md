@@ -4,7 +4,7 @@
 프로젝트가 **왜 필요한지, 무엇을 언제까지 누구와 만들지**에 대한 확정된 기준을 관리합니다.
 
 ## 관리 대상
-- `project-plan.md` — 프로젝트 기획서의 Markdown **단일 편집 원본** (현재 v1.2)
+- `project-plan.md` — 프로젝트 기획서의 Markdown **단일 편집 원본** (현재 v1.3)
 - `exports/project-plan.html` — 웹 열람 및 제출용 최신 HTML (업로드 예정)
 - `exports/project-plan.pdf` — 인쇄 및 제출용 최신 PDF (업로드 예정)
 - 필요 시 배경 분석 근거 및 확정 범위에 대한 참조 링크
