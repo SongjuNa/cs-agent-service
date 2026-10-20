@@ -1,0 +1,641 @@
+# 테이블 정의서 v1
+
+구분: 설계
+버전: v1
+상태: 작성 중
+
+# 테이블 정의서 — 해외고객향 C/S 대응 AI Agent
+
+- 작성일: 2026-10-10 · DB: PostgreSQL 16 + pgvector (기술 스택은 작업 가정, 확정 아님)
+- 생성 SQL: `00_create_all.sql` ~ `06_규칙_동작_확인.sql`
+
+[00_create_all.sql](%ED%85%8C%EC%9D%B4%EB%B8%94%20%EC%A0%95%EC%9D%98%EC%84%9C%20v1/00_create_all.sql)
+
+[01_ref_schema.sql](%ED%85%8C%EC%9D%B4%EB%B8%94%20%EC%A0%95%EC%9D%98%EC%84%9C%20v1/01_ref_schema.sql)
+
+[04_service_schema.sql](%ED%85%8C%EC%9D%B4%EB%B8%94%20%EC%A0%95%EC%9D%98%EC%84%9C%20v1/04_service_schema.sql)
+
+[05_정답지_재생_검증.sql](%ED%85%8C%EC%9D%B4%EB%B8%94%20%EC%A0%95%EC%9D%98%EC%84%9C%20v1/05_%E1%84%8C%E1%85%A5%E1%86%BC%E1%84%83%E1%85%A1%E1%86%B8%E1%84%8C%E1%85%B5_%E1%84%8C%E1%85%A2%E1%84%89%E1%85%A2%E1%86%BC_%E1%84%80%E1%85%A5%E1%86%B7%E1%84%8C%E1%85%B3%E1%86%BC.sql)
+
+[06_규칙_동작_확인.sql](%ED%85%8C%EC%9D%B4%EB%B8%94%20%EC%A0%95%EC%9D%98%EC%84%9C%20v1/06_%E1%84%80%E1%85%B2%E1%84%8E%E1%85%B5%E1%86%A8_%E1%84%83%E1%85%A9%E1%86%BC%E1%84%8C%E1%85%A1%E1%86%A8_%E1%84%92%E1%85%AA%E1%86%A8%E1%84%8B%E1%85%B5%E1%86%AB.sql)
+
+- 용어는 “도메인 용어집 v1”를 따른다. 한국어 이름 뒤 괄호 안은 실제 파일·열 이름이다.
+
+---
+
+## 0. 읽는 법 (개발 경험이 없는 팀원용)
+
+| 말 | 뜻 |
+| --- | --- |
+| 스키마(schema) | 표를 묶는 폴더. 이 프로젝트는 ref, gold, svc, scoring 4개 |
+| 테이블(table, 표) | 엑셀 시트 하나. 한 행 = 기록 하나 |
+| 열(column) | 시트의 칸 이름 |
+| PK (기본 키) | 행을 하나로 정하는 열. 같은 값이 두 번 나올 수 없다 |
+| FK (외래 키) | 다른 표의 PK를 가리키는 열. 없는 값을 넣으면 DB가 거부한다 |
+| NULL | 값이 비어 있음. "필수"는 NULL을 허용하지 않는다는 뜻 |
+| CHECK | 넣을 수 있는 값의 규칙(예: P1~P4만) |
+| 색인(index) | 찾기를 빠르게 하는 목차 |
+| 트리거(trigger) | 행을 넣거나 바꿀 때 DB가 자동으로 실행하는 검사 |
+| 뷰(view) | 저장하지 않고 조회할 때마다 계산하는 표 |
+| 함수(function) | DB 안에 둔 작은 프로그램. 여기서는 상태 변경과 SLA 계산 |
+| TEXT[] | 값 여러 개를 담는 칸(목록) |
+| JSONB | 구조가 자유로운 기록(키-값 묶음) |
+
+**합의 상태 표시**
+
+| 표시 | 뜻 |
+| --- | --- |
+| 합의 | 팀이 정한 것. ref 정규화(팀 정리 §3 설계 원칙 2), 정답지는 읽기 전용(2026-10-06 결정), 대화 이력 표 추가(2026-10-09 결정) |
+| 명세 기준 | 명세서 FR과 기획서의 "결정 전 진행 방식"을 따른 것. 결정(D번호)이 바뀌면 같이 바뀐다 |
+| 초안 | 기술 명세서에서 새로 제안한 표. **팀 확인 필요** |
+
+---
+
+## 1. 전체 구성
+
+| 스키마 | 담는 것 | 표 수 | 쓰는 쪽 | 상태 |
+| --- | --- | --- | --- | --- |
+| ref | 기준정보·규칙표(ref/*.csv 12개) 23개 + 문서 목록(document) + 문서 검색 청크(doc_chunk) | 25 | 적재 작업만 쓴다. 서비스와 채점은 읽기만 | 23개 합의, 2개 초안 |
+| gold | 정답지 원본: tickets.csv 4,000건, resolution_cases.csv 800건 | 2 + 뷰 1 | 서비스는 `v_train_inputs`만 읽는다 | 합의 |
+| svc | 서비스 표 | 12 + 함수 2 + 뷰 1 | 서비스 | §4 표마다 다름 |
+| scoring | svc와 같은 모양. 채점 배치 전용 | 12 | 채점 배치만 | 초안 |
+
+**정답지 격리.** valid·test 행은 svc에 절대 들어가지 않는다. 서비스는 gold의 train 행 입력 열만 `gold.v_train_inputs`로 읽는다. 채점은 같은 처리 흐름을 scoring 스키마로 향하게 해서 돌린다.
+
+**만들지 않은 것.** agent_feedback(상담원 수정 학습)은 평가 러너와 함께 범위에서 빠져서 만들지 않았다.
+
+### 1-1. 파일과 실행 순서
+
+| 파일 | 하는 일 |
+| --- | --- |
+| `00_create_all.sql` | 아래 01~04를 순서대로 실행한다(svc와 scoring 둘 다). `psql -d <DB> -v ON_ERROR_STOP=1 -f 00_create_all.sql` |
+| `01_ref_schema.sql` | ref 표 25개를 만든다. pgvector 확장도 켠다 |
+| `02_ref_data.sql` | ref 데이터 2,184행을 넣는다(document 107행 포함). doc_chunk는 비어 있고, 색인 작업(W2)이 채운다 |
+| `03_gold_schema.sql` | gold 표와 `v_train_inputs` 뷰를 만든다. 데이터는 파일 맨 아래 `\copy` 두 줄의 경로를 바꿔 직접 넣는다 |
+| `04_service_schema.sql` | svc 표·함수·뷰를 만든다. `-v target=scoring`을 붙이면 같은 것을 scoring에 만든다 |
+| `05_정답지_재생_검증.sql` | 정답지 4,000건을 scoring에 다시 쌓고, SLA 계산이 정답지와 같은지 비교한다(§6) |
+| `06_규칙_동작_확인.sql` | 보호 장치 6개가 실제로 막는지 확인한다. 끝에서 되돌리므로 아무것도 남지 않는다 |
+
+모든 파일은 다시 실행해도 된다. 대상 스키마를 지우고 새로 만든다. gold를 다시 만들면 정답지도 다시 넣어야 한다.
+
+### 1-2. 관계 그림 (svc)
+
+```mermaid
+erDiagram
+    ticket ||--|{ ticket_inquiry : "문의 1~3개"
+    ticket ||--o{ ticket_message : "메시지"
+    ticket_inquiry ||--o{ ticket_message : "문의별 메시지(seq)"
+    ticket_message ||--o| ticket_message : "draft_id(발송본→초안)"
+    ticket_inquiry ||--o{ inquiry_field : "제공 항목"
+    ticket_inquiry ||--o{ ticket_status_history : "상태 이력"
+    status_transition ||--o{ ticket_status_history : "허용 전이"
+    ticket_inquiry ||--o{ priority_change : "우선순위 조정"
+    ticket_inquiry ||--o{ sla_alert : "SLA 경고"
+    ticket ||--o{ agent_run : "실행"
+    agent_run ||--|{ agent_step : "노드 실행"
+    ticket_inquiry ||--o{ inquiry_evidence : "근거"
+    ticket_inquiry ||--o{ doc_candidate : "근거 후보"
+    doc_chunk ||--o{ doc_candidate : "ref"
+```
+
+svc의 고객·제품·부서·규칙 열은 모두 ref 표를 FK로 가리킨다. ref 표끼리의 관계 그림은 §2-0에 있다.
+
+---
+
+## 2. ref 스키마 — 기준정보·규칙표
+
+원본: README.html이 설명하는 ref/ 폴더의 CSV 12개(reference_master.xlsx는 같은 내용을 합친 파일이라 제외)와 docs/doc_index.csv. 행 수는 실제 적재 결과다. 서비스는 ref를 바꾸지 않는다.
+
+### 2-0. 관계 그림과 원본에서 바꾼 점
+
+**관계 그림 (ref).** 선은 FK다. `||--o{`는 "왼쪽 한 행에 오른쪽 여러 행"이라는 뜻이다. Notion 코드 블록에서 언어를 Mermaid로 고르면 그림으로 보인다.
+
+```mermaid
+erDiagram
+    department ||--o{ product_family : ""
+    department ||--o{ routing_rule : ""
+    product_family ||--o{ product : ""
+    product_family ||--o{ fault : ""
+    product_family ||--o{ routing_rule : ""
+    product_family ||--o{ required_info_rule : ""
+    product ||--o{ product_standard : ""
+    product ||--o{ product_certification : ""
+    product ||--o{ product_spec : ""
+    product ||--o{ firmware_release : ""
+    product ||--o{ fault_product : ""
+    fault ||--o{ fault_product : ""
+    inquiry_category ||--o{ routing_rule : ""
+    inquiry_category ||--o{ required_info_rule : ""
+    inquiry_category ||--o{ sla_policy : ""
+    inquiry_category ||--o{ priority_rule_category : ""
+    required_info_rule ||--o{ required_info_field : ""
+    info_field ||--o{ required_info_field : ""
+    priority_level ||--o{ priority_rule : ""
+    priority_level ||--o{ sla_policy : ""
+    priority_level ||--o{ fault : ""
+    priority_rule ||--o{ priority_rule_urgency : ""
+    priority_rule ||--o{ priority_rule_category : ""
+    urgency ||--o{ priority_rule_urgency : ""
+    customer_tier ||--o{ customer : ""
+    customer_tier ||--o{ sla_policy : ""
+    document ||--o{ product_spec : ""
+    document ||--o{ firmware_release : ""
+    document ||--o{ doc_chunk : ""
+    product ||--o{ document : ""
+    product_family ||--o{ document : ""
+```
+
+sla_setting은 다른 표와 연결되지 않는 설정값 3행이라 그림에 없다.
+
+**관계를 읽는 법 (자주 쓰는 길 3개)**
+
+| 하고 싶은 일 | 따라가는 길 |
+| --- | --- |
+| 문의의 담당 부서 찾기(FR-012) | product → product_family → routing_rule(같은 category) → department. primary_dept가 비어 있으면 product_family.tech_support_dept |
+| 필수정보 대조(FR-013) | product_family + inquiry_category → required_info_rule → required_info_field(is_blocking, field_order) → info_field.label |
+| SLA 목표 찾기(FR-014) | inquiry_category + customer.tier + 최종 우선순위 → sla_policy 한 행 |
+
+**원본 CSV와 다르게 저장한 것.** 한 칸에 여러 값이 있거나, 같은 사실이 두 곳에 있거나, 다른 표가 가리킬 코드표가 없던 곳만 바꿨다.
+
+| 원본 (파일.열) | 바꾼 모습 | 이유 |
+| --- | --- | --- |
+| product_master.csv family_name, tech_support_dept | product_family 표로 분리 | 제품 23행에 같은 제품군 이름·담당 부서가 반복됐다. 11개 제품군 모두 1:1로 정해진다. 담당 부서를 바꿀 때 한 행만 고치면 된다 |
+| product_master.csv standards, certifications | product_standard, product_certification 표 | 'CE;CB;KC'처럼 한 칸에 여러 값이 있었다. 행으로 펼치면 "UL 인증 제품" 같은 조회가 정확해진다 |
+| product_master.csv doc_ids | 저장하지 않음 | docs/doc_index.csv의 product_code와 같은 사실이다. document 표 한 곳에 둔다 |
+| product_master.csv fw_latest | 저장하지 않음 | firmware_history.csv의 is_latest = Y 버전과 13개 제품 모두 같다. 한 곳(firmware_release)에만 둔다 |
+| sla_policy.csv resolution_definition | inquiry_category 표 | 원본에 문의 유형 코드표가 없었고, 이 값은 유형에만 따라 정해진다 |
+| sla_policy.csv clock, at_risk_threshold, pause_rule | sla_setting 3행 | 120행 모두 같은 값이었다 |
+| priority_rules.csv priority_definition | priority_level 표 | 우선순위에만 따라 정해지는 값이다. sla_policy, fault도 같은 P1~P4를 가리킨다 |
+| priority_rules.csv condition | priority_rule_urgency, priority_rule_category 표 | 원문은 사람이 읽는 문장이라 프로그램이 판정할 수 없다. 조건을 표로 옮겼고 원문은 condition 열에 그대로 둔다. PR-06·PR-07에서 생략된 유형은 정보성 4종(TECH_SPEC, MANUAL, COMPLIANCE, QUOTE)으로 적었다 |
+| priority_rules.csv order | priority_rule.rule_order | order는 SQL 예약어라 이름만 바꿨다 |
+| customers.csv tier, sla_policy.csv customer_tier | customer_tier 코드표 | 두 열이 같은 값이어야 SLA 조회가 된다. 등급 오타를 DB가 막는다 |
+| fault_catalog.csv applies_to | fault_product 표 | 한 칸에 제품 여러 개(97건 중 40건). 펼치면 156행이다. "이 제품의 이 오류 코드" 조회가 정확해진다 |
+| fault_catalog.csv fw_fix_version | fault_product.fw_fix_version | FLT-078은 PCS와 BMS에 해당하지만 수정 버전 2.62는 PCS 펌웨어에만 있다. 값이 "고장 × 제품"마다 달라서 제품 행으로 옮겼다 |
+| routing_rules.csv family = 'ALL' | 비어 있음(NULL) | 어떤 제품군에도 없는 값이라 FK를 걸 수 없다. "모든 제품군"으로 읽는다 |
+| routing_rules.csv primary_dept = '(제품군 기술지원)' | 비어 있음(NULL) | 부서 코드가 아니다. product_family.tech_support_dept에서 찾는다 |
+| required_info.csv required_fields, blocking_fields | required_info_rule + required_info_field(437행) | 한 칸에 여러 값. 차단 항목은 늘 필수 항목의 일부라 is_blocking 표시로 합쳤다. field_order로 원래 순서를 지킨다(정보 요청 메시지의 항목 순서) |
+| required_info.csv field_labels | 저장하지 않음 | info_field_codebook.csv의 label과 110행 모두 같다 |
+| fw_version, section 같은 번호 | TEXT로 저장 | 숫자로 읽으면 '3.10'이 '3.1'로, '2.10'이 '2.1'로 바뀐다 |
+
+**일부러 나누지 않은 것**
+
+- sla_policy.csv 120행: 계산식으로 줄일 수 있지만 고객사가 준 공식 정책표라 원본과 한 행씩 대조할 수 있게 그대로 둔다. 특정 조합만 예외로 바꾸기도 쉽다.
+- customers.csv country, segment: 다른 표가 가리키지 않아 코드표로 빼도 얻는 것이 없다.
+- product_spec_facts.csv doc_id, fault_catalog.csv family: 다른 열로 계산할 수 있지만, 답변 근거 인용과 제품군 단위 조회를 한 행에서 바로 하려고 남겼다.
+- 서술형 열(fault의 symptom·action, firmware_release.changes, routing_rule.escalation_condition, product의 dimensions_mm 등): 답변에 그대로 인용하거나 사람이 읽고 판단하는 문장이라 쪼개지 않는다.
+
+**적재 확인.** ref 데이터는 FK 위반 없이 모두 들어간다. 이 표들만으로 tickets.csv 4,000건의 우선순위 규칙(priority_rule_id), SLA 목표 시간, 필수정보(required_info)를 모두 재현했다.
+
+### 2-1. 코드 표 (7개, 합의)
+
+| 표 | 원본 | 행 | 열 (PK 굵게) |
+| --- | --- | --- | --- |
+| department 부서 | departments.csv | 13 | **dept_code** 부서 코드, dept_name_ko 한국어 이름, dept_name_en 영어 이름, level 단계(L1/L2/L3), scope 담당 범위 |
+| product_family 제품군 | product_master.csv의 family, family_name, tech_support_dept | 11 | **family** 제품군 코드, family_name 이름, tech_support_dept 기술지원 부서 → department |
+| inquiry_category 문의 유형 | sla_policy.csv의 category, resolution_definition | 10 | **category** 문의 유형 코드, resolution_definition 해결 정의, sla_resolution_coef 해결시간 계수(참고값) |
+| priority_level 우선순위 | priority_rules.csv의 priority, priority_definition | 4 | **priority** P1~P4, definition 정의 |
+| customer_tier 고객 등급 | customers.csv tier | 3 | **tier** 등급 |
+| urgency 긴급도 | urgency_codebook.csv | 6 | **urgency** 긴급도 코드, description 설명 |
+| info_field 정보 항목 | info_field_codebook.csv | 32 | **field** 항목 코드, label 표시 이름 |
+
+### 2-2. 마스터 표 (6개, 합의)
+
+**customer 고객사** (customers.csv, 600행)
+
+| 열 | 형식 | 필수 | 키 | 설명 |
+| --- | --- | --- | --- | --- |
+| customer_id | TEXT | 필수 | PK | 고객사 번호 |
+| company_masked | TEXT | 필수 |  | 가린 회사 이름 |
+| country | TEXT | 필수 |  | 국가 코드(ISO 2자리) |
+| tier | TEXT | 필수 | FK customer_tier | 고객 등급 |
+| segment | TEXT | 필수 |  | 고객 구분 |
+| account_since | DATE |  |  | 거래 시작일 |
+| contact_count | INTEGER |  |  | 담당자 수 |
+
+**product 제품** (product_master.csv, 23행). 원본의 family_name, tech_support_dept는 product_family로, standards, certifications는 아래 두 표로, fw_latest는 firmware_release.is_latest로, doc_ids는 document로 옮겼다.
+
+| 열 | 형식 | 필수 | 키 | 설명 |
+| --- | --- | --- | --- | --- |
+| product_code | TEXT | 필수 | PK | 제품 코드 |
+| product_name | TEXT | 필수 |  | 제품 이름 |
+| family | TEXT | 필수 | FK product_family | 제품군 |
+| description | TEXT |  |  | 설명 |
+| has_firmware | BOOLEAN | 필수 |  | 펌웨어 있음 |
+| warranty_months | INTEGER | 필수 |  | 보증 개월 |
+| lifecycle_status | TEXT | 필수 |  | 판매 상태 |
+| std_lead_time_weeks | INTEGER | 필수 |  | 표준 납기(주) |
+| moq | INTEGER | 필수 |  | 최소 주문 수량 |
+| list_price_usd | INTEGER | 필수 |  | 정가(USD) |
+| weight_kg, dimensions_mm, ip_rating, operating_temp |  |  |  | 무게, 크기, 방진방수 등급, 사용 온도 |
+
+| 표 | 원본 | 행 | 열 (PK 굵게) |
+| --- | --- | --- | --- |
+| product_standard 제품 규격 | product_master.csv standards(';'로 이은 값) | 39 | **product_code** → product, **standard** |
+| product_certification 제품 인증 | product_master.csv certifications | 61 | **product_code** → product, **certification** |
+| product_spec 제품 사양값 | product_spec_facts.csv | 169 | **product_code** → product, **attribute** 사양 이름, value 값, doc_id → document, section 절 번호(TEXT, '2.10' 보존) |
+| firmware_release 펌웨어 이력 | firmware_history.csv | 39 | **product_code** → product, **fw_version** (TEXT, '3.10' 보존), release_date 배포일, is_latest 최신 여부, changes 변경 내용, doc_id → document |
+
+### 2-3. 진단 지식 (2개, 합의)
+
+**fault 고장 유형** (fault_catalog.csv, 97행)
+
+| 열 | 형식 | 필수 | 키 | 설명 |
+| --- | --- | --- | --- | --- |
+| fault_id | TEXT | 필수 | PK | 고장 번호 |
+| family | TEXT | 필수 | FK product_family | 제품군 |
+| error_code | TEXT |  |  | 오류 코드. 코드 없는 증상형 고장은 비어 있다 |
+| symptom, root_cause, diagnosis, action | TEXT | 필수 |  | 증상, 원인, 진단 방법, 조치 |
+| severity_hint | TEXT | 필수 | FK priority_level | 심각도 참고값 |
+| needs_onsite, needs_rma | BOOLEAN | 필수 |  | 현장 방문 필요, 반품 필요 |
+| replacement_part | TEXT |  |  | 교체 부품 |
+| typical_resolution_hours | INTEGER | 필수 |  | 보통 해결 시간 |
+
+**fault_product 고장-제품** (fault_catalog.csv applies_to, 156행): **fault_id** → fault, **product_code** → product, fw_fix_version 고친 펌웨어 버전(원본 fw_fix_version을 제품 행으로 옮김).
+
+### 2-4. 운영 규칙 (8개, 합의)
+
+| 표 | 원본 | 행 | 열 (PK 굵게) | 쓰는 곳 |
+| --- | --- | --- | --- | --- |
+| priority_rule 우선순위 규칙 | priority_rules.csv | 7 | **rule_id**, rule_order 적용 순서(원본 order, 겹치지 않음), condition 조건 원문, priority → priority_level | FR-011. rule_order가 작은 규칙부터 보고 처음 맞는 규칙을 쓴다 |
+| priority_rule_urgency 규칙의 긴급도 조건 | condition 분해 | 6 | **rule_id**, **urgency** → urgency | 행이 없으면 "모든 긴급도" |
+| priority_rule_category 규칙의 유형 조건 | condition 분해 | 20 | **rule_id**, **category** → inquiry_category | 행이 없으면 "모든 유형" |
+| routing_rule 부서 규칙 | routing_rules.csv | 111 | **rule_id**, family(원본 ALL → 비어 있음), category, rule_source(CATEGORY_DEFAULT / FAMILY_OVERRIDE / SUBTYPE_OVERRIDE / ESCALATION), primary_dept(원본 "(제품군 기술지원)" → 비어 있음, 이때 product_family.tech_support_dept), escalation_dept, escalation_condition | FR-012 |
+| required_info_rule 필수정보 규칙 | required_info.csv | 110 | **family**, **category** | FR-013 |
+| required_info_field 필수 항목 | required_fields, blocking_fields | 437 | **family**, **category**, **field** → info_field, field_order 순서, is_blocking 차단 항목 여부 | FR-013. 원본 field_labels는 info_field.label로 대신한다 |
+| sla_policy SLA 정책 | sla_policy.csv | 120 | **sla_id**, category, customer_tier, priority, first_response_hours 1차 응답 목표(h), resolution_hours 해결 목표(h). (category, customer_tier, priority) 겹치지 않음 | FR-014 |
+| sla_setting SLA 설정 | sla_policy.csv의 전 행 같은 값 3개 | 3 | **key**, value. clock = 24x7, at_risk_threshold = 75%, pause_rule = WAITING_CUSTOMER 시간 제외 | FR-026 |
+
+### 2-5. 문서 (2개, 초안)
+
+**document 문서 목록** (docs/doc_index.csv, 107행). product_spec, firmware_release의 doc_id가 이 표를 가리킨다.
+
+| 열 | 형식 | 필수 | 키 | 설명 |
+| --- | --- | --- | --- | --- |
+| doc_id | TEXT | 필수 | PK | 문서 번호 |
+| title | TEXT | 필수 |  | 제목 |
+| doc_type | TEXT | 필수 | CHECK | DS / IG / TG / RN / MG / FAQ / POL |
+| product_code | TEXT |  | FK product | 정책·FAQ는 비어 있다 |
+| family | TEXT |  | FK product_family | 정책은 비어 있다 |
+| revision | TEXT |  |  | 개정판 |
+| path | TEXT | 필수 |  | docs/ 아래 경로 |
+| chars | INTEGER | 필수 |  | 글자 수 |
+
+**doc_chunk 문서 검색 청크.** 문서의 `##`, `###` 절 하나 = 한 행(D35). 색인 작업이 채운다. 서비스와 채점이 함께 읽는다.
+
+| 열 | 형식 | 필수 | 키 | 설명 |
+| --- | --- | --- | --- | --- |
+| chunk_id | TEXT | 필수 | PK | `{doc_id}§{section_no}` 예: TG-ACB-AS-2000§3.1 |
+| doc_id | TEXT | 필수 | FK document |  |
+| doc_type | TEXT | 필수 |  | 검색 필터용 복사 |
+| product_code | TEXT |  | FK product | 검색 필터용 복사 |
+| family | TEXT |  | FK product_family | 검색 필터용 복사 |
+| section_no | TEXT | 필수 |  | 절 번호. '2.10' 보존. FAQ는 'Q3' (doc_id, section_no) 겹치지 않음 |
+| section_title | TEXT | 필수 |  | 절 제목 |
+| text | TEXT | 필수 |  | 절 본문 |
+| embedding | vector |  |  | 검색용 숫자 벡터. **차원은 임베딩 모델(D8)이 정해지면 고정**하고 그때 벡터 색인을 만든다 |
+
+색인: (product_code, doc_type), (family, doc_type).
+
+---
+
+## 3. gold 스키마 — 정답지 (합의)
+
+| 표 | 원본 | 행 | 설명 |
+| --- | --- | --- | --- |
+| ticket_gold | tickets.csv | 4,000 | 58열을 원본 이름 그대로, **모두 TEXT**로 둔다(원본 보존, 형 변환은 읽을 때). PK ticket_id |
+| resolution_case_gold | resolution_cases.csv | 800 | 27열 원본 그대로, 모두 TEXT. PK case_id |
+| v_train_inputs (뷰) | ticket_gold | 2,800 | data_split = 'train' 행의 입력 열만: ticket_id, channel, customer_id, product_code, language, inquiry_body, received_at(received_at_utc를 시각으로 바꿈). 정답 열과 제목은 없다. 서비스가 정답지를 읽는 유일한 창구(FR-003) |
+
+---
+
+## 4. svc 스키마 — 서비스 표
+
+공통 규칙
+
+- 상태와 SLA는 **문의(ticket_inquiry) 단위**다(D16). 티켓의 상태는 v_ticket_summary가 문의에서 계산한다.
+- 시각 열은 모두 TIMESTAMPTZ(시간대 포함, UTC로 저장).
+- 지우지 않는 기록: ticket_message, ticket_status_history, priority_change, sla_alert, agent_run, agent_step은 넣기만 한다. 예외는 §4-3, §4-7에 적었다.
+
+### 4-1. status_transition 허용 전이표 (명세 기준, FR-025)
+
+상태 변경 함수 `transition()`이 이 표에 있는 전이만 허락한다. 파일에 11행이 들어 있다.
+
+| from_status | to_status | event_kind | 누가 |
+| --- | --- | --- | --- |
+| (없음) | NEW | INTAKE 접수 | SYSTEM |
+| NEW | IN_PROGRESS | PIPELINE_DONE 처리 흐름 종료 | SYSTEM |
+| NEW / IN_PROGRESS | WAITING_CUSTOMER | INFO_REQUEST_SENT 정보 요청 발송 | AGENT |
+| WAITING_CUSTOMER | IN_PROGRESS | CUSTOMER_REPLY 고객 회신 | AGENT |
+| IN_PROGRESS | ESCALATED | ESCALATED 이관(확장 FR-033 전에는 없음) | AGENT |
+| ESCALATED | IN_PROGRESS | DEPT_REPLY 전문 부서 회신(확장) | AGENT |
+| IN_PROGRESS / ESCALATED | RESOLVED | FINAL_REPLY_SENT 최종 답변 발송 | AGENT |
+| RESOLVED | CLOSED | CLOSED_BY_AGENT 종료 처리(D20) | AGENT |
+| WAITING_CUSTOMER | CLOSED | NO_RESPONSE_168H 무응답 168시간(D22) | SYSTEM |
+
+열: from_status, to_status(필수), event_kind(필수), actor_kind(SYSTEM/AGENT), note. (from_status, to_status, event_kind) 겹치지 않음.
+
+### 4-2. ticket 접수 (합의, FR-001·003·004·006)
+
+한 행 = 접수 1건(고객 메일 1통).
+
+| 열 | 형식 | 필수 | 키·규칙 | 설명 |
+| --- | --- | --- | --- | --- |
+| ticket_id | TEXT | 필수 | PK | 자동 번호 TK-000001 형식 |
+| source_ticket_id | TEXT |  |  | 정답지에서 불러온 경우 원본 번호(CSV1-…). FK 없음 |
+| channel | TEXT | 필수 | CHECK | 채널(channel): EMAIL / CHAT / PHONE / WEB_FORM / PARTNER_PORTAL |
+| customer_id | TEXT | 필수 | FK ref.customer | 고객사 |
+| product_code | TEXT |  | FK ref.product | 접수 때 입력한 제품. 비어 있을 수 있다 |
+| language | TEXT | 필수 | CHECK 15개 | 고객 언어(language) |
+| body_language | TEXT |  | CHECK 15개 | 본문에서 감지한 언어(body_language) |
+| body_language_uncertain | BOOLEAN | 필수 | 기본 FALSE | 언어 감지가 불확실함 |
+| inquiry_subject | TEXT |  |  | 제목. 저장만 하고 처리 흐름에 넣지 않는다(팀 정리 §6) |
+| inquiry_body | TEXT | 필수 | 1~2,000자 | 마스킹된 본문(FR-038). 2,000자는 제안 상한 |
+| body_mask_count | INTEGER | 필수 | 기본 0 | 본문에서 가린 곳 수 |
+| received_at | TIMESTAMPTZ | 필수 | 색인 | 접수 시각(received_at_utc). SLA 시계의 출발점 |
+| category_code | TEXT |  | 형식 검사 | 문의 유형을 ';'로 이은 문자열(D17). 문의별 값은 ticket_inquiry |
+| is_composite | BOOLEAN | 필수 |  | 복합 문의(문의 2개 이상) |
+| split_check_needed | BOOLEAN | 필수 |  | 4개 이상으로 나뉘어 확인 필요(D18) |
+| created_by | TEXT | 필수 |  | 접수한 상담원 이름(D23) |
+| created_at | TIMESTAMPTZ | 필수 | 기본 now() | 저장 시각 |
+
+### 4-3. ticket_inquiry 문의 (명세 기준, D17 결정 전 진행 방식, FR-005~014·025~028)
+
+한 행 = 티켓 안에서 나눈 문의 1개. 문의 결과와 상태·SLA가 여기 있다.
+
+| 열 | 형식 | 필수 | 키·규칙 | 설명 |
+| --- | --- | --- | --- | --- |
+| ticket_id | TEXT | 필수 | PK, FK ticket |  |
+| seq | SMALLINT | 필수 | PK, 1~3 | 문의 순번 |
+| category_code | TEXT |  | FK ref.inquiry_category | 문의 유형(category_code). 비어 있으면 분류 실패 |
+| category_confidence | NUMERIC(4,3) |  | 0~1 | 분류 확신도(D26) |
+| urgency_flag | TEXT |  | FK ref.urgency | 긴급도(urgency_flag) |
+| query_en | TEXT |  |  | 검색용 영어 요약(D25) |
+| product_code / product_family | TEXT |  | FK ref.product / product_family | 제품, 제품군(product_family). 접수 시점 값 복사 |
+| customer_tier | TEXT |  | FK ref.customer_tier | 고객 등급(customer_tier). 접수 시점 값 복사 |
+| error_code | TEXT |  |  | 오류 코드(error_code_reported) |
+| current_fw | TEXT |  |  | 현재 펌웨어(fw_version_reported). '3.10' 보존 |
+| return_kind | TEXT |  | DEFECT / NON_DEFECT / UNKNOWN | 반품 불량 구분(D13, D29) |
+| priority_rule | TEXT |  | FK priority_level | 규칙이 정한 우선순위 |
+| priority_rule_id | TEXT |  | FK ref.priority_rule | 맞은 규칙(priority_rule_id) |
+| priority_final | TEXT |  | FK priority_level | 최종 우선순위(priority). 조정했으면 조정값 |
+| priority_adjusted | BOOLEAN | 필수 | 기본 FALSE | 상담원 조정 여부(priority_adjusted_by_agent) |
+| assigned_dept | TEXT |  | FK ref.department, 색인 | 담당 부서(assigned_dept) |
+| routing_rule_id | TEXT |  | FK ref.routing_rule | 맞은 부서 규칙(routing_rule_id) |
+| escalation_dept / escalation_condition | TEXT |  | FK ref.department / | 이관 부서와 조건(규칙표에서 복사) |
+| missing_info | TEXT[] | 필수 | 기본 빈 목록 | 누락 항목 코드(missing_info), 필수 항목 순서 |
+| missing_blocking_info | TEXT[] | 필수 | 기본 빈 목록 | 누락된 차단 항목(missing_blocking_info) |
+| sla_id | TEXT |  | FK ref.sla_policy | 쓴 SLA 정책 행 |
+| fr_target_h / res_target_h | INTEGER |  | > 0 | 1차 응답 목표, 해결 목표(sla_first_response_target_h, sla_resolution_target_h). 접수 때의 약속을 복사해 둔다 |
+| status | TEXT | 필수 | 기본 NEW, CHECK 6개 | 상태(status): NEW / IN_PROGRESS / WAITING_CUSTOMER / ESCALATED / RESOLVED / CLOSED. `transition()`으로만 바꾼다 |
+| first_response_at | TIMESTAMPTZ |  |  | 1차 응답 시각(first_response_at_utc): 이 문의의 정보 요청 또는 티켓 최종 답변의 첫 발송(D21) |
+| resolved_at | TIMESTAMPTZ |  |  | 해결 시각(resolved_at_utc): RESOLVED 또는 CLOSED가 된 첫 시각. `transition()`이 쓴다 |
+| final_action | TEXT |  |  | 최종 조치(final_action). 예: CLOSED_NO_RESPONSE |
+| flags | TEXT[] | 필수 |  | 화면 표시: '확신 낮음', '반품 사유 확인 필요', '근거 없음' 등 |
+| edited_by_agent | TEXT[] | 필수 |  | 상담원이 직접 고친 칸 이름 |
+| version | INTEGER | 필수 | 기본 1 | 동시 수정 충돌 막기. 읽은 값과 다르면 API가 409를 돌려준다 |
+
+### 4-4. ticket_message 메시지 이력 (합의: 2026-10-09 대화 이력 표, FR-035)
+
+한 행 = 고객 문의, 회신, 초안, 발송본 하나. 2026-10-09에 정한 열(ticket_id, message_no, sender, message_type, sent_at_utc, language, body)에 명세서 FR이 요구하는 열을 더했다.
+
+| 열 | 형식 | 필수 | 키·규칙 | 설명 |
+| --- | --- | --- | --- | --- |
+| message_id | BIGINT | 필수 | PK 자동 |  |
+| ticket_id | TEXT | 필수 | FK ticket |  |
+| message_no | INTEGER | 필수 | (ticket_id, message_no) 겹치지 않음 | 티켓 안 순서. 비우면 트리거가 다음 번호를 채운다 |
+| seq | SMALLINT |  | FK ticket_inquiry | 문의 순번. 티켓 전체(INQUIRY, 합친 FINAL_REPLY)는 비어 있다 |
+| sender | TEXT | 필수 | CUSTOMER / SYSTEM / AGENT / DEPT | 보낸 쪽 |
+| message_type | TEXT | 필수 | 6개 | INQUIRY / INFO_REQUEST / FINAL_REPLY / PROGRESS_NOTICE / CUSTOMER_REPLY / ESCALATION_NOTE(확장) |
+| message_status | TEXT | 필수 | 4개 | DRAFT / APPROVED / SENT / RECEIVED |
+| sent_at_utc | TIMESTAMPTZ | 필수 | 색인 | 발송·수신 시각. 초안은 만든 시각 |
+| language | TEXT | 필수 |  | 메시지 언어 |
+| body | TEXT | 필수 | 1~5,000자 | 본문(마스킹됨). 5,000자는 제안 상한 |
+| draft_id | BIGINT |  | FK ticket_message | 발송본이 어느 초안에서 나왔는지 |
+| is_edited | BOOLEAN |  |  | 발송 본문이 초안과 다름 |
+| actor_name | TEXT | 필수 |  | 상담원 이름 또는 SYSTEM, CUSTOMER |
+| actor_dept | TEXT |  | FK ref.department | 상담원 부서 |
+| mask_count | INTEGER | 필수 | 기본 0 | 가린 곳 수(FR-038) |
+| requested_fields | TEXT[] |  |  | 정보 요청한 항목 코드 |
+| is_rerequest | BOOLEAN | 필수 |  | 같은 항목 재요청(FR-032) |
+| notice_transition | TEXT |  | ACK / ESCALATED / REPLY_RECEIVED / RESOLVED | 진행 안내 ①~④(FR-023). PROGRESS_NOTICE일 때만 |
+| override_check | BOOLEAN | 필수 |  | 자체 대조 불일치를 알고도 발송(FR-031) |
+| superseded_at | TIMESTAMPTZ |  |  | 재처리로 밀려난 초안 표시 |
+| created_at | TIMESTAMPTZ | 필수 | 기본 now() | 저장 시각 |
+
+보호 장치
+
+- **종류·상태·보낸 쪽 조합 검사**: INQUIRY, CUSTOMER_REPLY는 RECEIVED + CUSTOMER만. INFO_REQUEST, FINAL_REPLY, PROGRESS_NOTICE의 초안·승인은 SYSTEM 또는 AGENT, 발송(SENT)은 AGENT만. ESCALATION_NOTE는 AGENT 또는 DEPT.
+- **한 초안은 한 번만 발송**: draft_id가 같은 SENT 행은 하나뿐(부분 유일 색인).
+- **트리거 trg_ticket_message_guard**: 삭제 거부. SENT·RECEIVED·APPROVED 행 수정 거부. DRAFT 행은 본문, 승인(APPROVED로 바꾸기), superseded_at만 바꿀 수 있다.
+
+### 4-5. inquiry_field 제공 항목 (초안, FR-008·013·032)
+
+한 행 = 고객이 준 정보 항목 하나(예: 시리얼 번호). 필수정보 대조와 재요청에 쓴다.
+
+| 열 | 형식 | 필수 | 키·규칙 | 설명 |
+| --- | --- | --- | --- | --- |
+| id | BIGINT | 필수 | PK 자동 |  |
+| ticket_id, seq |  | 필수 | FK ticket_inquiry |  |
+| field | TEXT | 필수 | FK ref.info_field | 항목 코드 |
+| value_raw | TEXT |  |  | 본문에 적힌 그대로 |
+| value_norm | TEXT |  |  | 정리한 값. 형식이 안 맞으면 비우고 '형식 확인' 표시 |
+| span_start, span_end | INTEGER |  | span_end ≥ span_start | 마스킹된 본문 기준 위치 |
+| source | TEXT | 필수 | INQUIRY / CUSTOMER_REPLY / AGENT | 어디서 얻었나 |
+| source_message_id | BIGINT |  | FK ticket_message | 근거 메시지 |
+| created_at | TIMESTAMPTZ | 필수 |  |  |
+
+### 4-6. ticket_status_history 상태 이력 (합의, FR-025·026)
+
+한 행 = 문의 상태 변경 1건. WAITING_CUSTOMER 구간의 합이 고객 회신 대기 시간(customer_wait_hours)이다.
+
+| 열 | 형식 | 필수 | 키·규칙 | 설명 |
+| --- | --- | --- | --- | --- |
+| id | BIGINT | 필수 | PK 자동 |  |
+| ticket_id, seq |  | 필수 | FK ticket_inquiry, 색인 |  |
+| from_status | TEXT |  | (from, to, event) FK status_transition | 이전 상태. 접수 행은 비어 있다 |
+| to_status | TEXT | 필수 |  | 새 상태 |
+| changed_at | TIMESTAMPTZ | 필수 |  | **사건 시각**. 저장 시각이 아니다(D34) |
+| actor | TEXT | 필수 |  | SYSTEM 또는 상담원 이름 |
+| event_kind | TEXT | 필수 |  | §4-1의 사건 종류 |
+| reason | TEXT |  |  | 사유 |
+
+이 표는 앱이 `transition()`으로 쓴다. 트리거가 now()로 쓰는 방식은 과거 시각을 재현할 수 없어서 쓰지 않는다(D34). 접수 행(NEW)만 접수 처리에서 직접 넣는다.
+
+### 4-7. priority_change 우선순위 조정 (명세 기준, FR-028)
+
+| 열 | 형식 | 필수 | 키·규칙 | 설명 |
+| --- | --- | --- | --- | --- |
+| id | BIGINT | 필수 | PK 자동 |  |
+| ticket_id, seq |  | 필수 | FK ticket_inquiry |  |
+| changed_at | TIMESTAMPTZ | 필수 |  |  |
+| actor | TEXT | 필수 |  | 상담원 이름 |
+| from_priority / to_priority | TEXT | 필수 | FK priority_level, 서로 달라야 함 | 바꾸기 전·후 |
+| from_sla_id / to_sla_id | TEXT |  | FK ref.sla_policy | 바꾸기 전·후 정책 행 |
+| from_fr_target_h, from_res_target_h, to_fr_target_h, to_res_target_h | INTEGER |  |  | 바꾸기 전·후 목표 시간. 조정하면 SLA 목표가 최종 우선순위 기준으로 다시 정해진다 |
+| reason_kind | TEXT | 필수 | 고객 요청 / 영향 범위 재평가 / 기타 | 사유 종류(제안 값) |
+| reason_text | TEXT | 필수 | 빈 문자열 불가 | 사유 문장 |
+
+### 4-8. sla_alert SLA 경고 (합의, FR-027)
+
+| 열 | 형식 | 필수 | 키·규칙 | 설명 |
+| --- | --- | --- | --- | --- |
+| id | BIGINT | 필수 | PK 자동 |  |
+| ticket_id, seq |  | 필수 | FK ticket_inquiry |  |
+| kind | TEXT | 필수 | FR_AT_RISK / FR_BREACHED / RES_AT_RISK / RES_BREACHED | (ticket_id, seq, kind) 겹치지 않음. 같은 경고는 문의당 한 번. 1차 응답 상태에는 AT_RISK가 없지만, 75% 경고는 FR_AT_RISK로 이 표에만 남긴다 |
+| fired_at | TIMESTAMPTZ | 필수 |  | 조건을 실제로 넘은 시각 |
+| elapsed_h | NUMERIC(8,2) | 필수 |  | 그때 경과 시간 |
+| target_h | INTEGER | 필수 |  | 그때 목표 시간 |
+| cleared_at | TIMESTAMPTZ |  |  | 우선순위 조정으로 조건이 풀린 시각 |
+
+### 4-9. agent_run 실행 / agent_step 노드 실행 (합의, FR-036, 보존 90일 제안 D31)
+
+**agent_run**: 한 행 = 처리 흐름 실행 1회.
+
+| 열 | 형식 | 필수 | 키·규칙 | 설명 |
+| --- | --- | --- | --- | --- |
+| run_id | BIGINT | 필수 | PK 자동 |  |
+| ticket_id | TEXT | 필수 | FK ticket, 색인 |  |
+| seq | SMALLINT |  |  | 문의 실행이면 순번, 티켓 실행이면 비어 있다 |
+| started_at, ended_at | TIMESTAMPTZ | started_at 필수 |  |  |
+| duration_ms | INTEGER |  |  | 걸린 시간(ms) |
+| result | TEXT |  | SUCCESS / FAILED / PARTIAL | 비어 있으면 실행 중 |
+| trigger_kind | TEXT | 필수 | INTAKE / RETRY / CUSTOMER_REPLY / AGENT_EDIT | 무엇이 실행을 시작했나 |
+| last_step | TEXT |  |  | 마지막으로 간 노드 |
+
+**agent_step**: 한 행 = 노드 실행 1회. run을 지우면 함께 지워진다.
+
+| 열 | 형식 | 필수 | 키·규칙 | 설명 |
+| --- | --- | --- | --- | --- |
+| step_id | BIGINT | 필수 | PK 자동 |  |
+| run_id | BIGINT | 필수 | FK agent_run |  |
+| step_name | TEXT | 필수 |  | 노드 이름(classify, priority, routing, required_info, sla_target, info_request, doc_search, lookup, draft, merge, notice 등) |
+| step_order | SMALLINT | 필수 | (run_id, step_order) 겹치지 않음 | 순서 |
+| started_at, ended_at, duration_ms |  | started_at 필수 |  |  |
+| result | TEXT |  | SUCCESS / FAILED / SKIPPED |  |
+| input_summary, output_summary | JSONB |  |  | 입력·출력 요약. 넣은 항목 이름 목록 포함(제목이 들어가지 않았음을 확인, AC-036-2) |
+| error_kind | TEXT |  | LLM_TIMEOUT / LLM_INVALID_OUTPUT / RULE_NOT_FOUND / DB / VALIDATION / UNKNOWN | 오류 분류. 집계를 위해 자유 문장이 아닌 코드로 |
+| error_message | TEXT |  |  |  |
+| llm_model, prompt_version | TEXT |  |  | 모델과 프롬프트 판(D8 결정 전에는 비워도 된다) |
+| input_tokens, output_tokens, llm_calls | INTEGER / SMALLINT |  |  | 비용 계산용 |
+| retrieved_chunk_ids | TEXT[] |  |  | 검색으로 가져온 청크 |
+
+### 4-10. inquiry_evidence 근거 (초안, FR-024)
+
+한 행 = 화면의 "왜?"에 보여 줄 근거 한 줄.
+
+| 열 | 형식 | 필수 | 키·규칙 | 설명 |
+| --- | --- | --- | --- | --- |
+| id | BIGINT | 필수 | PK 자동 |  |
+| ticket_id, seq |  | 필수 | FK ticket_inquiry, 색인 |  |
+| run_id | BIGINT |  | FK agent_run | 실행 로그가 지워지면 비워진다 |
+| step | TEXT | 필수 |  | 노드 이름 |
+| kind | TEXT | 필수 | 8개 | CLASSIFY_SENTENCE 분류 근거 문장 / URGENCY_SENTENCE 긴급도 근거 문장 / PRIORITY_TRACE 규칙 적용 과정 / ROUTING / REQUIRED_CHECK 필수정보 대조 / SLA / LOOKUP_VALUE 표 조회값 / DRAFT_CHECK 초안 자체 대조 |
+| payload | JSONB | 필수 |  | 내용 |
+| created_at | TIMESTAMPTZ | 필수 |  |  |
+
+### 4-11. doc_candidate 근거 후보 절 (초안, FR-016)
+
+| 열 | 형식 | 필수 | 키·규칙 | 설명 |
+| --- | --- | --- | --- | --- |
+| id | BIGINT | 필수 | PK 자동 |  |
+| ticket_id, seq |  | 필수 | FK ticket_inquiry, 색인 |  |
+| run_id | BIGINT |  | FK agent_run |  |
+| rank | SMALLINT | 필수 | ≥ 1 | 순위. 상위 k = 5(제안, D27) |
+| chunk_id | TEXT | 필수 | FK ref.doc_chunk | 후보 절 |
+| score | NUMERIC(6,4) | 필수 |  | 검색 점수 |
+
+### 4-11-1. 근거 후보(doc_candidate)와 판단 근거(inquiry_evidence)는 왜 필요한가
+
+두 표 모두 상담원 화면에서 "에이전트가 왜 이렇게 판단했나"를 보여 주기 위한 기록이다. 둘 다 기술 명세서에서 새로 제안한 **초안**이라 팀 확인이 필요하다.
+
+**doc_candidate (근거 후보 절, FR-016)**
+
+- 한 행 = 문의 하나에 대해 검색으로 찾은 문서 절 하나.
+- 순위(rank), 문서 절 번호(chunk_id, 예: TG-ACB-AS-2000§3.1), 검색 점수(score)를 남긴다. 문의마다 상위 5개(제안값, D27)를 저장한다.
+- 쓰는 곳
+    - 화면: 답변 초안의 근거 문서를 보여 준다. 후보가 하나도 없으면 "근거 없음"으로 표시한다.
+    - 채점: 정답 문서(tickets.csv의 reference_doc_id)가 후보 안에 들어 있었는지 확인한다.
+
+**inquiry_evidence (판단 근거, FR-024)**
+
+- 한 행 = 화면의 "왜?" 버튼을 눌렀을 때 보여 줄 근거 한 줄.
+- 근거 종류(kind) 8가지
+
+| kind | 뜻 |
+| --- | --- |
+| CLASSIFY_SENTENCE | 문의 유형을 그렇게 분류한 근거 문장 |
+| URGENCY_SENTENCE | 긴급도를 그렇게 본 근거 문장 |
+| PRIORITY_TRACE | 적용한 우선순위 규칙(priority_rules.csv) |
+| ROUTING | 적용한 부서 규칙(routing_rules.csv) |
+| REQUIRED_CHECK | 필수정보 대조 결과(required_info.csv) |
+| SLA | SLA 목표 계산(sla_policy.csv) |
+| LOOKUP_VALUE | 표에서 찾은 값(가격·납기 등, product_master.csv) |
+| DRAFT_CHECK | 초안 자체 대조 결과 |
+- 내용(payload)은 종류마다 모양이 달라 자유 구조(JSONB)로 저장한다. 예: 우선순위 근거 = {규칙 PR-02, 긴급도 SITE_DOWN, 유형 DEFECT → P1}.
+
+**노드 실행 기록(agent_step)과 다른 점**
+
+- agent_step은 개발자가 보는 기록이다. 단계별 걸린 시간, 오류, 토큰 수를 남긴다.
+- 두 표는 상담원이 화면에서 읽는 근거다.
+- 두 표 모두 어느 실행(run_id)에서 나온 근거인지 적어 둔다. 그래서 재처리를 하면 최신 근거만 골라 보여 줄 수 있다.
+
+**기능을 줄일 경우.** 두 표를 빼고 agent_step의 출력 요약(output_summary)에서 근거를 꺼내 보여 줄 수도 있다. 다만 그러면 상담원 화면이 개발용 기록에 기대게 된다.
+
+### 4-12. 함수와 뷰
+
+| 이름 | 하는 일 |
+| --- | --- |
+| `transition(ticket_id, seq, to_status, event_kind, at, actor, reason, final_action)` | 상태 변경은 이 함수로만 한다. 허용 전이표에 없으면 거부한다. 이력 한 줄을 사건 시각으로 남기고, 상태와 version을 바꾸고, RESOLVED·CLOSED가 처음 되면 resolved_at을 쓴다 |
+| `inquiry_sla(as_of)` | 문의별 SLA 두 시계를 계산한다. as_of는 화면이면 지금, 채점이면 스냅샷(2026-09-30 23:59 UTC). 저장하지 않고 매번 계산한다. 돌려주는 열: status, received_at, fr_target_h, res_target_h, fr_elapsed_h, fr_status, wait_h, res_elapsed_h, res_status, remaining_h |
+| `v_ticket_summary` (뷰) | 접수함 한 줄 = 티켓 하나(FR-029). 대표 문의는 끝나지 않은 문의 → 경고가 있는 문의 → 남은 시간이 적은 문의 순으로 고른다(D16). 문의가 모두 끝났으면 RESOLVED 또는 CLOSED. needs_info(차단 항목 누락 있음), has_unsent_draft(보내지 않은 초안 있음), 고객사 이름과 등급을 붙인다 |
+
+`inquiry_sla`의 계산 규칙(README.html의 SLA 정의, 팀 정리 §3)
+
+- 1차 응답 시계는 멈추지 않는다. 응답했으면 목표 이내 MET, 넘으면 BREACHED. 아직이면 넘었을 때 BREACHED, 아니면 ON_TRACK. 1차 응답에는 AT_RISK가 없다.
+- 해결 경과 = (해결 시각 또는 as_of) − 접수 시각 − WAITING_CUSTOMER 구간 합.
+- 해결 상태: final_action이 CLOSED_NO_RESPONSE면 N/A. 해결했으면 MET/BREACHED. 아직이면 목표 초과 BREACHED, 75% 이상 AT_RISK, 그 밖은 ON_TRACK.
+
+---
+
+## 5. scoring 스키마 (초안)
+
+svc와 표·함수·뷰가 같다(`04_service_schema.sql`을 `-v target=scoring`으로 실행). 채점 배치가 실행마다 비우고 valid·test 행으로 채운다. 서비스 화면은 이 스키마를 보지 않는다.
+
+---
+
+## 6. 검증 결과 (2026-10-10, 빈 PostgreSQL 16 DB에서 00 → 정답지 적재 → 05 → 06)
+
+**생성**: ref 25개, gold 3개(뷰 포함), svc 13개, scoring 13개(뷰 포함)가 오류 없이 만들어졌다. ref 데이터는 FK 위반 없이 들어갔다.
+
+**정답지 재생(05)**: 정답지 4,000건을 scoring에 상태 이력으로 다시 쌓고 스냅샷 기준으로 `inquiry_sla`를 계산해 비교했다.
+
+| 비교 | 일치 |
+| --- | --- |
+| 해결 SLA 상태(sla_resolution_status) | 4,000 / 4,000 |
+| 1차 응답 SLA 상태(sla_first_response_status) | 3,998 / 4,000 |
+| 해결 경과 시간(sla_elapsed_hours, ±0.1h) | 3,991 / 4,000 |
+
+다른 9건은 모두 정답지 값이 실제로 일어날 수 없는 경우다. 운영진에게 데이터 오류로 알릴 대상이다.
+
+- CSV1-003890, 003946, 003951: 고객 회신 대기(customer_wait_hours)가 음수이고, 1차 응답 시각이 스냅샷보다 뒤다. 이 중 003890, 003951은 1차 응답 상태도 다르게 나온다(정답지 BREACHED, 계산 ON_TRACK).
+- CSV1-003913, 003950, 003967, 003984, 003995, 003999: 대기 시간이 접수부터 스냅샷까지의 시간보다 길어서 정답지 경과 시간이 음수다. DB는 접수 전의 대기를 셀 수 없으므로 값이 다르다.
+
+**보호 장치(06)**: 6개가 모두 거부했다. 허용되지 않은 전이(NEW → RESOLVED), 수신 메시지 수정, 메시지 삭제, 승인된 초안 수정, 같은 초안 두 번 발송, SYSTEM의 직접 발송. 대기 10시간을 뺀 해결 경과(3.00h)와 MET도 기대대로 나왔다.
+
+---
+
+## 7. 기술 명세서 §6-2와 다른 점, 결정 필요
+
+| 항목 | 기술 명세서 | 이 SQL | 이유 |
+| --- | --- | --- | --- |
+| doc_chunk 위치 | svc.doc_chunk | ref.doc_chunk | 서비스와 채점이 같은 색인을 읽는 읽기 전용 표라서 ref에 둔다. 문서 목록 document도 ref에 새로 만들었다 |
+| first_response_at 위치 | ticket 열 | ticket_inquiry 열 | 1차 응답이 문의마다 다를 수 있다(D21: 문의별 정보 요청 또는 티켓 최종 답변) |
+| doc_chunk.revision | 열 있음 | 없음 | document.revision으로 찾을 수 있어 중복을 뺐다 |
+| transition() 인자 | (ticket_id, seq, to_status, at, actor, event) | (…, to_status, event_kind, at, actor, reason, final_action) | 순서가 다르고 사유와 최종 조치를 더 받는다 |
+
+결정 필요(정해지면 SQL을 고친다)
+
+- D8 임베딩 모델: doc_chunk.embedding의 차원과 벡터 색인.
+- D17 문의별 결과 저장 위치: 지금은 ticket_inquiry 표. 바뀌면 §4-3 전체가 바뀐다.
+- 제안 상한 값: 본문 2,000자, 메시지 5,000자, 우선순위 조정 사유 종류 3개.
+- 초안 표 5개(document, doc_chunk, inquiry_field, inquiry_evidence, doc_candidate)와 scoring 스키마를 팀이 받아들일지.
