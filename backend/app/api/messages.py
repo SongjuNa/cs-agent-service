@@ -1,0 +1,169 @@
+"""초안 다루기: 임시 저장, 대역 다시 만들기, 다시 검증, 승인·발송 (FR-031, FR-039, FR-049, 기술 명세서 v1.4 §8-1).
+
+발송은 SENT 행을 새로 쓰는 이 API만 한다(CLAUDE.md 규칙 3). 상태 전이는 하지 않는다(2순위 FR-025).
+"""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi.responses import JSONResponse
+import psycopg
+from psycopg import Connection, errors
+from pydantic import BaseModel
+
+from app.api.deps import Clients, get_clients, get_conn
+from app.db.detail import verify_state
+from app.db.store import (add_self_check, add_step, body_sha, check_body, draft_object, draft_sources, finish_run,
+                          insert_gloss, intake_step, load_draft, save_verify, send_draft, start_run, update_draft_body)
+from app.llm.drafts import FLAG_GLOSS_FAILED, write_gloss
+from app.llm.verify import KIND_NAMES, verify_draft
+
+router = APIRouter()
+
+MSG_SENT = "이미 발송된 초안"
+MSG_SAVE_FAILED = "저장하지 못함. 다시 시도"
+
+
+class BodyIn(BaseModel):
+    body: str
+
+
+class SendIn(BaseModel):
+    final_body: str
+    override_check: bool = False
+
+
+def _draft(conn: Connection, message_id: int) -> dict:
+    draft = load_draft(conn, message_id)
+    if draft is None:
+        raise HTTPException(404, "초안을 찾을 수 없음")
+    return draft
+
+
+def _make_gloss(conn: Connection, clients: Clients, draft: dict, run_id: int) -> bool:
+    """L7 대역을 다시 만들어 새 행으로 남긴다. 성공하면 True."""
+    obj = draft_object(conn, draft)
+    obj.gloss = None
+    try:
+        obj = write_gloss(clients.transport(), obj)
+    except Exception:  # noqa: BLE001 — 키 없음 등도 대역 실패로 본다
+        obj.flags.append(FLAG_GLOSS_FAILED)
+    with conn.transaction():
+        if obj.gloss:
+            insert_gloss(conn, draft["message_id"], obj.gloss)
+        add_step(conn, run_id, "Q13", output={"message_id": draft["message_id"], "gloss": obj.gloss is not None},
+                 result="SUCCESS" if obj.gloss else "FAILED")
+    return obj.gloss is not None
+
+
+@router.put("/messages/{message_id}")
+def put_message(message_id: int, data: BodyIn, conn: Connection = Depends(get_conn),
+                clients: Clients = Depends(get_clients)) -> dict:
+    """임시 저장: DRAFT 본문만 바꾸고 대역을 다시 만든다. 검증은 다시 부르지 않는다(추가 결정 가3)."""
+    draft = _draft(conn, message_id)
+    if draft["message_status"] != "DRAFT":
+        raise HTTPException(409, MSG_SENT)
+    if not data.body.strip():
+        raise HTTPException(400, "내용을 입력하세요")
+    try:
+        run_id = start_run(conn, draft["ticket_id"], draft["sub_ticket_id"], "AGENT_EDIT")
+        with conn.transaction():
+            update_draft_body(conn, message_id, data.body)
+            check = check_body(conn, draft["message_type"], draft["sub_ticket_id"], data.body)  # 고친 본문의 ① 대조(코드)
+            add_self_check(conn, run_id, draft["sub_ticket_id"], "DRAFT_CHECK", check["passed"],
+                           {**check, "body_sha256": body_sha(data.body)}, message_id)
+            add_step(conn, run_id, "Q11", output=check)
+    except psycopg.Error as exc:  # 화면 정의서 v2 P8
+        raise HTTPException(500, MSG_SAVE_FAILED) from exc
+    draft["body"] = data.body
+    gloss_ok = _make_gloss(conn, clients, draft, run_id)
+    with conn.transaction():
+        finish_run(conn, run_id, "SUCCESS" if gloss_ok else "PARTIAL", "Q13")
+    return {"message_id": message_id, "gloss": gloss_ok}
+
+
+@router.post("/messages/{message_id}/gloss")
+def post_gloss(message_id: int, conn: Connection = Depends(get_conn), clients: Clients = Depends(get_clients)) -> dict:
+    """대역 다시 만들기(FR-039 예외 1행)."""
+    draft = _draft(conn, message_id)
+    run_id = start_run(conn, draft["ticket_id"], draft["sub_ticket_id"], "RETRY")
+    ok = _make_gloss(conn, clients, draft, run_id)
+    with conn.transaction():
+        finish_run(conn, run_id, "SUCCESS" if ok else "FAILED", "Q13")
+    if not ok:
+        raise HTTPException(502, "대역을 만들지 못함")
+    return {"message_id": message_id, "gloss": True}
+
+
+@router.post("/messages/{message_id}/verify")
+def post_verify(message_id: int, conn: Connection = Depends(get_conn), clients: Clients = Depends(get_clients)) -> dict:
+    """다시 검증(FR-049): L8 1회, 결과는 VERIFY 새 행."""
+    draft = _draft(conn, message_id)
+    run_id = start_run(conn, draft["ticket_id"], draft["sub_ticket_id"], "RETRY")
+    sources, lookups, _, evidence = draft_sources(conn, draft["sub_ticket_id"])
+    try:
+        result = verify_draft(clients.transport(), draft_object(conn, draft), evidence, sources, lookups)
+    except Exception as exc:  # noqa: BLE001 — 키 없음 등. 검증 실패 행으로 남긴다
+        from app.llm.verify import VerifyResult
+        result = VerifyResult(error=getattr(exc, "error_type", "UNKNOWN"))
+    with conn.transaction():
+        save_verify(conn, run_id, draft["sub_ticket_id"], message_id, draft["body"], result)
+        add_step(conn, run_id, "Q14", output={"message_id": message_id, "state": result.state},
+                 result="FAILED" if result.error else "SUCCESS")
+        finish_run(conn, run_id, "FAILED" if result.error else "SUCCESS", "Q14")
+    return {"message_id": message_id, "state": result.state, "mark": result.mark()}
+
+
+@router.post("/messages/{message_id}/send")
+def post_send(message_id: int, data: SendIn, conn: Connection = Depends(get_conn),
+              x_agent_id: str | None = Header(default=None)):
+    """승인·발송(FR-031 처리 1·2·3·5). 확인이 필요한 것이 있으면 409 + 목록, override_check로 다시 보내면 발송."""
+    if not x_agent_id or not x_agent_id.strip():
+        raise HTTPException(400, "상담원 ID를 입력하세요")
+    if not data.final_body.strip():
+        raise HTTPException(400, "내용을 입력하세요")
+    draft = _draft(conn, message_id)
+    if draft["message_status"] != "DRAFT":
+        raise HTTPException(409, MSG_SENT)
+
+    issues, notes = _send_issues(conn, draft, data.final_body)
+    if issues and not data.override_check:
+        return JSONResponse(status_code=409, content={"detail": "확인 필요", "issues": issues, "notes": notes})
+    try:
+        sent_id = send_draft(conn, draft, data.final_body, x_agent_id.strip(), bool(issues) and data.override_check)
+    except errors.UniqueViolation as exc:  # 같은 초안의 두 번째 SENT (FR-031 예외 4행)
+        raise HTTPException(409, MSG_SENT) from exc
+    return {"sent_message_id": sent_id, "override_check": bool(issues) and data.override_check, "notes": notes}
+
+
+def _send_issues(conn: Connection, draft: dict, final_body: str) -> tuple[list[dict], list[str]]:
+    """확인을 받아야 하는 것(issues)과 줄로만 알리는 것(notes). 화면 정의서 v2 P7."""
+    issues: list[dict] = []
+    notes: list[str] = []
+    check = check_body(conn, draft["message_type"], draft["sub_ticket_id"], final_body)
+    bad = check["bad_citations"] + check["bad_numbers"]
+    if bad:
+        issues.append({"kind": "DRAFT_CHECK", "text": f"근거 밖 인용/숫자 {len(bad)}곳", "items": bad})
+    if check.get("missing_labels"):
+        issues.append({"kind": "DRAFT_CHECK", "text": f"요청할 항목이 본문에 없음: {', '.join(check['missing_labels'])}",
+                       "items": check["missing_labels"]})
+    if draft["message_type"] == "FINAL_REPLY":
+        (blocking,) = conn.execute("SELECT missing_blocking_info FROM svc.sub_ticket WHERE sub_ticket_id = %s",
+                                   (draft["sub_ticket_id"],)).fetchone()
+        if blocking:
+            labels = (intake_step(conn, draft["sub_ticket_id"], "Q5") or {}).get("labels", {})
+            names = [labels.get(f, f) for f in blocking]
+            issues.append({"kind": "BLOCKING", "text": f"막는 정보({', '.join(names)})가 아직 없습니다", "items": names})
+    verify = conn.execute(
+        """SELECT passed_yn, detail FROM eval.self_check WHERE message_id = %s AND check_type = 'VERIFY'
+            ORDER BY checked_at_utc DESC, check_id DESC LIMIT 1""", (draft["message_id"],)).fetchone()
+    state, text, findings = verify_state(None if verify is None else {"passed_yn": verify[0], "detail": verify[1]},
+                                         draft["body"])
+    if state == "FOUND":
+        issues.append({"kind": "VERIFY", "text": f"⑤ 검증 에이전트 지적 {len(findings)}곳",
+                       "items": [f"{KIND_NAMES.get(f['kind'], f['kind'])} — {f['quote']}" for f in findings]})
+    elif state == "FAILED":
+        notes.append("⑤ 검증 못 함 — 검증 없이 보냅니다")
+    elif state == "STALE":
+        notes.append("⑤ 고친 뒤 검증 안 함")
+    return issues, notes
