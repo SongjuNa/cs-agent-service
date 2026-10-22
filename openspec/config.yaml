@@ -1,0 +1,61 @@
+schema: spec-driven
+
+# 팀 공통 규칙. OpenSpec이 proposal·specs·design·tasks를 만들 때마다 AI에게 함께 전달된다.
+# 기준 문서: docs/requirements/functional-requirements.md (기능 요구사항 명세서 v1.5),
+#            docs/technical/technical-specification.md (기술 명세서 v1.4),
+#            docs/technical/agent-design.md (에이전트 설계서 v1.1),
+#            docs/database/table-specification.md + schema.sql (테이블 정의서 v1.3),
+#            docs/technical/screen-specification.md (화면 정의서 v2)
+context: |
+  모든 OpenSpec 문서(proposal, specs, design, tasks)는 한국어로 작성한다.
+  단, OpenSpec 머리말(## ADDED Requirements, ### Requirement:, #### Scenario:, GIVEN/WHEN/THEN)과
+  요구사항 강도 표시(MUST/SHALL)는 영어 그대로 쓰고, 요구사항(Requirement) 본문마다 MUST나 SHALL을 한 번 이상 넣는다
+  (없으면 openspec validate --strict가 실패한다. 예: "~해야 한다(MUST)").
+  팀원 중 개발 경험이 적은 사람이 있으므로 기술 용어는 처음 나올 때 풀이한다.
+
+  기준 문서는 docs/ 이다. openspec/specs/는 구현이 끝난 동작만 쌓는다. docs/와 다르면 docs/를 따르고 사람에게 알린다.
+
+  프로젝트: 해외고객향 C/S 대응 AI Agent. 핵심 사용자 = 1차 상담원.
+  현재 개발 범위: MVP 1순위 18개 기능만 만든다.
+    FR-004 언어 식별, FR-005 문의 유형 분류, FR-007 긴급도 판단, FR-008 제공 항목 추출,
+    FR-010 고객·제품 조회, FR-011 우선순위 계산, FR-012 부서 배정, FR-013 필수정보 확인, FR-014 SLA 목표 설정,
+    FR-015 추가정보 요청 메시지 생성, FR-016 문서 근거 검색, FR-017 숫자 표 조회, FR-021 답변 초안 생성,
+    FR-024 근거 표시, FR-031 초안 수정·승인·발송, FR-038 개인정보 마스킹 유지, FR-039 초안 대역 표시, FR-049 검증 에이전트.
+  2순위 이후 기능은 만들지 않는다. 문의는 항상 하위 문의 1개로 만든다(복합 문의 FR-006은 2순위).
+  화면은 티켓 상세 최소판(화면 정의서 v2의 SCR-03M) 하나만 만든다.
+  1순위 기능이 2순위 이후 기능을 가리키는 곳은 연결 지점만 남기고 만들지 않는다. 특히 FR-031은 메시지 이력에 발송 행을 쓰고
+  1차 응답 시각을 기록하는 데까지 만든다. 상태 전이(FR-025), SLA 다시 계산(FR-026), 예외 부서 메일(FR-031 처리 9, 이관 FR-033 필요)은 만들지 않는다.
+
+  기술 스택: Python 3.11 + FastAPI + Pydantic v2, LangGraph, PostgreSQL 16 + pgvector,
+  React + Vite + TypeScript, Gemini(언어 모델 gemini-3.8-flash, 임베딩 gemini-embedding-2), Docker Compose.
+  DB는 docs/database/schema.sql 기준이며 스키마는 ref, svc, gold, scoring, eval로 나뉜다.
+
+  설계 원칙(어기면 안 됨):
+  1. 고객에게 가는 글은 고객 언어(language)로 쓴다.
+  2. 우선순위·부서·SLA 목표는 규칙표(ref 스키마)가 정한다. 언어 모델은 분류·긴급도·항목 추출·글쓰기·검증만 한다.
+     규칙 코드는 언어 모델 호출 계층을 import하지 않는다.
+  3. 답변은 문서 근거와 조회 값만 쓴다. 인용·숫자는 생성 뒤 코드로 대조한다.
+  4. 펌웨어는 release_date ≤ 접수일(같은 날 포함)인 것만 쓴다.
+  5. 고장 진단·유사 사례 검색은 이번 범위가 아니다.
+  6. 상담원 우선순위 조정은 이번 범위가 아니다(FR-028, 2순위).
+  7. 고객에게 가는 메시지는 DRAFT로만 만들고, SENT는 상담원 승인 API만 쓴다.
+  8. 가격·납기는 제품 마스터 조회 값만 쓴다.
+  개인정보: 원문은 DB에 저장하고 상담원 화면에 보인다. 언어 모델 입력과 실행 로그에만 가린 글을 쓴다(기술 명세서 §7).
+  검증 에이전트(FR-049)는 발송을 막지 않고 검토 표시 ⑤로만 보인다.
+  고객 본문은 프롬프트 안에서 <customer_message> 안에만 넣는다(기술 명세서 §3-3).
+  정답지(gold 스키마)는 읽기 전용이며 서비스 코드는 gold.v_inputs만 읽는다. 정답과 비교하는 시험·채점 코드만 정답 열을 읽는다.
+
+rules:
+  proposal:
+    - 관련 FR 번호와 기술 명세서 절 번호(§n-n)를 적는다
+    - 1순위 범위 밖의 일이 필요하면 "범위 밖"으로 따로 적고 만들지 않는다
+  specs:
+    - 요구사항 하나에 FR 하나를 대응시키고 제목 끝에 (FR-0xx)를 붙인다
+    - Scenario 제목은 명세서의 AC 번호로 시작한다(예 AC-011-1)
+    - 예시 문의는 tickets.csv의 실제 ticket_id를 쓴다
+  design:
+    - 표·열 이름은 docs/database/table-specification.md와 같은 이름을 쓴다
+    - 언어 모델 지시문은 docs/technical/agent-design.md를 따른다
+  tasks:
+    - 마지막 작업은 해당 AC를 확인하는 테스트 실행으로 한다
+
