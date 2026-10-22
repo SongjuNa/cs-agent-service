@@ -1,0 +1,42 @@
+# 반품 사유 단어 목록 v1 (2026-10-22, 다-16)
+# 출처: 기술 명세서 v1.4 §5-3, 반품_사유_단어목록_v1_20261022.md 4장
+# 사용: 반품 사유(영어)를 소문자로 바꿔 단어가 들어 있는지 본다. 비불량만 → NON_DEFECT, 불량만 → DEFECT, 그 밖 → UNKNOWN
+non_defect:
+  - different model
+  - wrong model
+  - wrong item
+  - wrong product
+  - ordered by mistake
+  - order error
+  - ordering mistake
+  - surplus
+  - excess
+  - overstock
+  - no longer needed
+  - not needed
+  - project cancel
+  - changed mind
+  - change of mind
+  - wrong rating
+  - wrong rated
+  - incorrect rating
+  - by mistake
+  - mistakenly
+  - cancelled
+  - canceled
+  - cancellation
+  - unused
+  - not used
+defect:
+  - defect
+  - defective
+  - quality problem
+  - quality issue
+  - dead on arrival
+  - doa
+  - damaged
+  - crack
+  - broken
+  - does not power
+  - not working
+  - fault
