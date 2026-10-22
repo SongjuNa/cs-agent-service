@@ -1,4 +1,10 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+# 저장소 루트 (backend/app/config.py에서 두 단계 위)
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
@@ -8,6 +14,13 @@ class Settings(BaseSettings):
 
     database_url: str
     gemini_api_key: str = ""
+    data_dir: str = "data/CS_AI_Agent_Training_Data_v1"
+
+    @property
+    def data_path(self) -> Path:
+        """운영진 데이터 폴더. 상대 경로는 저장소 루트 기준이다."""
+        path = Path(self.data_dir)
+        return path if path.is_absolute() else REPO_ROOT / path
 
 
 def get_settings() -> Settings:
