@@ -1,8 +1,8 @@
 """처리 흐름 그래프 (기술 명세서 v1.4 §1-2 LangGraph, §2-1 하위 문의 그래프, §2-5 분기③④).
 
 understand(T1·T2·Q1) → rules(Q2~Q6) → 분기③ 막는 정보?
-  예     → info_request(Q7, L3) → gloss(Q13, L7) → 끝
-  아니오 → evidence(Q8·Q9) → reply(분기④ 근거 있음? → Q10 L4 + Q11 대조) → gloss → 끝
+  예     → info_request(Q7, L3) → gloss(Q13, L7) → verify(Q14, L8) → 끝
+  아니오 → evidence(Q8·Q9) → reply(분기④ 근거 있음? → Q10 L4 + Q11 대조) → gloss → verify → 끝
 1순위는 하위 문의 1개라 병렬 실행(T3)과 메일 구성(T5)은 없다. 고객에게 가는 글은 모두 DRAFT다.
 """
 
@@ -17,6 +17,7 @@ from psycopg import Connection
 from app.llm.client import Transport
 from app.llm.drafts import Draft, Source, write_gloss, write_info_request, write_reply
 from app.llm.embed import Embedder
+from app.llm.verify import verify_draft
 from app.pipeline.evidence import add_evidence
 from app.pipeline.rules_step import apply_rules
 from app.pipeline.state import TicketState
@@ -29,6 +30,7 @@ class GraphState(TypedDict, total=False):
     state: TicketState
     labels: dict[str, dict[str, str]]  # 하위 문의별 항목 라벨(Q5 결과)
     drafts: list[Draft]
+    sources: dict[str, list[Source]]  # 하위 문의별 근거 절(L4·L8 입력)
     run_status: str  # SUCCESS / FAILED (schema.sql agent_run.status)
     error_type: str | None
     message: str | None
@@ -74,9 +76,9 @@ def build_graph(conn: Connection, transport: Transport, embedder: Embedder):
         return {"state": add_evidence(conn, embedder, gs["state"])}
 
     def reply(gs: GraphState) -> GraphState:
-        state, drafts = gs["state"], []
+        state, drafts, by_sub = gs["state"], [], {}
         for sub in state.sub_tickets:
-            sources = []
+            sources = by_sub[sub.sub_ticket_id] = []
             for c in sub.doc_candidates:
                 row = conn.execute("SELECT section_title, text FROM ref.doc_chunk WHERE chunk_id = %s",
                                    (c.chunk_id,)).fetchone()
@@ -93,10 +95,20 @@ def build_graph(conn: Connection, transport: Transport, embedder: Embedder):
             if draft is not None:
                 sub.draft_check = draft.check
                 drafts.append(draft)
-        return {"drafts": drafts}
+        return {"drafts": drafts, "sources": by_sub}
 
     def gloss(gs: GraphState) -> GraphState:
         return {"drafts": [write_gloss(transport, d) for d in gs["drafts"]]}
+
+    def verify(gs: GraphState) -> GraphState:  # Q14: 실패해도 실행은 SUCCESS(FR-049 예외 2행)
+        subs = {s.sub_ticket_id: s for s in gs["state"].sub_tickets}
+        for draft in gs["drafts"]:
+            sub = subs[draft.sub_ticket_id]
+            lookups = [(lv.item, lv.value, lv.unit, f"{lv.source_table}:{lv.source_key}") for lv in sub.lookups]
+            draft.verify = verify_draft(transport, draft, sub.evidence_sentences,
+                                        gs.get("sources", {}).get(sub.sub_ticket_id, []), lookups)
+            sub.verify_findings = None if draft.verify.error else draft.verify.findings
+        return {"drafts": gs["drafts"]}
 
     def after_understand(gs: GraphState) -> str:
         return "rules" if gs["run_status"] == "SUCCESS" else END
@@ -108,7 +120,7 @@ def build_graph(conn: Connection, transport: Transport, embedder: Embedder):
 
     graph = StateGraph(GraphState)
     for name, node in [("understand", understand), ("rules", rules), ("info_request", info_request),
-                       ("evidence", evidence), ("reply", reply), ("gloss", gloss)]:
+                       ("evidence", evidence), ("reply", reply), ("gloss", gloss), ("verify", verify)]:
         graph.add_node(name, node)
     graph.add_edge(START, "understand")
     graph.add_conditional_edges("understand", after_understand, ["rules", END])
@@ -116,7 +128,8 @@ def build_graph(conn: Connection, transport: Transport, embedder: Embedder):
     graph.add_edge("info_request", "gloss")
     graph.add_edge("evidence", "reply")
     graph.add_edge("reply", "gloss")
-    graph.add_edge("gloss", END)
+    graph.add_edge("gloss", "verify")
+    graph.add_edge("verify", END)
     return graph.compile()
 
 
