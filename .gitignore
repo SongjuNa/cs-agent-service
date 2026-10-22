@@ -1,0 +1,12 @@
+# 비밀 값 (CLAUDE.md 규칙 8)
+.env
+
+# 운영진 원본 데이터 (CLAUDE.md 규칙 8)
+data/
+
+# 파이썬
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+.pytest_cache/
