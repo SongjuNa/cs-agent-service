@@ -8,6 +8,7 @@ dependencies = [
     "pydantic-settings",
     "psycopg[binary]",
     "pyyaml",
+    "google-genai",
 ]
 
 [project.optional-dependencies]
