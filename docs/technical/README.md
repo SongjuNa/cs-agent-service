@@ -4,8 +4,10 @@
 시스템의 기술 선택, 구성요소, 책임, 연결 관계와 **AI Agent 실행 설계**를 설명합니다.
 
 ## 관리 대상
-- `technical-specification.md` — 기술 스택과 주요 설계 결정(확정 후 추가)
-- 필요 시 `architecture.md`, `agent-workflow.md` — 큰 다이어그램을 분리해야 할 때만 추가
+- `technical-specification.md` — 기술 명세서(현재 v1.4)
+- `agent-design.md` — 에이전트 설계서(현재 v1.1): 언어 모델 호출 L1~L8의 지시문·출력 모양·평가
+- `screen-specification.md` — 화면 정의서(현재 v2, 1순위 최소판)
+- 필요 시 `architecture.md` — 큰 다이어그램을 분리해야 할 때만 추가
 
 ## 주요 내용
 - Frontend·Backend·LLM·RAG·Tool·DB의 경계와 책임
