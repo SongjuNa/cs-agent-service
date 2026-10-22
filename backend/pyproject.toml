@@ -24,3 +24,5 @@ include = ["app*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# 저장소 루트의 jobs/를 시험에서 불러오기 위해
+pythonpath = [".."]
