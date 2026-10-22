@@ -68,6 +68,7 @@ class Draft:
     lookups_used: list[dict[str, Any]] = field(default_factory=list)  # FR-021 출력 "사용한 조회값 목록"
     check: dict[str, Any] | None = None
     gloss: Gloss | None = None
+    verify: Any = None  # 검증 에이전트 결과(app.llm.verify.VerifyResult, FR-049)
     flags: list[str] = field(default_factory=list)
 
 

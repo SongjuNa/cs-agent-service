@@ -41,7 +41,8 @@ class WordCountEmbedder:
 
 
 CALLS = {"L1": "You read one", "L2": "You extract", "L3": "Write a short email", "L4": "Write a reply",
-         "L7": "Translate the email"}
+         "L7": "Translate the email", "L8": "You review a draft"}
+NO_FINDINGS = {"findings": []}
 
 
 class FakeTransport:
@@ -54,7 +55,7 @@ class FakeTransport:
     def send(self, prompt, schema):
         call = next(k for k, start in CALLS.items() if prompt.startswith(start))
         self.prompts.append((call, prompt))
-        q = self.queues[call]
+        q = self.queues.setdefault(call, [NO_FINDINGS]) if call == "L8" else self.queues[call]
         reply = q.pop(0) if len(q) > 1 else q[0]
         if isinstance(reply, Exception):
             raise reply
