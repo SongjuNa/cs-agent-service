@@ -6,8 +6,8 @@
 
 - 명세서 v1.5 FR-038 처리 1~7, 예외, AC-038-1~7(근거: docs/requirements/functional-requirements.md).
 - 기술 명세서 v1.4 §7(위치, 검사식, 제외 목록, 검사 오류), §6-5(실행 로그에 넣는 글은 모두 가린 글, 오류 종류), §3-3(고객 본문은 `<customer_message>` 안에만)(근거: docs/technical/technical-specification.md).
-- 에이전트 설계서 v1.1 6-4절(가리기는 LLM 호출 계층과 실행 기록 저장 두 곳), 4-2절 공통 규칙 7(연락처 열 ticket.contact_*·customer.primary_contact_*는 어떤 호출에도 넣지 않음)(근거: docs/technical/agent-design.md).
-- 테이블 정의서 v1.3 §4-2(ticket.contact_*), §2-2(customer.primary_contact_*), §4-4(ticket_message.body 원문, mask_count), §4-10(agent_step.input_json·output_json)(근거: docs/database/table-specification.md).
+- 에이전트 설계서 v1.1 6-4절(가리기는 LLM 호출 계층과 실행 기록 저장 두 곳), 4-2절 공통 규칙 7(보낸 사람 연락처 열과 고객사 대표 연락처 열은 어떤 호출에도 넣지 않음)(근거: docs/technical/agent-design.md).
+- 테이블 정의서 v1.3 §4-2(ticket의 contact_name·contact_email·contact_phone), §2-2(customer의 primary_contact_name·primary_contact_email·primary_contact_phone), §4-4(ticket_message.body 원문, mask_count), §4-10(agent_step.input_json·output_json)(근거: docs/database/table-specification.md).
 - 프로젝트 구조 1순위 판 2장(`masking/`, `llm/`, `tests/acceptance/`), 3장 1번 행, 4장(observability/ 제외)(근거: bootcamp/openspec/프로젝트_구조_1순위.md).
 
 용어: **정규식**(regular expression)은 "이런 모양의 글자 묶음"을 찾는 검색 패턴이다. **LLM**은 언어 모델(Gemini)이다.
@@ -91,5 +91,5 @@ AC-038-3은 DB에 정답지가 들어 있어야 한다. 2번 변경의 시험(te
 ## Risks / Trade-offs
 
 - [0으로 시작하는 10~11자리 주문 번호가 있으면 잘못 가려진다] → 기준 문서가 이미 받아들인 한계다. 상담원이 체크리스트(FR-013)에서 값을 직접 넣는다(근거: 기술 명세서 §7 "0으로 시작하는 10~11자리 주문 번호가 있으면 잘못 가려질 수 있다", 명세서 FR-038 예외 1행).
-- [규격 번호 제외를 넣지 않으면 AC-038-3이 실패한다] → 결정 2의 "규격 번호" 행. 조장 확인 뒤 기술 명세서 §7 제외 목록에 한 줄 추가를 제안한다.
-- [이메일 도메인 꼴이 아닌 주소(예: 점이 없는 도메인)는 가려지지 않는다] → 기술 명세서 §7 검사식이 "`.` + 2자 이상 영문"을 요구하므로 그대로 따른다.
+- [규격 번호 제외를 넣지 않으면 AC-038-3이 실패한다] → 결정 2의 "규격 번호" 행. 조장 확인 뒤 기술 명세서 §7 제외 목록에 한 줄 추가를 제안한다(근거: 명세서 AC-038-3, tickets.csv 7건 직접 확인).
+- [이메일 도메인 꼴이 아닌 주소(예: 점이 없는 도메인)는 가려지지 않는다] → 기술 명세서 §7 검사식이 "`.` + 2자 이상 영문"을 요구하므로 그대로 따른다(근거: 기술 명세서 §7 검사식 표 이메일 행).
