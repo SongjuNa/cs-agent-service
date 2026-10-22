@@ -227,6 +227,8 @@ def load(database_url: str, data_dir: Path) -> dict[str, int]:
         try:
             # 자식 표부터 DELETE로 비운다. TRUNCATE는 비어 있는 svc 표가 가리키기만 해도 거부되고,
             # CASCADE는 svc 데이터까지 지우므로 쓰지 않는다. 실제로 가리키는 행이 있으면 여기서 멈춘다.
+            # 문서 색인(W2)은 ref.document를 가리키므로 먼저 비운다. 색인은 jobs/build_doc_index.py로 다시 만든다
+            conn.execute("DELETE FROM ref.doc_chunk")
             for table in reversed(TABLES):
                 conn.execute(f"DELETE FROM ref.{table}")
         except psycopg.errors.ForeignKeyViolation as e:

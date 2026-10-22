@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     database_url: str
     gemini_api_key: str = ""
     llm_model_small: str = "gemini-3.8-flash"
+    embedding_model: str = "gemini-embedding-2"
     data_dir: str = "data/CS_AI_Agent_Training_Data_v1"
 
     @property
