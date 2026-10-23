@@ -53,6 +53,7 @@ FLAG_CHECK_TYPES: list[tuple[str, str]] = [
     ("검색 실패", "NO_EVIDENCE"),
 ]
 ERROR_KINDS = {"LLM_TIMEOUT", "LLM_INVALID_OUTPUT", "RULE_NOT_FOUND", "DB", "VALIDATION", "UNKNOWN"}
+log = logging.getLogger(__name__)
 
 
 class IntakeError(ValueError):
@@ -154,16 +155,32 @@ def finish_run(conn: Connection, run_id: int, status: str, last_step: str | None
 
 
 def add_step(conn: Connection, run_id: int, name: str, output: Any = None, input_: Any = None,
-             result: str = "SUCCESS", error_kind: str | None = None, error: str | None = None) -> None:
+             result: str = "SUCCESS", error_kind: str | None = None, error: str | None = None,
+             started_at: datetime | None = None, finished_at: datetime | None = None, latency_ms: int | None = None,
+             prompt_version: str | None = None, input_tokens: int | None = None, output_tokens: int | None = None,
+             llm_calls: int | None = None, full_io: list | None = None) -> None:
+    """단계 한 행(FR-036 처리 2). 시간·사용량은 RunLog.step_fields가 준다. 없으면 지금 시각.
+
+    저장점 안에서 쓰고, 실패하면 서버 로그에 남기고 넘어간다. 처리 결과 저장은 계속한다(FR-036 예외 1행).
+    """
     now = _now()
-    conn.execute(
-        """INSERT INTO svc.agent_step (run_id, step_name, step_order, started_at_utc, finished_at_utc, result,
-               input_json, output_json, error_kind, error)
-           VALUES (%s, %s, (SELECT coalesce(max(step_order), 0) + 1 FROM svc.agent_step WHERE run_id = %s),
-                   %s, %s, %s, %s, %s, %s, %s)""",
-        (run_id, name, run_id, now, now, result, None if input_ is None else _masked_json(input_),
-         None if output is None else _masked_json(output), error_kind, None if error is None else mask_text(error)[0]),
-    )
+    if full_io is not None:  # LOG_FULL_LLM_IO일 때만 (FR-036 처리 4). 아래에서 가린다
+        output = {**(output or {}), "full_io": full_io}
+    try:
+        with conn.transaction():
+            conn.execute(
+                """INSERT INTO svc.agent_step (run_id, step_name, step_order, started_at_utc, finished_at_utc, latency_ms,
+                       result, input_json, output_json, error_kind, error, prompt_version, input_tokens, output_tokens,
+                       llm_calls)
+                   VALUES (%s, %s, (SELECT coalesce(max(step_order), 0) + 1 FROM svc.agent_step WHERE run_id = %s),
+                           %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                (run_id, name, run_id, started_at or now, finished_at or now, latency_ms, result,
+                 None if input_ is None else _masked_json(input_), None if output is None else _masked_json(output),
+                 error_kind, None if error is None else mask_text(error)[0], prompt_version, input_tokens,
+                 output_tokens, llm_calls),
+            )
+    except Exception:  # noqa: BLE001 — 로그 저장 실패는 처리를 멈추지 않는다
+        log.exception("실행 기록 저장 실패 run=%s step=%s", run_id, name)
 
 
 def add_self_check(conn: Connection, run_id: int, sub_ticket_id: str, check_type: str, passed: bool,
@@ -179,11 +196,13 @@ def add_self_check(conn: Connection, run_id: int, sub_ticket_id: str, check_type
 
 
 def save_outcome(conn: Connection, run_id: int, ticket_id: str, outcome: RunOutcome, reply_id: int | None = None) -> None:
-    """처리 결과 저장. reply_id가 있으면 고객 회신 재처리 결과다(FR-032 처리 3·4, 변경 add-customer-reply)."""
-    """처리 결과를 저장하고 실행을 끝낸다(design 결정 2)."""
+    """처리 결과를 저장하고 실행을 끝낸다. reply_id가 있으면 고객 회신 재처리 결과다(FR-032 처리 3·4).
+
+    단계 행에는 outcome.runlog의 시간·사용량을 붙인다(FR-036 처리 2, 변경 add-run-log).
+    """
     with conn.transaction():
         if outcome.run_status != "SUCCESS" or outcome.state is None:
-            _save_failure(conn, run_id, ticket_id, outcome)
+            _save_failure(conn, run_id, ticket_id, outcome, reply_id)
             return
         state = outcome.state
         conn.execute("UPDATE svc.ticket SET body_language = %s, body_language_uncertain = %s WHERE ticket_id = %s",
@@ -223,10 +242,11 @@ def _pipeline_done(conn: Connection, run_id: int, subs) -> str:
     return "SUCCESS"
 
 
-def _save_failure(conn: Connection, run_id: int, ticket_id: str, outcome: RunOutcome) -> None:
+def _save_failure(conn: Connection, run_id: int, ticket_id: str, outcome: RunOutcome, reply_id: int | None = None) -> None:
     kind = outcome.error_type if outcome.error_type in ERROR_KINDS else "UNKNOWN"
-    step = "T2" if outcome.state is None else "Q2"
-    add_step(conn, run_id, step, result="FAILED", error_kind=kind, error=outcome.message)
+    first = "T2" if reply_id is None else "Q1"  # 고객 회신 재처리는 Q1부터(§2-4)
+    step = first if outcome.state is None else "Q2"
+    add_step(conn, run_id, step, result="FAILED", error_kind=kind, error=outcome.message, **_timing(outcome, step))
     conn.execute("UPDATE svc.sub_ticket SET pipeline_error = %s WHERE ticket_id = %s",
                  (f"{kind}: {outcome.message or ''}".strip(), ticket_id))
     finish_run(conn, run_id, "FAILED", step)
@@ -337,8 +357,13 @@ def _save_sub(conn, run_id, state, sub, outcome: RunOutcome, inquiry_id: int, re
     steps[-1]["output"] = {**(steps[-1]["output"] or {}), "flags": sub.flags}
     last = steps[-1]["name"]
     for step in steps:
-        add_step(conn, run_id, step.pop("name"), **step)
+        name = step.pop("name")
+        add_step(conn, run_id, name, **step, **_timing(outcome, name))
     return last
+
+
+def _timing(outcome: RunOutcome, step_name: str) -> dict[str, Any]:
+    return outcome.runlog.step_fields(step_name) if outcome.runlog is not None else {}
 
 
 def _chunk_quote(conn: Connection, chunk_id: str | None, title: str) -> str:
@@ -379,7 +404,7 @@ def gloss_reminders(transport_factory) -> Callable:
         try:
             transport = transport_factory()
         except Exception as exc:  # noqa: BLE001 — 키가 없으면 대역만 빠진다
-            logging.getLogger(__name__).warning("리마인드 대역 없음: %s", exc)
+            log.warning("리마인드 대역 없음: %s", exc)
             return done
         for r in reminders:
             draft = write_gloss(transport, Draft(r["sub_ticket_id"], "PROGRESS_NOTICE", r["language"], r["body"]))

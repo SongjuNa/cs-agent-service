@@ -5,6 +5,7 @@
 - JSON 스키마를 지정해 받고(구조화 출력), 코드에서 스키마를 한 번 더 검사한다.
 - 1회 30초. 시간 초과(LLM_TIMEOUT)나 스키마 위반(LLM_INVALID_OUTPUT)이면 1회 다시 부른다.
 - 서버 로그에는 호출 이름, 지시문 버전, 넣은 항목 이름, 결과 종류만 남긴다. 본문은 남기지 않는다.
+- 시도마다 Transport의 on_call(있을 때만)에 알린다. 실행 로그(FR-036)가 호출 수·토큰을 단계에 붙인다.
 
 실제로 보내는 일은 Transport가 한다. 시험은 정해진 응답을 내는 대역 Transport를 넣는다.
 """
@@ -20,6 +21,7 @@ from typing import Any, Protocol
 
 from app.config import REPO_ROOT
 from app.llm.inputs import prepare_llm_input
+from app.pipeline.runlog import LlmCall, RunLog
 
 log = logging.getLogger(__name__)
 
@@ -60,6 +62,7 @@ class GeminiTransport:
             http_options=types.HttpOptions(timeout=timeout_sec * 1000),
         )
         self.model = model
+        self.last_usage: tuple[int | None, int | None] | None = None  # (입력, 출력) 토큰. 실행 로그용(§3-5)
 
     def send(self, prompt: str, schema: dict) -> str:
         import httpx
@@ -71,6 +74,7 @@ class GeminiTransport:
             response_json_schema=schema,
             thinking_config=self._types.ThinkingConfig(thinking_level=THINKING_LEVEL),
         )
+        self.last_usage = None
         try:
             response = self._client.models.generate_content(
                 model=self.model, contents=prompt, config=config
@@ -82,7 +86,36 @@ class GeminiTransport:
             if exc.code == 504:
                 raise LlmTimeout(str(exc)) from exc
             raise
+        usage = getattr(response, "usage_metadata", None)
+        if usage is not None:
+            self.last_usage = (usage.prompt_token_count, usage.candidates_token_count)
         return response.text or ""
+
+
+class RecordingTransport:
+    """Transport를 감싸 호출마다 실행 로그(RunLog)에 남긴다(FR-036 처리 2, §3-5). 보내는 일은 안쪽 Transport가 한다."""
+
+    def __init__(self, inner: Transport, log: RunLog):
+        self.inner = inner
+        self.log = log
+
+    def on_call(self, call_name: str, prompt_version: str, prompt: str) -> None:
+        self.log.calls.append(LlmCall(call_name, prompt_version, prompt))
+
+    def send(self, prompt: str, schema: dict) -> str:
+        record = self.log.calls[-1] if self.log.calls and self.log.calls[-1].prompt == prompt else None
+        try:
+            raw = self.inner.send(prompt, schema)
+        finally:
+            usage = getattr(self.inner, "last_usage", None)
+            if record is not None and usage:
+                record.input_tokens, record.output_tokens = usage
+        if record is not None:
+            record.response = raw
+        return raw
+
+    def __getattr__(self, name: str) -> Any:  # 모델 이름 등은 안쪽 것을 쓴다
+        return getattr(self.inner, name)
 
 
 @dataclass(frozen=True)
@@ -131,8 +164,11 @@ def generate_json(
     version = Path(prompt_file).stem
 
     last_type = "UNKNOWN"
+    notify = getattr(transport, "on_call", None)  # 실행 로그(FR-036 처리 2): 시도마다 알린다
     for attempt in range(1, MAX_ATTEMPTS + 1):
         try:
+            if notify:
+                notify(call_name, version, prompt)
             raw = transport.send(prompt, schema)
             data = json.loads(raw)
             problems = validate(data, check_schema or schema)

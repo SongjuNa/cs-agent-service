@@ -1,9 +1,13 @@
+import logging
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 from fastapi import FastAPI
 
-from app.api import chunks, messages, sub_tickets, tickets
+from app.api import chunks, messages, runs, sub_tickets, tickets
+from app.api.deps import open_connection
 from app.config import get_settings
+from app.db.runs import close_stale_runs
 from app.db.store import gloss_reminders
 from app.llm.client import default_transport
 from app.scheduler import start_scheduler
@@ -11,7 +15,14 @@ from app.scheduler import start_scheduler
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """서버가 켜져 있는 동안 5분 주기 점검을 돌린다(기술 명세서 §6-4)."""
+    """켜질 때 끝나지 않은 실행을 닫고(FR-036 예외 2행), 켜져 있는 동안 5분 주기 점검을 돌린다(§6-4)."""
+    try:
+        with open_connection() as conn:
+            closed = close_stale_runs(conn, datetime.now(timezone.utc))
+        if closed:
+            logging.getLogger(__name__).warning("끝나지 않은 실행 %d건을 FAILED로 닫음: %s", len(closed), closed)
+    except Exception:  # noqa: BLE001 — 닫기 실패로 서버를 멈추지 않는다
+        logging.getLogger(__name__).exception("끝나지 않은 실행 닫기 실패")
     scheduler = start_scheduler(gloss_reminders(default_transport)) if get_settings().scheduler_enabled else None
     app.state.scheduler = scheduler
     yield
@@ -24,3 +35,4 @@ app.include_router(tickets.router)
 app.include_router(messages.router)
 app.include_router(chunks.router)
 app.include_router(sub_tickets.router)
+app.include_router(runs.router)

@@ -15,6 +15,7 @@ from app.db.replies import ReplyError, record_reply
 from app.db.store import IntakeError, create_ticket, save_outcome, start_run, ticket_input
 from app.pipeline.graph import RunOutcome, run_ticket
 from app.pipeline.reprocess import reextract
+from app.pipeline.runlog import RunLog
 
 router = APIRouter()
 
@@ -45,16 +46,22 @@ class ReplyIn(BaseModel):
     target_sub_ticket_ids: list[str] | None = None
 
 
-def process_ticket(connect: Callable, clients: Clients, ticket_id: str) -> None:
-    """백그라운드 처리: 실행 기록을 열고 처리 흐름을 돌려 결과를 저장한다(§2-4)."""
+def process_ticket(connect: Callable, clients: Clients, ticket_id: str, trigger: str = "INTAKE") -> None:
+    """백그라운드 처리: 실행 기록을 열고 처리 흐름을 돌려 결과를 저장한다(§2-4).
+
+    trigger: 접수는 INTAKE, 다시 처리는 RETRY. 다시 처리도 새 run이고 이전 run은 남는다(FR-036 처리 5).
+    """
     with connect() as conn:
         sub_ticket_id = f"{ticket_id}-1"
-        run_id = start_run(conn, ticket_id, sub_ticket_id, "INTAKE")
+        run_id = start_run(conn, ticket_id, sub_ticket_id, trigger)
+        runlog = RunLog.from_settings()
         try:
             with conn.transaction():  # 처리 흐름은 읽기만 한다. 오류가 나도 연결을 깨끗이 둔다
-                outcome = run_ticket(conn, clients.transport(), clients.embedder(), ticket_input(conn, ticket_id))
+                outcome = run_ticket(conn, clients.transport(), clients.embedder(), ticket_input(conn, ticket_id),
+                                     runlog=runlog)
         except Exception as exc:  # noqa: BLE001 — 어떤 오류든 실행 실패로 남긴다
-            outcome = RunOutcome(None, "FAILED", error_type=getattr(exc, "error_type", "UNKNOWN"), message=str(exc))
+            outcome = RunOutcome(None, "FAILED", error_type=getattr(exc, "error_type", "UNKNOWN"), message=str(exc),
+                                 runlog=runlog)
         save_outcome(conn, run_id, ticket_id, outcome)
 
 
@@ -62,12 +69,15 @@ def reprocess_reply(connect: Callable, clients: Clients, ticket_id: str, reply_i
     """고객 회신 재처리: 대상 문의를 Q1부터(§2-4). 실패해도 회신과 전이는 그대로 둔다(FR-032 예외 4행)."""
     with connect() as conn:
         run_id = start_run(conn, ticket_id, target_ids[0] if len(target_ids) == 1 else None, "CUSTOMER_REPLY")
+        runlog = RunLog.from_settings()
         try:
             with conn.transaction():
                 outcome = run_ticket(conn, clients.transport(), clients.embedder(),
-                                     {"ticket_id": ticket_id, "target_ids": target_ids}, understand_fn=reextract)
+                                     {"ticket_id": ticket_id, "target_ids": target_ids}, understand_fn=reextract,
+                                     runlog=runlog)
         except Exception as exc:  # noqa: BLE001
-            outcome = RunOutcome(None, "FAILED", error_type=getattr(exc, "error_type", "UNKNOWN"), message=str(exc))
+            outcome = RunOutcome(None, "FAILED", error_type=getattr(exc, "error_type", "UNKNOWN"), message=str(exc),
+                                 runlog=runlog)
         if outcome.run_status != "SUCCESS":
             outcome.message = MSG_REPROCESS_FAILED
         save_outcome(conn, run_id, ticket_id, outcome, reply_id=reply_id)
