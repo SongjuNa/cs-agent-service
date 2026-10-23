@@ -1,0 +1,9 @@
+Dear Customer,
+
+This is a reminder about your inquiry {ticket_id}. To continue, we still need the
+following information:
+{missing_labels}
+
+Please reply to this email with the details above.
+Thank you.
+{support_signature}

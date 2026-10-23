@@ -4,13 +4,15 @@ from fastapi import FastAPI
 
 from app.api import chunks, messages, sub_tickets, tickets
 from app.config import get_settings
+from app.db.store import gloss_reminders
+from app.llm.client import default_transport
 from app.scheduler import start_scheduler
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """서버가 켜져 있는 동안 5분 주기 점검을 돌린다(기술 명세서 §6-4)."""
-    scheduler = start_scheduler() if get_settings().scheduler_enabled else None
+    scheduler = start_scheduler(gloss_reminders(default_transport)) if get_settings().scheduler_enabled else None
     app.state.scheduler = scheduler
     yield
     if scheduler:
