@@ -773,7 +773,7 @@ v1.0의 `POST /tickets/{id}/close`는 없앴다(D20: 종료는 스케줄러만).
 | 오늘 처리 건수 | as_of의 날짜(UTC)에 내가 한 발송 n, 이관 n, 우선순위 조정 n | ticket_message(SENT, sent_by_name), ticket_status_history(ESCALATE, changed_by), priority_adjustment(adjusted_by) |
 | SLA 미정 | 목록에서 빼고 "SLA 미정 n건"으로 따로 | sub_ticket.sla_id IS NULL |
 
-확인(AC-047-1): 미해결 360건(v1.4: 팀 정답지 문의 5건 제외) 재생 + 스냅샷 + 부서 TS_LV면 해결 AT_RISK 8 + BREACHED 26 = 34.
+확인(AC-047-1): 미해결 360건(v1.4: 팀 정답지 문의 5건 제외) 재생 + 스냅샷 + 부서 TS_LV면 해결 AT_RISK 8 + BREACHED 26 = 34에 1차 응답 위험만 있는 CSV1-003951 1건을 더해 35(2026-10-23 조장 결정, C-121).
 
 ---
 
