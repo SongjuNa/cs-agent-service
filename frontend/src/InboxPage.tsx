@@ -13,7 +13,7 @@ const SIZE = 50; // FR-029 처리 7
 const FAIL = "목록을 불러오지 못함. 새로고침"; // FR-029 예외 4행
 
 // 상태 배지: 화면 정의서 v2 부록 B-3 색 + 기호(색만으로 뜻을 나누지 않는다)
-const STATUS_BADGE: Record<string, { cls: string; mark: string }> = {
+export const STATUS_BADGE: Record<string, { cls: string; mark: string }> = {
   NEW: { cls: "st-new", mark: "○" },
   IN_PROGRESS: { cls: "st-progress", mark: "▶" },
   WAITING_CUSTOMER: { cls: "st-waiting", mark: "⏸" },
@@ -22,7 +22,7 @@ const STATUS_BADGE: Record<string, { cls: string; mark: string }> = {
   CLOSED: { cls: "st-closed", mark: "■" },
 };
 
-const ALERT_LABEL: Record<string, { text: string; cls: string }> = {
+export const ALERT_LABEL: Record<string, { text: string; cls: string }> = {
   FR_AT_RISK: { text: "⚠ 1차 위험", cls: "gold" },
   FR_BREACHED: { text: "! 1차 위반", cls: "bad" },
   RES_AT_RISK: { text: "⚠ 해결 위험", cls: "gold" },

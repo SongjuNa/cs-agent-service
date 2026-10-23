@@ -360,6 +360,34 @@ export interface InboxRow {
   has_unsent_draft: boolean;
   reminder_sent: boolean;
 }
+// 나의 업무 현황 (FR-047, §8-1 GET /me/workload, §8-3)
+export interface WorkRow {
+  sub_ticket_id: string;
+  ticket_id: string;
+  seq: number;
+  inquiry_count: number;
+  company_masked: string | null;
+  customer_tier: string | null;
+  priority: string | null;
+  status: string;
+}
+export interface Workload {
+  dept: string | null;
+  agent: string | null;
+  scope: "mine" | "dept";
+  as_of: string;
+  message: string | null;
+  tiles: { drafts: number; risks: number; waiting_customer: number; waiting_escalation: number };
+  risks: (WorkRow & { alerts: string[]; remaining_h: string | number | null })[];
+  drafts: (WorkRow & { message_id: number; message_type: string; created_at_utc: string; has_check: boolean })[];
+  waiting_customer: (WorkRow & { requested_at_utc: string | null; elapsed_h: number | null; reminder_sent: boolean;
+    remind_at_h: number; close_at_h: number })[];
+  waiting_escalation: (WorkRow & { escalated_to: string; escalated_at_utc: string | null; elapsed_h: number | null })[];
+  today: { sent: number; escalated: number; adjusted: number };
+  sla_unset: number;
+  empty: Record<"drafts" | "risks" | "waiting_customer" | "waiting_escalation", string>;
+}
+
 export interface Inbox {
   dept: string | null;
   as_of: string;
@@ -385,6 +413,7 @@ export const api = {
     call<{ processing: boolean }>("POST", `/tickets/${encodeURIComponent(id)}/replies`, data),
   departments: () => call<Department[]>("GET", "/ref/departments"),
   inbox: (query: URLSearchParams) => call<Inbox>("GET", `/tickets?${query.toString()}`),
+  workload: (query: URLSearchParams) => call<Workload>("GET", `/me/workload?${query.toString()}`),
   customers: (q: string) => call<Customer[]>("GET", `/ref/customers?q=${encodeURIComponent(q)}`),
   products: () => call<Product[]>("GET", "/ref/products"),
   load: (id: string) => call<Loaded>("GET", `/gold/tickets/${encodeURIComponent(id)}`),
