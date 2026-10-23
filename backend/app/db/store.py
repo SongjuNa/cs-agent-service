@@ -19,6 +19,7 @@ from psycopg.types.json import Jsonb
 
 from app.checks.draft_check import check_draft
 from app.config import get_settings
+from app.db.assignees import assign
 from app.llm.drafts import CHECK_PROVIDED_FIELDS, Draft, Gloss, Source, write_gloss
 from app.masking import mask_fields, mask_text
 from app.pipeline.graph import RunOutcome
@@ -373,6 +374,7 @@ def _save_sub(conn, run_id, state, sub, outcome: RunOutcome, inquiry_id: int, re
          sub.sub_ticket_id),
     )
     # 조정한 문의는 규칙값(priority_rule_id)만 새로 쓰고 조정값을 덮어쓰지 않는다(FR-011 예외 3행, C-69)
+    assign(conn, sub.sub_ticket_id)  # 담당 부서의 상담원(명단)에게 배정, 부서가 바뀌면 다시(C-127)
     added = [pf for pf in sub.provided_fields if pf.field not in known]  # 회신 재처리는 새 항목만(합집합)
     for pf in added:
         conn.execute(

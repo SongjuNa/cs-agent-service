@@ -113,7 +113,7 @@ def _sub_detail(conn: Connection, sub: dict[str, Any], run: dict[str, Any] | Non
     edits = agent_edits(conn, sub["sub_ticket_id"])
     return {
         "sub_ticket": {k: sub[k] for k in (
-            "sub_ticket_id", "seq", "category_code", "urgency_flag", "product_code", "priority", "priority_rule_id",
+            "sub_ticket_id", "seq", "category_code", "assignee_masked", "urgency_flag", "product_code", "priority", "priority_rule_id",
             "routing_rule_id", "assigned_dept", "return_kind", "sla_id", "required_info", "provided_info",
             "missing_info", "missing_blocking_info", "sla_first_response_target_h", "sla_resolution_target_h",
             "first_response_at_utc", "info_request_sent", "status", "pipeline_error", "evidence_json")},

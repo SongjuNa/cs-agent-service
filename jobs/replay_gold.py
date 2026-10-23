@@ -28,6 +28,7 @@ import psycopg
 from psycopg import Connection
 
 from app.config import get_settings
+from app.db.assignees import name_of
 from app.rules.sla import find_sla_target
 
 SNAPSHOT = datetime(2026, 9, 30, 23, 59, tzinfo=timezone.utc)  # 데이터 README "스냅샷"
@@ -41,7 +42,7 @@ SELECT ticket_id, received_at_utc::timestamptz, channel, language, customer_id, 
        category_code, priority, status, escalated = 'Y', escalation_reason, info_request_sent = 'Y',
        first_response_at_utc::timestamptz, resolved_at_utc::timestamptz, customer_wait_hours::numeric,
        final_action, sla_first_response_target_h::int, sla_resolution_target_h::int,
-       sla_first_response_status, sla_resolution_status, sla_elapsed_hours::numeric
+       sla_first_response_status, sla_resolution_status, sla_elapsed_hours::numeric, assignee_masked
   FROM gold.ticket_gold ORDER BY ticket_id"""
 
 
@@ -69,6 +70,7 @@ class Gold:
     fr_status: str | None
     res_status: str | None
     elapsed: Decimal | None
+    assignee: str | None = None  # 담당 상담원 ID → 명단 이름(W6, add-agent-roster)
 
 
 @dataclass
@@ -125,10 +127,10 @@ def replay_one(conn: Connection, g: Gold) -> int:
     )
     conn.execute(
         """INSERT INTO scoring.sub_ticket (sub_ticket_id, ticket_id, seq, category_code, priority, sla_id,
-               sla_first_response_target_h, sla_resolution_target_h)
-           VALUES (%s, %s, 1, %s, %s, %s, %s, %s)""",
+               sla_first_response_target_h, sla_resolution_target_h, assignee_masked)
+           VALUES (%s, %s, 1, %s, %s, %s, %s, %s, %s)""",
         (sub_id, g.ticket_id, g.category, g.priority, target.sla_id, target.sla_first_response_target_h,
-         target.sla_resolution_target_h),
+         target.sla_resolution_target_h, name_of(g.assignee)),
     )
     events = [("NEW", "INTAKE", g.received)]
     if g.status != "NEW":

@@ -113,6 +113,7 @@ export function TicketDetailPage({ ticketId, agent, onBack }: { ticketId: string
         <div className="h03">
           {ticket.company_masked ?? ticket.customer_id} · {ticket.customer_tier} · {ticket.country ?? ""} · {ticket.channel} ·
           고객 언어 {ticket.language}
+          {rep?.sub_ticket.assignee_masked && <> · 담당 {[...new Set(subs.map((x) => x.sub_ticket.assignee_masked).filter(Boolean))].join(", ")}</>}
         </div>
         <div className={`h04 ${run?.status === "FAILED" ? "bad" : detail.processing ? "gray" : ""}`}>
           {detail.processing ? "⏳ " : run?.status === "FAILED" ? "! " : "✓ "}{runText}

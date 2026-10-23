@@ -154,6 +154,7 @@ export interface SubTicket {
     product_code: string | null;
     return_kind: string | null;
     assigned_dept: string | null;
+    assignee_masked: string | null; // 담당 상담원 이름(add-agent-roster)
     required_info: string[];
     status: string;
     priority: string | null;
@@ -331,6 +332,7 @@ export function fieldErrors(e: unknown): FieldError[] {
 
 // 접수함 (화면 정의서 v1 SCR-02, 기술 명세서 §8-1 GET /tickets)
 export interface Department { dept_code: string; dept_name_ko: string; dept_name_en: string }
+export interface Agent { name: string; dept: string; demo: boolean } // 가상 상담원 명단(add-agent-roster), demo = 시연용(FR-033 처리 10)
 export interface InboxRow {
   sub_ticket_id: string;
   ticket_id: string;
@@ -412,6 +414,7 @@ export const api = {
   reply: (id: string, data: { body: string; language: string; received_at: string | null; target_sub_ticket_ids: string[] | null }) =>
     call<{ processing: boolean }>("POST", `/tickets/${encodeURIComponent(id)}/replies`, data),
   departments: () => call<Department[]>("GET", "/ref/departments"),
+  agents: () => call<Agent[]>("GET", "/ref/agents"),
   inbox: (query: URLSearchParams) => call<Inbox>("GET", `/tickets?${query.toString()}`),
   workload: (query: URLSearchParams) => call<Workload>("GET", `/me/workload?${query.toString()}`),
   customers: (q: string) => call<Customer[]>("GET", `/ref/customers?q=${encodeURIComponent(q)}`),

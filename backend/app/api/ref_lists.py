@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends
 from psycopg import Connection
 
 from app.api.deps import get_conn
+from app.db.assignees import agents
 
 router = APIRouter()
 CUSTOMER_LIMIT = 20  # 검색 선택 목록 한 번에 보일 수(구현 선택)
@@ -34,3 +35,9 @@ def products(conn: Connection = Depends(get_conn)) -> list[dict]:
 @router.get("/ref/departments")
 def departments(conn: Connection = Depends(get_conn)) -> list[dict]:
     return _rows(conn, "SELECT dept_code, dept_name_ko, dept_name_en FROM ref.department ORDER BY dept_code")
+
+
+@router.get("/ref/agents")
+def agent_list(dept: str | None = None) -> list[dict]:
+    """가상 상담원 명단(조장 결정 2026-10-23). 상단 막대 상담원 선택이 쓴다."""
+    return agents((dept or "").strip() or None)
