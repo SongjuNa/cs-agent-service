@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   agentDept, agentId, api, asOfMode, saveAgentDept, saveAgentId, saveAsOfMode, SNAPSHOT,
-  type AsOfMode, type Department,
+  type Agent, type AsOfMode, type Department,
 } from "./api";
 import { InboxPage, lastInboxUrl } from "./InboxPage";
 import { IntakePage } from "./IntakePage";
@@ -27,6 +27,7 @@ export function App() {
   const [dept, setDept] = useState(agentDept());
   const [mode, setMode] = useState<AsOfMode>(asOfMode());
   const [depts, setDepts] = useState<Department[]>([]);
+  const [roster, setRoster] = useState<Agent[]>([]);
   const [collapsed, setCollapsed] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
 
@@ -37,6 +38,11 @@ export function App() {
   }, []);
   useEffect(() => {
     api.departments().then(setDepts).catch(() => setDepts([]));
+    api.agents().then((list) => {
+      setRoster(list);
+      // 명단 전의 상담원 ID(예: TS_LV_AGENT_09)가 브라우저에 남아 있으면 비운다(담당 값이 이름이라 거를 수 없음)
+      setAgent((cur) => { if (cur && !list.some((a) => a.name === cur)) { saveAgentId(""); return ""; } return cur; });
+    }).catch(() => setRoster([]));
   }, []);
 
   function navigate(path: string, next: Page) {
@@ -91,7 +97,12 @@ export function App() {
           </form>
           <label className={dept ? "" : "bad"}>
             부서{" "}
-            <select value={dept} onChange={(e) => { setDept(e.target.value); saveAgentDept(e.target.value); }}>
+            <select value={dept} onChange={(e) => {
+              const next = e.target.value;
+              setDept(next);
+              saveAgentDept(next);
+              if (next && roster.some((a) => a.name === agent && a.dept !== next)) { setAgent(""); saveAgentId(""); } // 다른 부서 사람은 비운다
+            }}>
               <option value="">부서를 선택하세요</option>
               {depts.map((d) => <option key={d.dept_code} value={d.dept_code}>{d.dept_code} {d.dept_name_ko}</option>)}
             </select>
@@ -104,9 +115,15 @@ export function App() {
             </select>
           </label>
           <label className={agent ? "" : "bad"}>
-            상담원 ID{" "}
-            <input value={agent} onChange={(e) => { setAgent(e.target.value); saveAgentId(e.target.value.trim()); }}
-                   placeholder="상담원 ID를 입력하세요" />
+            상담원{" "}
+            {/* 가상 상담원 명단에서 고른다(조장 결정 2026-10-23, add-agent-roster). 고른 부서의 사람만 */}
+            <select value={agent} onChange={(e) => { setAgent(e.target.value); saveAgentId(e.target.value); }}>
+              <option value="">상담원을 고르세요</option>
+              {agent && !roster.some((a) => a.name === agent) && <option value={agent}>{agent}</option>}
+              {roster.filter((a) => !dept || a.dept === dept).map((a) => (
+                <option key={a.name} value={a.name}>{a.name}{dept ? "" : ` (${a.dept})`}{a.demo ? " · 시연용" : ""}</option>
+              ))}
+            </select>
           </label>
         </header>
         <main>

@@ -124,13 +124,13 @@ def test_ac_047_7_alert_after_adjust(db):
 
 
 def test_ac_047_1_ts_lv_risks(snapshot):
-    """AC-047-1: 미해결 360건 + 스냅샷 + 부서 TS_LV → 해결 AT_RISK 8 + BREACHED 26이 모두 있고 남은 시간 오름차순."""
+    """AC-047-1: 미해결 360건 + 스냅샷 + 부서 TS_LV → 해결 AT_RISK 8 + BREACHED 26이 모두 있고 타일 35, 남은 시간 오름차순."""
     got = workload(snapshot, "TS_LV", as_of=SNAPSHOT, schema="scoring")
     risks = got["risks"]
     breached = [r for r in risks if "RES_BREACHED" in r["alerts"]]  # 위반 행에는 앞서 난 위험 경고도 남아 있다
     at_risk = [r for r in risks if "RES_AT_RISK" in r["alerts"] and r not in breached]
     assert (len(at_risk), len(breached)) == (8, 26)
-    # 처리 2대로 1차 응답 경고도 넣으면 CSV1-003951(FR_AT_RISK)이 더해져 35. AC 문구의 34는 해결 경고만 센 수(C-121)
+    # 처리 2대로 1차 응답 경고도 넣어 CSV1-003951(FR_AT_RISK)이 더해져 35(AC-047-1, 2026-10-23 조장 결정 C-121)
     assert [r["sub_ticket_id"] for r in risks if r not in breached + at_risk] == ["CSV1-003951-1"]
     assert got["tiles"]["risks"] == len(risks) == 35
     assert [r["remaining_h"] for r in risks] == sorted(r["remaining_h"] for r in risks)

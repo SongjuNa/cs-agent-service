@@ -1,0 +1,677 @@
+{
+ "_설명": "가상 상담원 명단(실존 인물이 아닌 지어낸 이름, 2026-10-23 조장 결정). 담당 상담원 값(sub_ticket.assignee_masked)과 상단 막대 상담원 선택에 쓴다. source_id는 운영진 데이터(tickets.csv assignee_masked)의 상담원 ID와 짝이다. 운영진 데이터에 상담원이 없는 QA_CLAIM·RND_FW는 각 1명이고 demo(시연용)다(명세서 v1.5 FR-033 처리 10).",
+ "agents": [
+  {
+   "name": "김민준",
+   "dept": "CERT",
+   "source_id": "CERT_AGENT_01"
+  },
+  {
+   "name": "이지우",
+   "dept": "CERT",
+   "source_id": "CERT_AGENT_02"
+  },
+  {
+   "name": "박시우",
+   "dept": "CERT",
+   "source_id": "CERT_AGENT_03"
+  },
+  {
+   "name": "최수아",
+   "dept": "CERT",
+   "source_id": "CERT_AGENT_04"
+  },
+  {
+   "name": "정지호",
+   "dept": "CERT",
+   "source_id": "CERT_AGENT_05"
+  },
+  {
+   "name": "강채원",
+   "dept": "CERT",
+   "source_id": "CERT_AGENT_06"
+  },
+  {
+   "name": "조현우",
+   "dept": "CERT",
+   "source_id": "CERT_AGENT_07"
+  },
+  {
+   "name": "윤예린",
+   "dept": "CERT",
+   "source_id": "CERT_AGENT_08"
+  },
+  {
+   "name": "장연우",
+   "dept": "CERT",
+   "source_id": "CERT_AGENT_09"
+  },
+  {
+   "name": "임서현",
+   "dept": "CERT",
+   "source_id": "CERT_AGENT_10"
+  },
+  {
+   "name": "한승현",
+   "dept": "CERT",
+   "source_id": "CERT_AGENT_11"
+  },
+  {
+   "name": "오서연",
+   "dept": "CERT",
+   "source_id": "CERT_AGENT_12"
+  },
+  {
+   "name": "서하준",
+   "dept": "FIELD_SVC",
+   "source_id": "FIELD_SVC_AGENT_01"
+  },
+  {
+   "name": "신지민",
+   "dept": "FIELD_SVC",
+   "source_id": "FIELD_SVC_AGENT_02"
+  },
+  {
+   "name": "권주원",
+   "dept": "FIELD_SVC",
+   "source_id": "FIELD_SVC_AGENT_03"
+  },
+  {
+   "name": "황다은",
+   "dept": "FIELD_SVC",
+   "source_id": "FIELD_SVC_AGENT_04"
+  },
+  {
+   "name": "안건우",
+   "dept": "FIELD_SVC",
+   "source_id": "FIELD_SVC_AGENT_05"
+  },
+  {
+   "name": "송소윤",
+   "dept": "FIELD_SVC",
+   "source_id": "FIELD_SVC_AGENT_06"
+  },
+  {
+   "name": "류선우",
+   "dept": "FIELD_SVC",
+   "source_id": "FIELD_SVC_AGENT_07"
+  },
+  {
+   "name": "홍가은",
+   "dept": "FIELD_SVC",
+   "source_id": "FIELD_SVC_AGENT_08"
+  },
+  {
+   "name": "김민서",
+   "dept": "FIELD_SVC",
+   "source_id": "FIELD_SVC_AGENT_09"
+  },
+  {
+   "name": "이민준",
+   "dept": "FIELD_SVC",
+   "source_id": "FIELD_SVC_AGENT_10"
+  },
+  {
+   "name": "박지우",
+   "dept": "FIELD_SVC",
+   "source_id": "FIELD_SVC_AGENT_11"
+  },
+  {
+   "name": "최시우",
+   "dept": "FIELD_SVC",
+   "source_id": "FIELD_SVC_AGENT_12"
+  },
+  {
+   "name": "정수아",
+   "dept": "GCS_L1",
+   "source_id": "GCS_L1_AGENT_01"
+  },
+  {
+   "name": "강지호",
+   "dept": "GCS_L1",
+   "source_id": "GCS_L1_AGENT_02"
+  },
+  {
+   "name": "조채원",
+   "dept": "GCS_L1",
+   "source_id": "GCS_L1_AGENT_03"
+  },
+  {
+   "name": "윤현우",
+   "dept": "GCS_L1",
+   "source_id": "GCS_L1_AGENT_04"
+  },
+  {
+   "name": "장예린",
+   "dept": "GCS_L1",
+   "source_id": "GCS_L1_AGENT_05"
+  },
+  {
+   "name": "임연우",
+   "dept": "GCS_L1",
+   "source_id": "GCS_L1_AGENT_06"
+  },
+  {
+   "name": "한서현",
+   "dept": "GCS_L1",
+   "source_id": "GCS_L1_AGENT_07"
+  },
+  {
+   "name": "오승현",
+   "dept": "GCS_L1",
+   "source_id": "GCS_L1_AGENT_08"
+  },
+  {
+   "name": "서서연",
+   "dept": "GCS_L1",
+   "source_id": "GCS_L1_AGENT_09"
+  },
+  {
+   "name": "신하준",
+   "dept": "GCS_L1",
+   "source_id": "GCS_L1_AGENT_10"
+  },
+  {
+   "name": "권지민",
+   "dept": "GCS_L1",
+   "source_id": "GCS_L1_AGENT_11"
+  },
+  {
+   "name": "황주원",
+   "dept": "GCS_L1",
+   "source_id": "GCS_L1_AGENT_12"
+  },
+  {
+   "name": "안다은",
+   "dept": "QA_CLAIM",
+   "source_id": "QA_CLAIM_AGENT_01",
+   "demo": true
+  },
+  {
+   "name": "장현우",
+   "dept": "RND_FW",
+   "source_id": "RND_FW_AGENT_01",
+   "demo": true
+  },
+  {
+   "name": "김유나",
+   "dept": "SALES_OPS",
+   "source_id": "SALES_OPS_AGENT_01"
+  },
+  {
+   "name": "이유준",
+   "dept": "SALES_OPS",
+   "source_id": "SALES_OPS_AGENT_02"
+  },
+  {
+   "name": "박민서",
+   "dept": "SALES_OPS",
+   "source_id": "SALES_OPS_AGENT_03"
+  },
+  {
+   "name": "최민준",
+   "dept": "SALES_OPS",
+   "source_id": "SALES_OPS_AGENT_04"
+  },
+  {
+   "name": "정지우",
+   "dept": "SALES_OPS",
+   "source_id": "SALES_OPS_AGENT_05"
+  },
+  {
+   "name": "강시우",
+   "dept": "SALES_OPS",
+   "source_id": "SALES_OPS_AGENT_06"
+  },
+  {
+   "name": "조수아",
+   "dept": "SALES_OPS",
+   "source_id": "SALES_OPS_AGENT_07"
+  },
+  {
+   "name": "윤지호",
+   "dept": "SALES_OPS",
+   "source_id": "SALES_OPS_AGENT_08"
+  },
+  {
+   "name": "장채원",
+   "dept": "SALES_OPS",
+   "source_id": "SALES_OPS_AGENT_09"
+  },
+  {
+   "name": "임현우",
+   "dept": "SALES_OPS",
+   "source_id": "SALES_OPS_AGENT_10"
+  },
+  {
+   "name": "한예린",
+   "dept": "SALES_OPS",
+   "source_id": "SALES_OPS_AGENT_11"
+  },
+  {
+   "name": "오연우",
+   "dept": "SALES_OPS",
+   "source_id": "SALES_OPS_AGENT_12"
+  },
+  {
+   "name": "서서현",
+   "dept": "SCM",
+   "source_id": "SCM_AGENT_01"
+  },
+  {
+   "name": "신승현",
+   "dept": "SCM",
+   "source_id": "SCM_AGENT_02"
+  },
+  {
+   "name": "권서연",
+   "dept": "SCM",
+   "source_id": "SCM_AGENT_03"
+  },
+  {
+   "name": "황하준",
+   "dept": "SCM",
+   "source_id": "SCM_AGENT_04"
+  },
+  {
+   "name": "안지민",
+   "dept": "SCM",
+   "source_id": "SCM_AGENT_05"
+  },
+  {
+   "name": "송주원",
+   "dept": "SCM",
+   "source_id": "SCM_AGENT_06"
+  },
+  {
+   "name": "류다은",
+   "dept": "SCM",
+   "source_id": "SCM_AGENT_07"
+  },
+  {
+   "name": "홍건우",
+   "dept": "SCM",
+   "source_id": "SCM_AGENT_08"
+  },
+  {
+   "name": "김우진",
+   "dept": "SCM",
+   "source_id": "SCM_AGENT_09"
+  },
+  {
+   "name": "이유나",
+   "dept": "SCM",
+   "source_id": "SCM_AGENT_10"
+  },
+  {
+   "name": "박유준",
+   "dept": "SCM",
+   "source_id": "SCM_AGENT_11"
+  },
+  {
+   "name": "최민서",
+   "dept": "SCM",
+   "source_id": "SCM_AGENT_12"
+  },
+  {
+   "name": "정민준",
+   "dept": "TS_AUTO",
+   "source_id": "TS_AUTO_AGENT_01"
+  },
+  {
+   "name": "강지우",
+   "dept": "TS_AUTO",
+   "source_id": "TS_AUTO_AGENT_02"
+  },
+  {
+   "name": "조시우",
+   "dept": "TS_AUTO",
+   "source_id": "TS_AUTO_AGENT_03"
+  },
+  {
+   "name": "윤수아",
+   "dept": "TS_AUTO",
+   "source_id": "TS_AUTO_AGENT_04"
+  },
+  {
+   "name": "장지호",
+   "dept": "TS_AUTO",
+   "source_id": "TS_AUTO_AGENT_05"
+  },
+  {
+   "name": "임채원",
+   "dept": "TS_AUTO",
+   "source_id": "TS_AUTO_AGENT_06"
+  },
+  {
+   "name": "한현우",
+   "dept": "TS_AUTO",
+   "source_id": "TS_AUTO_AGENT_07"
+  },
+  {
+   "name": "오예린",
+   "dept": "TS_AUTO",
+   "source_id": "TS_AUTO_AGENT_08"
+  },
+  {
+   "name": "서연우",
+   "dept": "TS_AUTO",
+   "source_id": "TS_AUTO_AGENT_09"
+  },
+  {
+   "name": "신서현",
+   "dept": "TS_AUTO",
+   "source_id": "TS_AUTO_AGENT_10"
+  },
+  {
+   "name": "권승현",
+   "dept": "TS_AUTO",
+   "source_id": "TS_AUTO_AGENT_11"
+  },
+  {
+   "name": "황서연",
+   "dept": "TS_AUTO",
+   "source_id": "TS_AUTO_AGENT_12"
+  },
+  {
+   "name": "안하준",
+   "dept": "TS_ENERGY",
+   "source_id": "TS_ENERGY_AGENT_01"
+  },
+  {
+   "name": "송지민",
+   "dept": "TS_ENERGY",
+   "source_id": "TS_ENERGY_AGENT_02"
+  },
+  {
+   "name": "류주원",
+   "dept": "TS_ENERGY",
+   "source_id": "TS_ENERGY_AGENT_03"
+  },
+  {
+   "name": "홍다은",
+   "dept": "TS_ENERGY",
+   "source_id": "TS_ENERGY_AGENT_04"
+  },
+  {
+   "name": "김지아",
+   "dept": "TS_ENERGY",
+   "source_id": "TS_ENERGY_AGENT_05"
+  },
+  {
+   "name": "이우진",
+   "dept": "TS_ENERGY",
+   "source_id": "TS_ENERGY_AGENT_06"
+  },
+  {
+   "name": "박유나",
+   "dept": "TS_ENERGY",
+   "source_id": "TS_ENERGY_AGENT_07"
+  },
+  {
+   "name": "최유준",
+   "dept": "TS_ENERGY",
+   "source_id": "TS_ENERGY_AGENT_08"
+  },
+  {
+   "name": "정민서",
+   "dept": "TS_ENERGY",
+   "source_id": "TS_ENERGY_AGENT_09"
+  },
+  {
+   "name": "강민준",
+   "dept": "TS_ENERGY",
+   "source_id": "TS_ENERGY_AGENT_10"
+  },
+  {
+   "name": "조지우",
+   "dept": "TS_ENERGY",
+   "source_id": "TS_ENERGY_AGENT_11"
+  },
+  {
+   "name": "윤시우",
+   "dept": "TS_ENERGY",
+   "source_id": "TS_ENERGY_AGENT_12"
+  },
+  {
+   "name": "장수아",
+   "dept": "TS_LV",
+   "source_id": "TS_LV_AGENT_01"
+  },
+  {
+   "name": "임지호",
+   "dept": "TS_LV",
+   "source_id": "TS_LV_AGENT_02"
+  },
+  {
+   "name": "한채원",
+   "dept": "TS_LV",
+   "source_id": "TS_LV_AGENT_03"
+  },
+  {
+   "name": "오현우",
+   "dept": "TS_LV",
+   "source_id": "TS_LV_AGENT_04"
+  },
+  {
+   "name": "서예린",
+   "dept": "TS_LV",
+   "source_id": "TS_LV_AGENT_05"
+  },
+  {
+   "name": "신연우",
+   "dept": "TS_LV",
+   "source_id": "TS_LV_AGENT_06"
+  },
+  {
+   "name": "권서현",
+   "dept": "TS_LV",
+   "source_id": "TS_LV_AGENT_07"
+  },
+  {
+   "name": "황승현",
+   "dept": "TS_LV",
+   "source_id": "TS_LV_AGENT_08"
+  },
+  {
+   "name": "안서연",
+   "dept": "TS_LV",
+   "source_id": "TS_LV_AGENT_09"
+  },
+  {
+   "name": "송하준",
+   "dept": "TS_LV",
+   "source_id": "TS_LV_AGENT_10"
+  },
+  {
+   "name": "류지민",
+   "dept": "TS_LV",
+   "source_id": "TS_LV_AGENT_11"
+  },
+  {
+   "name": "홍주원",
+   "dept": "TS_LV",
+   "source_id": "TS_LV_AGENT_12"
+  },
+  {
+   "name": "김준서",
+   "dept": "TS_MV",
+   "source_id": "TS_MV_AGENT_01"
+  },
+  {
+   "name": "이지아",
+   "dept": "TS_MV",
+   "source_id": "TS_MV_AGENT_02"
+  },
+  {
+   "name": "박우진",
+   "dept": "TS_MV",
+   "source_id": "TS_MV_AGENT_03"
+  },
+  {
+   "name": "최유나",
+   "dept": "TS_MV",
+   "source_id": "TS_MV_AGENT_04"
+  },
+  {
+   "name": "정유준",
+   "dept": "TS_MV",
+   "source_id": "TS_MV_AGENT_05"
+  },
+  {
+   "name": "강민서",
+   "dept": "TS_MV",
+   "source_id": "TS_MV_AGENT_06"
+  },
+  {
+   "name": "조민준",
+   "dept": "TS_MV",
+   "source_id": "TS_MV_AGENT_07"
+  },
+  {
+   "name": "윤지우",
+   "dept": "TS_MV",
+   "source_id": "TS_MV_AGENT_08"
+  },
+  {
+   "name": "장시우",
+   "dept": "TS_MV",
+   "source_id": "TS_MV_AGENT_09"
+  },
+  {
+   "name": "임수아",
+   "dept": "TS_MV",
+   "source_id": "TS_MV_AGENT_10"
+  },
+  {
+   "name": "한지호",
+   "dept": "TS_MV",
+   "source_id": "TS_MV_AGENT_11"
+  },
+  {
+   "name": "오채원",
+   "dept": "TS_MV",
+   "source_id": "TS_MV_AGENT_12"
+  },
+  {
+   "name": "서현우",
+   "dept": "TS_TRF",
+   "source_id": "TS_TRF_AGENT_01"
+  },
+  {
+   "name": "신예린",
+   "dept": "TS_TRF",
+   "source_id": "TS_TRF_AGENT_02"
+  },
+  {
+   "name": "권연우",
+   "dept": "TS_TRF",
+   "source_id": "TS_TRF_AGENT_03"
+  },
+  {
+   "name": "황서현",
+   "dept": "TS_TRF",
+   "source_id": "TS_TRF_AGENT_04"
+  },
+  {
+   "name": "안승현",
+   "dept": "TS_TRF",
+   "source_id": "TS_TRF_AGENT_05"
+  },
+  {
+   "name": "송서연",
+   "dept": "TS_TRF",
+   "source_id": "TS_TRF_AGENT_06"
+  },
+  {
+   "name": "류하준",
+   "dept": "TS_TRF",
+   "source_id": "TS_TRF_AGENT_07"
+  },
+  {
+   "name": "홍지민",
+   "dept": "TS_TRF",
+   "source_id": "TS_TRF_AGENT_08"
+  },
+  {
+   "name": "김하은",
+   "dept": "TS_TRF",
+   "source_id": "TS_TRF_AGENT_09"
+  },
+  {
+   "name": "이준서",
+   "dept": "TS_TRF",
+   "source_id": "TS_TRF_AGENT_10"
+  },
+  {
+   "name": "박지아",
+   "dept": "TS_TRF",
+   "source_id": "TS_TRF_AGENT_11"
+  },
+  {
+   "name": "최우진",
+   "dept": "TS_TRF",
+   "source_id": "TS_TRF_AGENT_12"
+  },
+  {
+   "name": "정유나",
+   "dept": "WARRANTY_DESK",
+   "source_id": "WARRANTY_DESK_AGENT_01"
+  },
+  {
+   "name": "강유준",
+   "dept": "WARRANTY_DESK",
+   "source_id": "WARRANTY_DESK_AGENT_02"
+  },
+  {
+   "name": "조민서",
+   "dept": "WARRANTY_DESK",
+   "source_id": "WARRANTY_DESK_AGENT_03"
+  },
+  {
+   "name": "윤민준",
+   "dept": "WARRANTY_DESK",
+   "source_id": "WARRANTY_DESK_AGENT_04"
+  },
+  {
+   "name": "장지우",
+   "dept": "WARRANTY_DESK",
+   "source_id": "WARRANTY_DESK_AGENT_05"
+  },
+  {
+   "name": "임시우",
+   "dept": "WARRANTY_DESK",
+   "source_id": "WARRANTY_DESK_AGENT_06"
+  },
+  {
+   "name": "한수아",
+   "dept": "WARRANTY_DESK",
+   "source_id": "WARRANTY_DESK_AGENT_07"
+  },
+  {
+   "name": "오지호",
+   "dept": "WARRANTY_DESK",
+   "source_id": "WARRANTY_DESK_AGENT_08"
+  },
+  {
+   "name": "서채원",
+   "dept": "WARRANTY_DESK",
+   "source_id": "WARRANTY_DESK_AGENT_09"
+  },
+  {
+   "name": "신현우",
+   "dept": "WARRANTY_DESK",
+   "source_id": "WARRANTY_DESK_AGENT_10"
+  },
+  {
+   "name": "권예린",
+   "dept": "WARRANTY_DESK",
+   "source_id": "WARRANTY_DESK_AGENT_11"
+  },
+  {
+   "name": "황연우",
+   "dept": "WARRANTY_DESK",
+   "source_id": "WARRANTY_DESK_AGENT_12"
+  }
+ ]
+}
