@@ -106,3 +106,32 @@ main { padding: 16px; }
 .req { color: var(--red); }
 @media (max-width: 700px) { .intake-form { grid-template-columns: 1fr; } }
 .h04 .retry { margin-left: 8px; }
+
+/* SCR-02 접수함. 상태 배지 색은 화면 정의서 v2 부록 B-3 */
+.topbar select { font: inherit; padding: 4px 8px; border: 1px solid var(--line); border-radius: 4px; }
+.sidebar a.brand { font-weight: 700; margin-bottom: 8px; }
+.counts { display: flex; gap: 16px; flex-wrap: wrap; background: var(--surface-blue); padding: 8px 12px; border-radius: 4px; margin-bottom: 8px; }
+.filters { display: grid; gap: 6px; margin-bottom: 10px; }
+.filter-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.filter-row > .muted { min-width: 64px; }
+.filter-row form { display: flex; gap: 6px; margin-left: auto; }
+.filters .chip { margin: 0; background: #fff; }
+.filters .chip.on { background: var(--ls-blue); color: #fff; border-color: var(--ls-blue); }
+.table-wrap { overflow-x: auto; }
+.table-wrap.stale { opacity: 0.45; }
+.inbox-table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.inbox-table th, .inbox-table td { border-bottom: 1px solid var(--line); padding: 6px; text-align: left; vertical-align: top; white-space: nowrap; }
+.inbox-table th { color: var(--gray); font-weight: normal; }
+.inbox-table tbody tr { cursor: pointer; }
+.inbox-table tbody tr:hover, .inbox-table tbody tr:focus { background: var(--surface-blue); outline: none; }
+.inbox-table tr.closed { color: #87827d; }
+.inbox-table .chip { margin: 0 4px 0 0; }
+.chip.gold { color: var(--gold); border-color: var(--gold); }
+.badge { display: inline-block; border: 1px solid var(--line); border-radius: 4px; padding: 0 6px; }
+.st-new { color: var(--gray); border-color: var(--gray); }
+.st-progress { color: #fff; background: var(--sub-blue); border-color: var(--sub-blue); }
+.st-waiting { color: var(--gray); background: #f1f2f2; border-color: var(--gray); }
+.st-escalated { color: #fff; background: var(--ls-blue); border-color: var(--ls-blue); }
+.st-resolved { color: #fff; background: var(--green); border-color: var(--green); }
+.st-closed { color: #87827d; border-color: #87827d; }
+.pager { display: flex; gap: 8px; align-items: center; justify-content: center; margin-top: 10px; }

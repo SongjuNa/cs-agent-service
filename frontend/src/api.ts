@@ -158,8 +158,35 @@ export function saveAgentId(id: string): void {
   }
 }
 
+// 머리 막대 부서·기준 시각(화면 정의서 v1 SCR-00-03·04). 브라우저에 기억한다.
+const DEPT_KEY = "cs-agent-dept";
+const AS_OF_KEY = "cs-as-of";
+export const SNAPSHOT = "2026-09-30T23:59:00Z"; // README 스냅샷 시각
+export type AsOfMode = "now" | "snapshot";
+
+function read(key: string): string {
+  try {
+    return localStorage.getItem(key) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function write(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // 브라우저 저장을 못 쓰면 이번 화면에서만 쓴다
+  }
+}
+
+export const agentDept = () => read(DEPT_KEY);
+export const saveAgentDept = (dept: string) => write(DEPT_KEY, dept);
+export const asOfMode = (): AsOfMode => (read(AS_OF_KEY) === "snapshot" ? "snapshot" : "now");
+export const saveAsOfMode = (mode: AsOfMode) => write(AS_OF_KEY, mode);
+
 async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const headers: Record<string, string> = { "X-Agent-Id": agentId() };
+  const headers: Record<string, string> = { "X-Agent-Id": agentId(), "X-Agent-Dept": agentDept() };
   if (body !== undefined) headers["Content-Type"] = "application/json";
   const res = await fetch(`/api${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
   const data = await res.json().catch(() => null);
@@ -205,7 +232,50 @@ export function fieldErrors(e: unknown): FieldError[] {
   return body?.detail?.errors ?? [];
 }
 
+// 접수함 (화면 정의서 v1 SCR-02, 기술 명세서 §8-1 GET /tickets)
+export interface Department { dept_code: string; dept_name_ko: string; dept_name_en: string }
+export interface InboxRow {
+  sub_ticket_id: string;
+  ticket_id: string;
+  seq: number;
+  inquiry_count: number;
+  received_at_utc: string;
+  channel: string;
+  language: string;
+  customer_id: string;
+  company_masked: string;
+  customer_tier: string | null;
+  product_code: string | null;
+  product_name: string | null;
+  category_code: string | null;
+  urgency_flag: string | null;
+  priority: string | null;
+  priority_adjusted: boolean | null;
+  assigned_dept: string | null;
+  escalated_to: string | null;
+  escalated_in_from: string | null;
+  status: string;
+  fr_status: string | null;
+  res_status: string | null;
+  remaining_h: string | number | null;
+  alerts: string[];
+  needs_info: boolean;
+  has_unsent_draft: boolean;
+  reminder_sent: boolean;
+}
+export interface Inbox {
+  dept: string | null;
+  as_of: string;
+  page: number;
+  size: number;
+  counts: { total: number; alert: number; needs_info: number; has_draft: number; waiting: number };
+  rows: InboxRow[];
+  message: string | null;
+}
+
 export const api = {
+  departments: () => call<Department[]>("GET", "/ref/departments"),
+  inbox: (query: URLSearchParams) => call<Inbox>("GET", `/tickets?${query.toString()}`),
   customers: (q: string) => call<Customer[]>("GET", `/ref/customers?q=${encodeURIComponent(q)}`),
   products: () => call<Product[]>("GET", "/ref/products"),
   load: (id: string) => call<Loaded>("GET", `/gold/tickets/${encodeURIComponent(id)}`),

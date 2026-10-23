@@ -5,12 +5,13 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import datetime
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query
 from psycopg import Connection
 from pydantic import BaseModel
 
 from app.api.deps import Clients, get_clients, get_conn, get_connect
 from app.db.detail import ticket_detail
+from app.db.inbox import InboxQuery, inbox
 from app.db.runs import latest_pipeline_run
 from app.db.replies import ReplyError, record_reply
 from app.db.store import IntakeError, create_ticket, save_outcome, start_run, ticket_input
@@ -127,6 +128,24 @@ def reprocess(ticket_id: str, background: BackgroundTasks, conn: Connection = De
         run_id = start_run(conn, ticket_id, None, "RETRY")
     background.add_task(process_ticket, connect, clients, ticket_id, "RETRY", run_id)
     return {"ticket_id": ticket_id, "processing": True, "run_id": run_id}
+
+
+def _list(value: str | None) -> list[str]:
+    return [v.strip() for v in (value or "").split(",") if v.strip()]
+
+
+@router.get("/tickets")
+def list_tickets(dept: str | None = None, status: str | None = None, priority: str | None = None,
+                 alert: str | None = None, channel: str | None = None, needs_info: bool = False,
+                 has_draft: bool = False, composite: bool = False, q: str | None = None,
+                 include_closed: bool = False, page: int = Query(1, ge=1), size: int = Query(50, ge=1),
+                 sort: str | None = None, as_of: datetime | None = None,
+                 conn: Connection = Depends(get_conn)) -> dict:
+    """접수함(FR-029, §8-1). 여러 값은 쉼표로(status=NEW,IN_PROGRESS)."""
+    return inbox(conn, InboxQuery(dept=(dept or "").strip() or None, status=_list(status), priority=_list(priority),
+                                  alert=_list(alert), channel=_list(channel), needs_info=needs_info,
+                                  has_draft=has_draft, composite=composite, q=q, include_closed=include_closed,
+                                  page=page, size=size, sort=sort, as_of=as_of))
 
 
 @router.get("/tickets/{ticket_id}")
