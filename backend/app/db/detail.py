@@ -12,7 +12,7 @@ from psycopg import Connection
 from app.db.replies import customer_followups, messages
 from app.db.store import body_sha, check_type_of, latest_gloss
 from app.llm.verify import VerifyResult
-from app.db.runs import latest_pipeline_run, pipeline_run, run_for_sub
+from app.db.runs import agent_edits, latest_pipeline_run, pipeline_run, run_for_sub
 from app.pipeline.reprocess import last_pipeline_step
 from app.pipeline.state import VerifyFinding
 from app.sla.adjust import adjustments
@@ -42,6 +42,7 @@ def ticket_detail(conn: Connection, ticket_id: str) -> dict[str, Any] | None:
     ticket = _row(conn, """
         SELECT t.ticket_id, t.received_at_utc, t.channel, t.language, t.body_language, t.body_language_uncertain,
                t.customer_id, t.customer_tier, c.company_masked, c.country, t.source, t.source_ticket_id, t.multi_yn,
+               t.inquiry_subject, t.inquiry_body, t.contact_name, t.contact_email, t.contact_phone,
                EXISTS (SELECT 1 FROM eval.gold_set g
                        WHERE t.source_ticket_id IN (g.source_ticket_id, g.gold_set_id)) AS gold_set
           FROM svc.ticket t JOIN ref.customer c ON c.customer_id = t.customer_id
@@ -57,6 +58,9 @@ def ticket_detail(conn: Connection, ticket_id: str) -> dict[str, Any] | None:
     retry = latest_pipeline_run(conn, ticket_id)  # [다시 시도]를 보일지: 서버의 다시 시도 조건과 같다(AC-001-4)
     can_retry = retry is not None and retry["status"] == "FAILED" and not retry["busy"]
     rows = _rows(conn, "SELECT * FROM svc.sub_ticket WHERE ticket_id = %s ORDER BY seq", (ticket_id,))
+    # [다시 처리]: 처리 중이 아니고 끝나지 않은(CLOSED가 아닌) 하위 문의가 있으면(FR-030 처리 5, SCR-03 ⑥ 종료)
+    can_reprocess = (retry is not None and not retry["busy"] and not processing
+                     and any(r["status"] != "CLOSED" for r in rows))
     sla = clocks(conn, [r["sub_ticket_id"] for r in rows])
     # 하위 문의마다 자기 run(복합 문의는 하위 문의별 run, AC-036-4)
     subs = [_sub_detail(conn, s, run_for_sub(conn, s["sub_ticket_id"])) | _state(conn, s, sla.get(s["sub_ticket_id"]))
@@ -65,7 +69,8 @@ def ticket_detail(conn: Connection, ticket_id: str) -> dict[str, Any] | None:
     ticket["category_code"] = ";".join(r["category_code"] for r in rows if r["category_code"]) or None
     summary = _row(conn, """SELECT status, rep_sub_ticket_id, rep_res_status, rep_remaining_h, open_count, inquiry_count
                               FROM svc.v_ticket_summary WHERE ticket_id = %s""", (ticket_id,))
-    return {"ticket": ticket, "summary": summary, "run": run, "processing": processing, "can_retry": can_retry, "sub_tickets": subs,
+    return {"ticket": ticket, "summary": summary, "run": run, "processing": processing, "can_retry": can_retry,
+            "can_reprocess": can_reprocess, "sub_tickets": subs,
             "messages": messages(conn, ticket_id)}  # FR-035 처리 7
 
 
@@ -105,6 +110,7 @@ def _sub_detail(conn: Connection, sub: dict[str, Any], run: dict[str, Any] | Non
     labels = dict(conn.execute("SELECT field, label FROM ref.info_field").fetchall())
     status = "처리 중" if run is None or run["status"] is None else ("자동 처리 실패" if run["status"] == "FAILED" else None)
     drafts = _drafts(conn, sub, labels, len(failed))
+    edits = agent_edits(conn, sub["sub_ticket_id"])
     return {
         "sub_ticket": {k: sub[k] for k in (
             "sub_ticket_id", "seq", "category_code", "urgency_flag", "product_code", "priority", "priority_rule_id",
@@ -113,9 +119,21 @@ def _sub_detail(conn: Connection, sub: dict[str, Any], run: dict[str, Any] | Non
             "first_response_at_utc", "info_request_sent", "status", "pipeline_error", "evidence_json")},
         "checks": [{"check_type": r["check_type"], "flag": (r["detail"] or {}).get("flag")} for r in failed],
         "other_flags": [f for f in flags if check_type_of(f) is None and f not in DRAFT_FLAGS],
-        "evidence_rows": _with_steps(_evidence_rows(conn, sub, out, flags, labels, status), run_id, steps),
+        "evidence_rows": _with_steps(_evidence_rows(conn, sub, out, flags, labels, status, edits), run_id, steps),
         "drafts": drafts,
+        "fields": _fields(conn, sub["sub_ticket_id"], labels),
+        "edits": edits,  # "상담원 수정" 표시(FR-030 처리 6)
+        "product_name": (conn.execute("SELECT product_name FROM ref.product WHERE product_code = %s",
+                                      (sub["product_code"],)).fetchone() or [None])[0],
+        "version": sub["version"],
     }
+
+
+def _fields(conn: Connection, sub_ticket_id: str, labels: dict[str, str]) -> list[dict[str, Any]]:
+    """추출 값(FR-030 처리 1 "원문에서 뽑은 값 강조", 화면 정의서 v1 SCR-03 L-01). span이 없으면 화면이 원문에서 값을 찾는다(C-109)."""
+    return [{**r, "label": labels.get(r["field"], r["field"])} for r in _rows(
+        conn, """SELECT field, value_raw, value_norm, span_start, span_end, source FROM svc.inquiry_field
+                  WHERE sub_ticket_id = %s ORDER BY field_id""", (sub_ticket_id,))]
 
 
 # 근거 줄 → 그 줄을 만든 단계 (FR-036 처리 7 "왜?에서 해당 단계로", 기술 명세서 §2-2 단계 표)
@@ -136,16 +154,28 @@ def _empty(status: str | None, reason: str) -> str:
     return f"없음({status or reason})"
 
 
-def _evidence_rows(conn, sub, out, flags, labels, status) -> list[dict[str, Any]]:
+def _edited(edits: dict[str, dict[str, Any]], name: str) -> tuple[list[str], dict[str, Any]]:
+    """상담원이 고친 항목이면 근거 한 줄과 "왜?" 값(FR-030 처리 6: 고친 값이 근거가 된다, C-117)."""
+    e = edits.get(name)
+    if not e:
+        return [], {}
+    return [f"상담원 수정: {e['from'] or '없음'} → {e['to']}"], {"상담원 수정": f"{e.get('by')} {e.get('at')}"}
+
+
+def _evidence_rows(conn, sub, out, flags, labels, status, edits=None) -> list[dict[str, Any]]:
     """근거 영역 줄 C-01~M-C-02 (화면 정의서 v2 SCR-03M ④ C, FR-024 처리 1·2, 예외 1행)."""
+    edits = edits or {}
+    cat_note, cat_why = _edited(edits, "category_code")
+    urg_note, urg_why = _edited(edits, "urgency_flag")
     t2, q3, q4, q5, q6 = (out.get(k, {}) for k in ("T2", "Q3", "Q4", "Q5", "Q6"))
     rows = []
     category_failed = any(f.startswith("분류 실패") for f in flags)
     rows.append({"id": "C-01", "label": "① 유형",
                  "result": sub["category_code"] or _empty(status, "분류 실패" if category_failed else "미정"),
-                 "evidence": sub["evidence_sentences"], "why": {"confidence": t2.get("category_confidence")}})
-    rows.append({"id": "C-02", "label": "② 긴급도", "result": sub["urgency_flag"] if t2 else _empty(status, "미실행"),
-                 "evidence": [t2["urgency_evidence"]] if t2.get("urgency_evidence") else [], "why": {}})
+                 "evidence": cat_note + list(sub["evidence_sentences"] or []),
+                 "why": {"confidence": t2.get("category_confidence"), **cat_why}})
+    rows.append({"id": "C-02", "label": "② 긴급도", "result": sub["urgency_flag"] if t2 or urg_note else _empty(status, "미실행"),
+                 "evidence": urg_note + ([t2["urgency_evidence"]] if t2.get("urgency_evidence") else []), "why": urg_why})
     q2 = out.get("Q2", {})
     rows.append({"id": "M-C-01", "label": "③ 고객·제품",
                  "result": f"{q2.get('customer_id', '')} {q2.get('customer_tier') or ''} / {sub['product_code'] or '제품 미확정'}".strip(),

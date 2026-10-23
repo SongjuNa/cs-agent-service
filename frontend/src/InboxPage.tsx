@@ -59,6 +59,25 @@ function statusCell(row: InboxRow) {
   );
 }
 
+const LAST_KEY = "cs-inbox-url";
+
+/** 접수함이 마지막으로 쓴 주소(상세의 [목록으로]가 쓴다). 브라우저 세션에 둔다 */
+export function lastInboxUrl(): string {
+  try {
+    return sessionStorage.getItem(LAST_KEY) ?? "/inbox";
+  } catch {
+    return "/inbox";
+  }
+}
+
+function remember(url: string): void {
+  try {
+    sessionStorage.setItem(LAST_KEY, url);
+  } catch {
+    // 저장을 못 쓰면 [목록으로]는 /inbox
+  }
+}
+
 /** 주소 쿼리 → GET /tickets 쿼리(부서·기준 시각을 더한다) */
 function requestQuery(search: URLSearchParams, dept: string, asOf: string | null): URLSearchParams {
   const q = new URLSearchParams(search);
@@ -68,7 +87,9 @@ function requestQuery(search: URLSearchParams, dept: string, asOf: string | null
   return q;
 }
 
-export function InboxPage({ dept, asOf, onOpen }: { dept: string; asOf: string | null; onOpen: (id: string) => void }) {
+export function InboxPage({ dept, asOf, onOpen, flash }: {
+  dept: string; asOf: string | null; onOpen: (id: string) => void; flash?: string | null;
+}) {
   const [search, setSearch] = useState(() => new URLSearchParams(window.location.search));
   const [data, setData] = useState<Inbox | null>(null);
   const [loading, setLoading] = useState(false);
@@ -89,6 +110,7 @@ export function InboxPage({ dept, asOf, onOpen }: { dept: string; asOf: string |
   }, [search, dept, asOf]);
 
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => { remember(`/inbox${window.location.search}`); }, []);
   useEffect(() => {
     const timer = setInterval(() => void load(), REFRESH_MS);
     return () => clearInterval(timer);
@@ -105,6 +127,7 @@ export function InboxPage({ dept, asOf, onOpen }: { dept: string; asOf: string |
     if (!keepPage) q.delete("page");
     const qs = q.toString();
     window.history.replaceState(null, "", `/inbox${qs ? `?${qs}` : ""}`);
+    remember(`/inbox${qs ? `?${qs}` : ""}`);
     setSearch(q);
   }
 
@@ -124,7 +147,7 @@ export function InboxPage({ dept, asOf, onOpen }: { dept: string; asOf: string |
     update((q) => q.set("sort", q.get("sort") === key ? `-${key}` : key));
   }
 
-  if (!dept) return <p className="muted page-msg">부서를 선택하세요</p>;
+  if (!dept) return <>{flash && <p className="bad page-msg">! {flash}</p>}<p className="muted page-msg">부서를 선택하세요</p></>;
 
   const counts = data?.counts;
   const page = Number(search.get("page") ?? "1");
@@ -186,6 +209,7 @@ export function InboxPage({ dept, asOf, onOpen }: { dept: string; asOf: string |
         </div>
       </div>
 
+      {flash && <p className="bad">! {flash}</p>}
       {failed && (
         <p className="bad">
           {failed} <button type="button" onClick={() => void load()}>새로고침</button>

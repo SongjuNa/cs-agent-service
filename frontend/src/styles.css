@@ -135,3 +135,24 @@ main { padding: 16px; }
 .st-resolved { color: #fff; background: var(--green); border-color: var(--green); }
 .st-closed { color: #87827d; border-color: #87827d; }
 .pager { display: flex; gap: 8px; align-items: center; justify-content: center; margin-top: 10px; }
+
+/* SCR-03 상세 전체판 */
+.sub-section header { margin-bottom: 8px; }
+.sub-section h4 { margin: 0; color: var(--ls-blue); }
+.priority-row, .edit-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 6px 0; }
+.edit-row label { display: flex; gap: 4px; align-items: center; }
+.edit-row select, .form-grid select, .form-grid textarea { font: inherit; padding: 4px 8px; border: 1px solid var(--line); border-radius: 4px; }
+.checklist { list-style: none; padding-left: 0; margin: 6px 0; }
+.checklist li { padding: 3px 0; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.checklist .received { display: inline-flex; gap: 4px; margin-left: 8px; }
+.clocks { font-size: 13px; }
+mark.extract { background: transparent; text-decoration: underline 2px #e0b400; color: inherit; }
+.timeline { list-style: none; padding: 0; }
+.timeline li { border-bottom: 1px solid var(--line); padding: 6px 0; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.form-grid label, .form-grid fieldset { display: flex; flex-direction: column; gap: 4px; }
+.form-grid .wide { grid-column: 1 / -1; }
+.runs { margin-top: 12px; }
+.customer h4 { color: var(--ls-blue); margin: 12px 0 4px; }
+.subtabs .escalate { margin-left: auto; }
+@media (max-width: 700px) { .form-grid { grid-template-columns: 1fr; } }

@@ -15,6 +15,12 @@ export interface Ticket {
   source: string;
   source_ticket_id: string | null;
   gold_set: boolean;
+  multi_yn: boolean;
+  inquiry_subject: string | null; // 저장만, 처리에는 쓰지 않음
+  inquiry_body: string;
+  contact_name: string | null; // 보낸 사람 연락처 원문(FR-030 처리 1, 가-7)
+  contact_email: string | null;
+  contact_phone: string | null;
 }
 
 export interface Run {
@@ -96,9 +102,60 @@ export interface Draft {
   review_marks: { marks: Mark[]; summary: string };
 }
 
+// 상세 전체판 (FR-030, 변경 add-ticket-detail-full)
+export interface Field {
+  field: string;
+  label: string;
+  value_raw: string | null;
+  value_norm: string | null;
+  span_start: number | null;
+  span_end: number | null;
+  source: "INQUIRY" | "CUSTOMER_REPLY" | "AGENT";
+}
+export interface EditMark { from: unknown; to: unknown; by: string | null; at: string | null }
+export interface Sla {
+  fr_target_h: number | null;
+  res_target_h: number | null;
+  fr_elapsed_h: number | null;
+  fr_status: string | null;
+  wait_h: number | null;
+  res_elapsed_h: number | null;
+  res_status: string | null;
+  remaining_h: number | null;
+  notes: string[];
+}
+export interface Adjustment {
+  from_priority: string;
+  to_priority: string;
+  from_fr_target_h: number | null;
+  from_res_target_h: number | null;
+  to_fr_target_h: number | null;
+  to_res_target_h: number | null;
+  reason_kind: string;
+  reason: string;
+  adjusted_by: string;
+  adjusted_at_utc: string;
+}
+
 export interface SubTicket {
+  fields: Field[];
+  edits: Record<string, EditMark>;
+  product_name: string | null;
+  version: number;
+  state: { status: string; final_action: string | null; priority: string | null; priority_adjusted_by_agent: boolean };
+  sla: Sla | null;
+  adjustments: Adjustment[];
+  alerts: { alert_type: string; raised_at_utc: string; cleared_at_utc: string | null }[];
   sub_ticket: Record<string, unknown> & {
     sub_ticket_id: string;
+    seq: number;
+    category_code: string | null;
+    urgency_flag: string;
+    product_code: string | null;
+    return_kind: string | null;
+    assigned_dept: string | null;
+    required_info: string[];
+    status: string;
     priority: string | null;
     priority_rule_id: string | null;
     missing_blocking_info: string[];
@@ -116,7 +173,47 @@ export interface Detail {
   run: Run | null;
   processing: boolean;
   can_retry: boolean; // [다시 시도]: 마지막 처리가 실패했고 도는 중이 아님(AC-001-4)
+  can_reprocess: boolean; // [다시 처리]: 도는 중이 아니고 종료만 남은 티켓이 아님(FR-030 처리 5)
+  summary: { status: string; rep_sub_ticket_id: string; rep_res_status: string | null; rep_remaining_h: number | null;
+             open_count: number; inquiry_count: number } | null;
+  messages: { message_id: number; seq: number | null; sender: string; message_type: string; sent_at_utc: string;
+              language: string; body: string }[];
   sub_tickets: SubTicket[];
+}
+
+export interface TimelineItem {
+  kind: "STATUS" | "MESSAGE" | "PRIORITY" | "ALERT_RAISED" | "ALERT_CLEARED";
+  at: string;
+  seq: number | null;
+  id: number;
+  [key: string]: unknown;
+}
+export interface RunRow {
+  run_id: number;
+  sub_ticket_id: string | null;
+  trigger: string;
+  status: string | null;
+  last_step: string | null;
+  started_at_utc: string;
+  step_count: number;
+  failed_steps: number;
+}
+export interface EditInput {
+  category_code?: string;
+  urgency_flag?: string;
+  product_code?: string;
+  return_kind?: string;
+  received_fields?: { field: string; value: string | null }[];
+  expected_version?: number;
+}
+export interface AdjustPreview {
+  to_sla_id: string | null;
+  from_fr_target_h: number | null;
+  from_res_target_h: number | null;
+  to_fr_target_h: number | null;
+  to_res_target_h: number | null;
+  becomes_breached: boolean;
+  version: number;
 }
 
 export interface Chunk {
@@ -274,6 +371,18 @@ export interface Inbox {
 }
 
 export const api = {
+  timeline: (id: string) => call<TimelineItem[]>("GET", `/tickets/${encodeURIComponent(id)}/timeline`),
+  runs: (id: string) => call<{ runs: RunRow[] }>("GET", `/tickets/${encodeURIComponent(id)}/runs`),
+  steps: (runId: number) => call<{ steps: { step_name: string; result: string | null; error: string | null }[] }>(
+    "GET", `/runs/${runId}/steps`),
+  edit: (subId: string, data: EditInput) => call<{ processing: boolean }>("PATCH", `/sub-tickets/${encodeURIComponent(subId)}`, data),
+  adjustPreview: (subId: string, p: string) =>
+    call<AdjustPreview>("GET", `/sub-tickets/${encodeURIComponent(subId)}/priority?new_priority=${p}`),
+  adjust: (subId: string, data: { new_priority: string; reason_kind: string; reason_text: string; confirm_breach: boolean;
+                                  expected_version: number }) =>
+    call<unknown>("POST", `/sub-tickets/${encodeURIComponent(subId)}/priority`, data),
+  reply: (id: string, data: { body: string; language: string; received_at: string | null; target_sub_ticket_ids: string[] | null }) =>
+    call<{ processing: boolean }>("POST", `/tickets/${encodeURIComponent(id)}/replies`, data),
   departments: () => call<Department[]>("GET", "/ref/departments"),
   inbox: (query: URLSearchParams) => call<Inbox>("GET", `/tickets?${query.toString()}`),
   customers: (q: string) => call<Customer[]>("GET", `/ref/customers?q=${encodeURIComponent(q)}`),

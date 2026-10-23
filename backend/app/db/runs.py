@@ -15,13 +15,13 @@ MSG_INTERRUPTED = "UNKNOWN: 처리 중단(서버 재시작)"  # FR-036 예외 2�
 
 
 def pipeline_run(alias: str = "r") -> str:
-    """처리 흐름 전체를 도는 실행인지 가리는 SQL 조건(접수·고객 회신·다시 처리).
+    """처리 흐름 전체를 도는 실행인지 가리는 SQL 조건(접수·고객 회신·다시 처리·상담원 수정).
 
     RETRY는 대역 다시 만들기·[다시 검증]에도 쓰인다(§6-5). 그 둘은 늘 하위 문의를 가리키므로, 티켓 실행(sub_ticket_id
     없음)인 RETRY와 처리 흐름 단계(T2·Q1·Q2)를 남긴 RETRY(복합 문의의 하위 문의 run)만 넣는다. 그래서 다시 처리가
     도는 동안(단계 쓰기 전)에도 처리 중으로 보인다(C-87 해소).
     """
-    return (f"({alias}.trigger IN ('INTAKE','CUSTOMER_REPLY') OR ({alias}.trigger = 'RETRY' AND ({alias}.sub_ticket_id IS NULL "
+    return (f"({alias}.trigger IN ('INTAKE','CUSTOMER_REPLY','AGENT_EDIT') OR ({alias}.trigger = 'RETRY' AND ({alias}.sub_ticket_id IS NULL "
             f"OR EXISTS (SELECT 1 FROM svc.agent_step ps WHERE ps.run_id = {alias}.run_id "
             f"AND ps.step_name IN ('T2','Q1','Q2')))))")
 
@@ -140,3 +140,19 @@ def latest_pipeline_run(conn: Connection, ticket_id: str) -> dict[str, Any] | No
     busy = conn.execute(f"""SELECT EXISTS (SELECT 1 FROM svc.agent_run r WHERE r.ticket_id = %s AND r.status IS NULL
                                               AND {pipeline_run()})""", (ticket_id,)).fetchone()[0]
     return {"run_id": row[0], "trigger": row[1], "status": row[2], "busy": busy}
+
+
+def agent_edits(conn: Connection, sub_ticket_id: str) -> dict[str, dict[str, Any]]:
+    """그 하위 문의에서 상담원이 고친 항목 → 가장 최근 {from, to, by, at} (상세의 "상담원 수정" 표시, 다시 처리가 이어 받음).
+
+    고친 기록은 AGENT_EDIT 실행의 Q2 단계 input_json에 있다(db/edits.apply_edit, C-110).
+    """
+    out: dict[str, dict[str, Any]] = {}
+    for (record,) in conn.execute(
+            """SELECT st.input_json FROM svc.agent_step st JOIN svc.agent_run r ON r.run_id = st.run_id
+                WHERE r.sub_ticket_id = %s AND r.trigger = 'AGENT_EDIT' AND st.step_name = 'Q2'
+                  AND st.input_json ? 'agent_edit'
+                ORDER BY r.run_id""", (sub_ticket_id,)).fetchall():
+        for name, change in record["agent_edit"].items():
+            out[name] = {**change, "by": record.get("by"), "at": record.get("at")}
+    return out

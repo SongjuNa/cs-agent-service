@@ -1,10 +1,10 @@
 // A안 사이드바형 틀 (화면 정의서 v2 0-7절): 왼쪽 사이드바 + 위 머리 막대(M-H-01, M-H-02, SCR-00-03·04) + 작업 영역.
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   agentDept, agentId, api, asOfMode, saveAgentDept, saveAgentId, saveAsOfMode, SNAPSHOT,
   type AsOfMode, type Department,
 } from "./api";
-import { InboxPage } from "./InboxPage";
+import { InboxPage, lastInboxUrl } from "./InboxPage";
 import { IntakePage } from "./IntakePage";
 import { TicketDetailPage } from "./TicketDetailPage";
 
@@ -26,6 +26,7 @@ export function App() {
   const [mode, setMode] = useState<AsOfMode>(asOfMode());
   const [depts, setDepts] = useState<Department[]>([]);
   const [collapsed, setCollapsed] = useState(false);
+  const [flash, setFlash] = useState<string | null>(null);
 
   useEffect(() => {
     const onPop = () => setPage(pageFromPath());
@@ -41,7 +42,15 @@ export function App() {
     setPage(next);
   }
 
+  // [목록으로]: 마지막 접수함 주소(필터·정렬·쪽)로(화면 정의서 v1 SCR-02 ③). 없는 번호면 안내를 띄운다(FR-030 예외 1행)
+  const back = useCallback((message?: string) => {
+    window.history.pushState(null, "", lastInboxUrl());
+    setPage({ kind: "inbox" });
+    setFlash(message ?? null);
+  }, []);
+
   function go(id: string) {
+    setFlash(null);
     navigate(`/tickets/${encodeURIComponent(id)}`, { kind: "ticket", id });
     setInput(id);
   }
@@ -100,8 +109,8 @@ export function App() {
         </header>
         <main>
           {page.kind === "intake" ? <IntakePage onCreated={go} />
-            : page.kind === "ticket" ? <TicketDetailPage ticketId={page.id} agent={agent.trim()} />
-            : <InboxPage key={`${dept}|${mode}`} dept={dept} asOf={mode === "snapshot" ? SNAPSHOT : null} onOpen={go} />}
+            : page.kind === "ticket" ? <TicketDetailPage ticketId={page.id} agent={agent.trim()} onBack={back} />
+            : <InboxPage key={`${dept}|${mode}`} flash={flash} dept={dept} asOf={mode === "snapshot" ? SNAPSHOT : null} onOpen={go} />}
         </main>
       </div>
     </div>

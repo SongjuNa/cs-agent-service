@@ -1,16 +1,20 @@
-"""하위 문의 동작: 우선순위 조정과 미리 보기 (FR-028, 기술 명세서 v1.4 §8-1, 화면 정의서 v1 SCR-03-P3)."""
+"""하위 문의 동작: 우선순위 조정과 미리 보기(FR-028, SCR-03-P3), 분류 직접 수정(FR-030 처리 6) (기술 명세서 v1.4 §8-1)."""
 
 from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from collections.abc import Callable
+
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from psycopg import Connection
 from pydantic import BaseModel
 
-from app.api.deps import get_conn
+from app.api.deps import Clients, get_clients, get_conn, get_connect
+from app.api.tickets import process_edit
+from app.db.edits import Edit, EditError, apply_edit
 from app.sla.adjust import AdjustError, adjust, preview
 from app.status.transitions import ConcurrentChange
 
@@ -60,3 +64,40 @@ def post_priority(sub_ticket_id: str, data: PriorityIn, conn: Connection = Depen
         raise HTTPException(409, str(exc)) from exc
     except AdjustError as exc:
         return _error(exc)
+
+
+class FieldIn(BaseModel):
+    field: str
+    value: str | None = None
+
+
+class EditIn(BaseModel):
+    """유형·긴급도·제품·반품 구분·받은 항목(§8-1 PATCH /sub-tickets). 고칠 것만 보낸다."""
+
+    category_code: str | None = None
+    urgency_flag: str | None = None
+    product_code: str | None = None
+    return_kind: str | None = None
+    received_fields: list[FieldIn] = []
+    expected_version: int | None = None  # FR-025 예외 2행, FR-030 예외 4행
+
+
+@router.patch("/sub-tickets/{sub_ticket_id}", status_code=202)
+def patch_sub_ticket(sub_ticket_id: str, data: EditIn, background: BackgroundTasks,
+                     conn: Connection = Depends(get_conn), connect: Callable = Depends(get_connect),
+                     clients: Clients = Depends(get_clients), x_agent_id: str | None = Header(default=None)) -> dict:
+    """상담원 수정 → "상담원 수정" 표시, 규칙 단계부터 다시 처리(FR-030 처리 6, AC-030-5, §2-4 부분 재실행)."""
+    if not x_agent_id or not x_agent_id.strip():
+        raise HTTPException(400, "상담원 ID를 입력하세요")
+    edit = Edit(category_code=data.category_code, urgency_flag=data.urgency_flag, product_code=data.product_code,
+                return_kind=data.return_kind, received_fields=[f.model_dump() for f in data.received_fields],
+                expected_version=data.expected_version)
+    try:
+        out = apply_edit(conn, sub_ticket_id, edit, x_agent_id.strip(), datetime.now(timezone.utc))
+    except LookupError as exc:
+        raise HTTPException(404, MSG_NOT_FOUND) from exc
+    except EditError as exc:
+        raise HTTPException(exc.status, str(exc)) from exc
+    background.add_task(process_edit, connect, clients, sub_ticket_id, out["run_id"], out["record"])
+    return {"sub_ticket_id": sub_ticket_id, "processing": True, "run_id": out["run_id"], "version": out["version"],
+            "changes": out["changes"]}
