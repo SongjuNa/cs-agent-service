@@ -6,15 +6,17 @@ import {
 } from "./api";
 import { InboxPage, lastInboxUrl } from "./InboxPage";
 import { IntakePage } from "./IntakePage";
+import { MyWorkPage } from "./MyWorkPage";
 import { TicketDetailPage } from "./TicketDetailPage";
 
-type Page = { kind: "inbox" } | { kind: "intake" } | { kind: "ticket"; id: string };
+type Page = { kind: "inbox" } | { kind: "intake" } | { kind: "my" } | { kind: "ticket"; id: string };
 
 function pageFromPath(): Page {
   const path = window.location.pathname;
   const m = path.match(/^\/tickets\/([^/]+)$/);
   if (m) return { kind: "ticket", id: decodeURIComponent(m[1]) };
   if (path === "/intake") return { kind: "intake" };
+  if (path === "/my") return { kind: "my" }; // SCR-04 (§8-2)
   return { kind: "inbox" }; // "/"와 "/inbox": 접수함이 기본 화면(SCR-00-05)
 }
 
@@ -75,7 +77,7 @@ export function App() {
           <nav>
             <a className="brand" href="/inbox" onClick={menu("/inbox", { kind: "inbox" })}>C/S Agent</a>
             <a className={page.kind === "inbox" ? "active" : ""} href="/inbox" onClick={menu("/inbox", { kind: "inbox" })}>접수함</a>
-            <span className="disabled">나의 업무 현황 <small>2순위</small></span>
+            <a className={page.kind === "my" ? "active" : ""} href="/my" onClick={menu("/my", { kind: "my" })}>나의 업무 현황</a>
             <a className={page.kind === "intake" ? "active" : ""} href="/intake" onClick={menu("/intake", { kind: "intake" })}>접수 시뮬레이터</a>
             {page.kind === "ticket" && <a className="active" href={`/tickets/${page.id}`}>문의 상세</a>}
           </nav>
@@ -109,6 +111,8 @@ export function App() {
         </header>
         <main>
           {page.kind === "intake" ? <IntakePage onCreated={go} />
+            : page.kind === "my" ? <MyWorkPage key={`${dept}|${mode}|${agent.trim()}`} dept={dept} agent={agent.trim()}
+                                               asOf={mode === "snapshot" ? SNAPSHOT : null} onOpen={go} />
             : page.kind === "ticket" ? <TicketDetailPage ticketId={page.id} agent={agent.trim()} onBack={back} />
             : <InboxPage key={`${dept}|${mode}`} flash={flash} dept={dept} asOf={mode === "snapshot" ? SNAPSHOT : null} onOpen={go} />}
         </main>
