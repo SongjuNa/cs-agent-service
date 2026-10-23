@@ -12,12 +12,14 @@ from typing import Any
 
 from app.checks.draft_check import CheckResult, check_draft, number_values, numbers, same_citations_and_numbers
 from app.llm.client import LlmError, Transport, generate_json, load_prompt
+from app.retrieval.numbers import VERDICT_LATEST, VERDICT_UPDATE
 
 L3_PROMPT = "l3_info_request_v1.md"
-L4_PROMPT = "l4_draft_v1.md"
+L4_PROMPT = "l4_draft_v2.md"
 L7_PROMPT = "l7_gloss_v1.md"
 SKELETONS_FILE = "l4_category_skeletons_v1.md"
 
+VERDICT_EN = {VERDICT_LATEST: "already the latest version", VERDICT_UPDATE: "update available"}
 GLOSS_LANGUAGE = "ko"  # FR-039 처리 1 (기본 한국어)
 MAX_REPLY_CHARS = 1500  # FR-021 예외 4행 (제안 상한)
 # 숫자 대조에서 허용하는 제공 항목: 수량, 고객 버전, 날짜 (기술 명세서 §3-4 2번, 에이전트 설계서 6-1절)
@@ -178,7 +180,7 @@ def write_reply(
         f"{', '.join(optional_missing_labels)}."
         if optional_missing_labels else ""
     )
-    lookup_lines = [f"{item} | {value} | {unit or ''} | {source}" for item, value, unit, source in lookups]
+    lookup_lines = [f"{item} | {prompt_value(value, unit)} | {unit or ''} | {source}" for item, value, unit, source in lookups]
     provided_lines = [f"{name} | {value}" for name, value in provided]
     fields = {
         "language_name": LANGUAGE_NAMES.get(language, language),
@@ -214,6 +216,13 @@ def write_reply(
     draft = Draft(sub_ticket_id, "FINAL_REPLY", language, body, citations=cites,
                   lookups_used=lookups_in_body(body, lookups), check=check.as_dict(), flags=flags)
     return draft, flags
+
+
+def prompt_value(value: Any, unit: str | None) -> Any:
+    """지시문에 넣는 조회값. 금액은 소수 둘째 자리까지(AC-021-1 "520.00 USD"), 펌웨어 판정은 영어로."""
+    if unit == "USD" and isinstance(value, (int, float)):
+        return f"{value:.2f}"
+    return VERDICT_EN.get(value, value) if isinstance(value, str) else value
 
 
 def lookups_in_body(body: str, lookups: list[tuple[str, Any, str | None, str]]) -> list[dict[str, Any]]:

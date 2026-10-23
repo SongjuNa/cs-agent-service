@@ -27,5 +27,5 @@ include = ["app*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-# 저장소 루트의 jobs/를 시험에서 불러오기 위해
-pythonpath = [".."]
+# 저장소 루트의 jobs/와, 시험끼리 서로 불러오는 tests.acceptance를 찾기 위해
+pythonpath = [".", ".."]

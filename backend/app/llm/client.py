@@ -26,6 +26,8 @@ log = logging.getLogger(__name__)
 PROMPTS_DIR = REPO_ROOT / "prompts"
 TIMEOUT_SEC = 30  # 기술 명세서 §2-4
 MAX_ATTEMPTS = 2  # 처음 1회 + 다시 1회 (§3-2, 에이전트 설계서 4-2절 1·2번)
+# 모델이 답하기 전 생각하는 단계의 길이. 기본값이면 호출이 30초 상한에 자주 걸려 "low"로 둔다(구현 선택)
+THINKING_LEVEL = "low"
 
 
 class LlmError(Exception):
@@ -62,9 +64,12 @@ class GeminiTransport:
     def send(self, prompt: str, schema: dict) -> str:
         import httpx
 
+        from google.genai import errors
+
         config = self._types.GenerateContentConfig(
             response_mime_type="application/json",
             response_json_schema=schema,
+            thinking_config=self._types.ThinkingConfig(thinking_level=THINKING_LEVEL),
         )
         try:
             response = self._client.models.generate_content(
@@ -72,6 +77,11 @@ class GeminiTransport:
             )
         except httpx.TimeoutException as exc:
             raise LlmTimeout(str(exc)) from exc
+        except errors.ServerError as exc:
+            # 30초 상한을 서버가 지키면 504 DEADLINE_EXCEEDED로 돌아온다. 이것도 시간 초과다
+            if exc.code == 504:
+                raise LlmTimeout(str(exc)) from exc
+            raise
         return response.text or ""
 
 

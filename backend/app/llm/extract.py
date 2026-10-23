@@ -12,7 +12,7 @@ from datetime import date
 from app.llm.client import LlmError, Transport, generate_json
 from app.pipeline.state import ProvidedField
 
-PROMPT_FILE = "l2_extract_v1.md"
+PROMPT_FILE = "l2_extract_v2.md"
 
 FLAG_FORMAT = "형식 확인"
 FLAG_CONFLICT = "값 충돌"

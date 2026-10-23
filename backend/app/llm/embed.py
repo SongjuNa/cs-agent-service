@@ -40,8 +40,11 @@ class GeminiEmbedder:
         import httpx
 
         config = self._types.EmbedContentConfig(task_type=self._TASKS[task])
+        # 글 하나를 Content 하나로 싸서 보낸다. 문자열 목록을 그대로 보내면 gemini-embedding-2는
+        # 한 Content의 여러 조각으로 보고 벡터를 하나만 돌려준다.
+        contents = [self._types.Content(parts=[self._types.Part(text=t)]) for t in texts]
         try:
-            result = self._client.models.embed_content(model=self.model, contents=texts, config=config)
+            result = self._client.models.embed_content(model=self.model, contents=contents, config=config)
         except httpx.TimeoutException as exc:
             raise LlmTimeout(str(exc)) from exc
         return [list(e.values) for e in result.embeddings]
