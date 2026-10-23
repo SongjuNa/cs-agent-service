@@ -274,5 +274,5 @@ def test_detail_shows_status_and_sla(api):
     assert sub["sla"]["fr_status"] in ("MET", "BREACHED") and sub["sla"]["res_status"] in ("MET", "BREACHED")
     assert sub["sla"]["remaining_h"] is None and sub["sla"]["notes"] == []
     assert [h["event_kind"] for h in sub["history"]] == ["INTAKE", "PIPELINE_DONE", "FINAL_REPLY_SENT"]
-    assert sub["wait_intervals"] == []
+    assert sub["wait_intervals"] == [] and sub["alerts"] == []
     assert detail["summary"]["status"] == "RESOLVED" and detail["summary"]["open_count"] == 0

@@ -12,6 +12,7 @@ from psycopg import Connection
 from app.db.store import body_sha, check_type_of, latest_gloss
 from app.llm.verify import VerifyResult
 from app.pipeline.state import VerifyFinding
+from app.sla.alerts import alert_history
 from app.sla.clock import clocks
 from app.status.transitions import history, wait_intervals
 
@@ -61,6 +62,7 @@ def _state(conn: Connection, sub: dict[str, Any], sla: dict[str, Any] | None) ->
         "sla": sla,
         "history": hist,
         "wait_intervals": wait_intervals(hist),
+        "alerts": alert_history(conn, sub["sub_ticket_id"]),  # FR-027 출력
     }
 
 
