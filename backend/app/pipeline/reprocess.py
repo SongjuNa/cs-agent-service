@@ -10,6 +10,7 @@ from typing import Any
 
 from psycopg import Connection
 
+from app.db.runs import pipeline_run
 from app.llm.client import Transport
 from app.llm.extract import extract
 from app.llm.inputs import prepare_llm_input
@@ -19,17 +20,16 @@ from app.pipeline.understand import UnderstandOutcome, _ref_rows
 from app.rules.lookup import lookup_product
 from app.rules.required_info import check_required_info
 
-PIPELINE_TRIGGERS = ("INTAKE", "CUSTOMER_REPLY")  # 처리 흐름 전체를 도는 실행
 T2_FLAGS = ("확신 낮음", "분류 실패", "긴급도 판정 실패", "언어 판정 불확실")  # T2가 다는 표시는 이어 받는다
 
 
 def last_pipeline_step(conn: Connection, sub_ticket_id: str, step_name: str) -> dict | None:
-    """그 하위 문의의 마지막 처리 흐름 실행(접수 또는 회신 재처리)에서 한 단계의 결과."""
+    """그 하위 문의의 마지막 처리 흐름 실행(접수·회신 재처리·다시 처리)에서 한 단계의 결과."""
     row = conn.execute(
-        """SELECT st.output_json FROM svc.agent_step st JOIN svc.agent_run r ON r.run_id = st.run_id
-            WHERE r.sub_ticket_id = %s AND r.trigger = ANY(%s) AND st.step_name = %s
-            ORDER BY r.run_id DESC, st.step_order DESC LIMIT 1""",
-        (sub_ticket_id, list(PIPELINE_TRIGGERS), step_name),
+        f"""SELECT st.output_json FROM svc.agent_step st JOIN svc.agent_run r ON r.run_id = st.run_id
+             WHERE r.sub_ticket_id = %s AND {pipeline_run()} AND st.step_name = %s
+             ORDER BY r.run_id DESC, st.step_order DESC LIMIT 1""",
+        (sub_ticket_id, step_name),
     ).fetchone()
     return row[0] if row else None
 
@@ -94,7 +94,7 @@ def reextract(conn: Connection, transport: Transport, ticket_input: dict[str, An
 
 def _last_step_name(conn: Connection, sub_ticket_id: str) -> str:
     row = conn.execute(
-        """SELECT r.last_step FROM svc.agent_run r WHERE r.sub_ticket_id = %s AND r.trigger = ANY(%s)
+        f"""SELECT r.last_step FROM svc.agent_run r WHERE r.sub_ticket_id = %s AND {pipeline_run()}
                 AND r.last_step IS NOT NULL ORDER BY r.run_id DESC LIMIT 1""",
-        (sub_ticket_id, list(PIPELINE_TRIGGERS))).fetchone()
+        (sub_ticket_id,)).fetchone()
     return row[0] if row else "Q6"

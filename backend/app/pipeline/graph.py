@@ -4,6 +4,7 @@ understand(T1·T2·Q1) → rules(Q2~Q6) → 분기③ 막는 정보?
   예     → info_request(Q7, L3) → gloss(Q13, L7) → verify(Q14, L8) → 끝
   아니오 → evidence(Q8·Q9) → reply(분기④ 근거 있음? → Q10 L4 + Q11 대조) → gloss → verify → 끝
 1순위는 하위 문의 1개라 병렬 실행(T3)과 메일 구성(T5)은 없다. 고객에게 가는 글은 모두 DRAFT다.
+노드는 RunLog.timed로 감싸 시간과 언어 모델 사용량을 모은다(FR-036, §6-5, 변경 add-run-log).
 """
 
 from __future__ import annotations
@@ -14,12 +15,13 @@ from typing import Any, TypedDict
 from langgraph.graph import END, START, StateGraph
 from psycopg import Connection
 
-from app.llm.client import Transport
+from app.llm.client import RecordingTransport, Transport
 from app.llm.drafts import Draft, Source, write_gloss, write_info_request, write_reply
 from app.llm.embed import Embedder
 from app.llm.verify import verify_draft
 from app.pipeline.evidence import add_evidence
 from app.pipeline.rules_step import apply_rules
+from app.pipeline.runlog import RunLog
 from app.pipeline.state import TicketState
 from app.rules.required_info import RequiredInfoResult
 from app.pipeline.understand import understand_ticket
@@ -49,11 +51,18 @@ class RunOutcome:
     required: dict[str, RequiredInfoResult] = field(default_factory=dict)
     sources: dict[str, list[Source]] = field(default_factory=dict)
     llm_field_names: dict[str, list[str]] = field(default_factory=dict)
+    runlog: RunLog | None = None  # 단계별 시간·사용량(FR-036)
 
 
-def build_graph(conn: Connection, transport: Transport, embedder: Embedder, understand_fn=None):
-    """understand_fn: 첫 노드(T1·T2·Q1)를 바꿔 끼운다. 고객 회신 재처리는 Q1부터(§2-4, reprocess.reextract)."""
+def build_graph(conn: Connection, transport: Transport, embedder: Embedder, understand_fn=None,
+                runlog: RunLog | None = None):
+    """understand_fn: 첫 노드(T1·T2·Q1)를 바꿔 끼운다. 고객 회신 재처리는 Q1부터(§2-4, reprocess.reextract).
+
+    runlog: 있으면 노드를 감싸고 Transport의 호출을 그 기록에 남긴다(FR-036 처리 2).
+    """
     first = understand_fn or understand_ticket
+    if runlog is not None:
+        transport = RecordingTransport(transport, runlog)
 
     def understand(gs: GraphState) -> GraphState:
         out = first(conn, transport, gs["ticket_input"])
@@ -130,7 +139,7 @@ def build_graph(conn: Connection, transport: Transport, embedder: Embedder, unde
     graph = StateGraph(GraphState)
     for name, node in [("understand", understand), ("rules", rules), ("info_request", info_request),
                        ("evidence", evidence), ("reply", reply), ("gloss", gloss), ("verify", verify)]:
-        graph.add_node(name, node)
+        graph.add_node(name, runlog.timed(name, node) if runlog is not None else node)
     graph.add_edge(START, "understand")
     graph.add_conditional_edges("understand", after_understand, ["rules", END])
     graph.add_conditional_edges("rules", branch_info, ["info_request", "evidence", END])
@@ -143,8 +152,9 @@ def build_graph(conn: Connection, transport: Transport, embedder: Embedder, unde
 
 
 def run_ticket(conn: Connection, transport: Transport, embedder: Embedder, ticket_input: dict[str, Any],
-               understand_fn=None) -> RunOutcome:
-    final = build_graph(conn, transport, embedder, understand_fn).invoke({"ticket_input": ticket_input})
+               understand_fn=None, runlog: RunLog | None = None) -> RunOutcome:
+    runlog = runlog if runlog is not None else RunLog.from_settings()
+    final = build_graph(conn, transport, embedder, understand_fn, runlog).invoke({"ticket_input": ticket_input})
     return RunOutcome(final.get("state"), final["run_status"], final.get("drafts", []),
                       final.get("error_type"), final.get("message"), final.get("required", {}),
-                      final.get("sources", {}), final.get("llm_field_names", {}))
+                      final.get("sources", {}), final.get("llm_field_names", {}), runlog)

@@ -17,6 +17,8 @@ from app.db.store import (add_self_check, add_step, body_sha, check_body, draft_
                           insert_gloss, intake_step, load_draft, save_verify, send_draft, start_run, update_draft_body)
 from app.llm.drafts import FLAG_GLOSS_FAILED, write_gloss
 from app.llm.verify import KIND_NAMES, verify_draft
+from app.llm.client import RecordingTransport
+from app.pipeline.runlog import RunLog
 from app.status.transitions import ConcurrentChange
 
 router = APIRouter()
@@ -46,15 +48,20 @@ def _make_gloss(conn: Connection, clients: Clients, draft: dict, run_id: int) ->
     """L7 대역을 다시 만들어 새 행으로 남긴다. 성공하면 True."""
     obj = draft_object(conn, draft)
     obj.gloss = None
+    runlog = RunLog.from_settings()  # 노드가 아닌 동작도 같은 기록으로 시간·사용량을 남긴다(§6-5)
+
+    def make(_):
+        return write_gloss(RecordingTransport(clients.transport(), runlog), obj)
+
     try:
-        obj = write_gloss(clients.transport(), obj)
+        obj = runlog.timed("gloss", make)(None)
     except Exception:  # noqa: BLE001 — 키 없음 등도 대역 실패로 본다
         obj.flags.append(FLAG_GLOSS_FAILED)
     with conn.transaction():
         if obj.gloss:
             insert_gloss(conn, draft["message_id"], obj.gloss)
         add_step(conn, run_id, "Q13", output={"message_id": draft["message_id"], "gloss": obj.gloss is not None},
-                 result="SUCCESS" if obj.gloss else "FAILED")
+                 result="SUCCESS" if obj.gloss else "FAILED", **runlog.step_fields("Q13"))
     return obj.gloss is not None
 
 
@@ -103,15 +110,21 @@ def post_verify(message_id: int, conn: Connection = Depends(get_conn), clients: 
     draft = _draft(conn, message_id)
     run_id = start_run(conn, draft["ticket_id"], draft["sub_ticket_id"], "RETRY")
     sources, lookups, _, evidence = draft_sources(conn, draft["sub_ticket_id"])
+    runlog = RunLog.from_settings()
+
+    def check(_):
+        return verify_draft(RecordingTransport(clients.transport(), runlog), draft_object(conn, draft), evidence,
+                            sources, lookups)
+
     try:
-        result = verify_draft(clients.transport(), draft_object(conn, draft), evidence, sources, lookups)
+        result = runlog.timed("verify", check)(None)
     except Exception as exc:  # noqa: BLE001 — 키 없음 등. 검증 실패 행으로 남긴다
         from app.llm.verify import VerifyResult
         result = VerifyResult(error=getattr(exc, "error_type", "UNKNOWN"))
     with conn.transaction():
         save_verify(conn, run_id, draft["sub_ticket_id"], message_id, draft["body"], result)
         add_step(conn, run_id, "Q14", output={"message_id": message_id, "state": result.state},
-                 result="FAILED" if result.error else "SUCCESS")
+                 result="FAILED" if result.error else "SUCCESS", **runlog.step_fields("Q14"))
         finish_run(conn, run_id, "FAILED" if result.error else "SUCCESS", "Q14")
     return {"message_id": message_id, "state": result.state, "mark": result.mark()}
 

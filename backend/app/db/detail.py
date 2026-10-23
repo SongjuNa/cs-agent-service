@@ -12,7 +12,7 @@ from psycopg import Connection
 from app.db.replies import customer_followups, messages
 from app.db.store import body_sha, check_type_of, latest_gloss
 from app.llm.verify import VerifyResult
-from app.pipeline.reprocess import PIPELINE_TRIGGERS
+from app.db.runs import pipeline_run
 from app.pipeline.state import VerifyFinding
 from app.sla.adjust import adjustments
 from app.sla.alerts import alert_history
@@ -46,9 +46,11 @@ def ticket_detail(conn: Connection, ticket_id: str) -> dict[str, Any] | None:
          WHERE t.ticket_id = %s""", (ticket_id,))
     if ticket is None:
         return None
-    run = _row(conn, """SELECT run_id, trigger, status, last_step, started_at_utc, finished_at_utc FROM svc.agent_run
-                         WHERE ticket_id = %s AND trigger = ANY(%s) ORDER BY run_id DESC LIMIT 1""",
-               (ticket_id, list(PIPELINE_TRIGGERS)))  # 접수 또는 고객 회신 재처리(FR-032)
+    # 접수·고객 회신 재처리(FR-032)·다시 처리(FR-036 처리 5)
+    run = _row(conn, f"""SELECT r.run_id, r.trigger, r.status, r.last_step, r.started_at_utc, r.finished_at_utc
+                            FROM svc.agent_run r
+                           WHERE r.ticket_id = %s AND {pipeline_run()}
+                           ORDER BY r.run_id DESC LIMIT 1""", (ticket_id,))
     processing = run is None or run["status"] is None
     rows = _rows(conn, "SELECT * FROM svc.sub_ticket WHERE ticket_id = %s ORDER BY seq", (ticket_id,))
     sla = clocks(conn, [r["sub_ticket_id"] for r in rows])
@@ -78,7 +80,7 @@ def _steps(conn: Connection, run_id: int | None) -> dict[str, Any]:
     if run_id is None:
         return {}
     return {r["step_name"]: r for r in _rows(
-        conn, """SELECT step_name, result, input_json, output_json, error_kind, error FROM svc.agent_step
+        conn, """SELECT step_id, step_name, result, input_json, output_json, error_kind, error FROM svc.agent_step
                   WHERE run_id = %s ORDER BY step_order""", (run_id,))}
 
 
@@ -101,9 +103,23 @@ def _sub_detail(conn: Connection, sub: dict[str, Any], run: dict[str, Any] | Non
             "first_response_at_utc", "info_request_sent", "status", "pipeline_error", "evidence_json")},
         "checks": [{"check_type": r["check_type"], "flag": (r["detail"] or {}).get("flag")} for r in failed],
         "other_flags": [f for f in flags if check_type_of(f) is None and f not in DRAFT_FLAGS],
-        "evidence_rows": _evidence_rows(conn, sub, out, flags, labels, status),
+        "evidence_rows": _with_steps(_evidence_rows(conn, sub, out, flags, labels, status), run_id, steps),
         "drafts": drafts,
     }
+
+
+# 근거 줄 → 그 줄을 만든 단계 (FR-036 처리 7 "왜?에서 해당 단계로", 기술 명세서 §2-2 단계 표)
+ROW_STEPS = {"C-01": ("T2",), "C-02": ("T2",), "M-C-01": ("Q2",), "C-03": ("Q3",), "C-04": ("Q4",), "C-07": ("Q5",),
+             "C-06": ("Q6",), "M-C-02": ("Q7", "Q9", "Q8")}  # ⑧은 화면 정의서 v2 SCR-03M "agent_step(Q9)"
+
+
+def _with_steps(rows: list[dict[str, Any]], run_id: int | None, steps: dict[str, Any]) -> list[dict[str, Any]]:
+    """why에 단계(run_id, step_id, step_name)를 붙인다. 화면은 GET /runs/{run_id}/steps에서 그 단계를 연다."""
+    for row in rows:
+        name = next((n for n in ROW_STEPS.get(row["id"], ()) if n in steps), None)
+        row["why"]["step"] = ({"run_id": run_id, "step_id": steps[name]["step_id"], "step_name": name}
+                              if name else None)
+    return rows
 
 
 def _empty(status: str | None, reason: str) -> str:

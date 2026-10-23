@@ -128,12 +128,16 @@ def test_periodic_check_one_cycle(db):
 
 
 def test_scheduler_starts_with_app(monkeypatch):
-    """§6-4: 서버를 켜면 5분 간격 작업 하나가 등록되고, 끄면 멈춘다."""
+    """§6-4: 서버를 켜면 5분 간격 주기 점검이 등록되고, 끄면 멈춘다. 하루 간격 보존 작업도 있다(FR-036, add-run-log)."""
     monkeypatch.setattr(main, "get_settings", lambda: Settings(scheduler_enabled=True))
+    monkeypatch.setattr(main, "close_stale_runs", lambda conn, now: [])  # 시험 DB의 실행을 건드리지 않는다
+    monkeypatch.setattr("app.scheduler._purge", lambda: None)
     with TestClient(main.app):
         scheduler = main.app.state.scheduler
-        (job,) = scheduler.get_jobs()
-        assert job.id == JOB_ID and job.trigger.interval == timedelta(minutes=INTERVAL_MINUTES)
+        jobs = {j.id: j for j in scheduler.get_jobs()}
+        assert set(jobs) == {JOB_ID, "purge_runs"}
+        assert jobs[JOB_ID].trigger.interval == timedelta(minutes=INTERVAL_MINUTES)
+        assert jobs["purge_runs"].trigger.interval == timedelta(days=1)
     assert not scheduler.running
 
 

@@ -2,6 +2,7 @@
 
 한 주기에 차례로: 1 SLA 경고(FR-027)와 해제, 2 회신 리마인드(FR-023)와 대역(L7), 3 무응답 종료(D22),
 4 해결 뒤 종료(D20). 단계마다 따로 돌리고, 오류는 서버 로그에 남겨 다음 주기에 다시 한다.
+따로 하루 한 번 보존 기간(90일)이 지난 실행 기록을 지운다(FR-036 예외 3행, §6-5).
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ from psycopg import Connection
 
 from app.config import get_settings
 from collections.abc import Callable
+from app.db.runs import purge_runs
 from app.sla.alerts import clear_alerts, raise_alerts
 from app.status.closing import close_due
 from app.status.reminder import send_reminders
@@ -23,6 +25,7 @@ log = logging.getLogger(__name__)
 
 INTERVAL_MINUTES = 5  # §6-4, FR-027 처리 1 "제안 5분"
 JOB_ID = "periodic_check"
+PURGE_JOB_ID = "purge_runs"
 
 
 Gloss = Callable[[Connection, list[dict]], list[int]]  # 리마인드 대역(L7). 이 모듈은 언어 모델 계층을 import하지 않는다
@@ -60,8 +63,20 @@ def _tick(gloss: Gloss | None) -> None:
     log.info("주기 점검 %s", result)
 
 
+def _purge() -> None:
+    try:
+        with psycopg.connect(get_settings().database_url, autocommit=True) as conn:
+            removed = purge_runs(conn, datetime.now(timezone.utc))
+        log.info("실행 기록 보존: %d건 지움", len(removed))
+    except Exception:  # 다음 날 다시 한다
+        log.exception("실행 기록 보존 작업 실패")
+
+
 def start_scheduler(gloss: Gloss | None = None) -> BackgroundScheduler:
     scheduler = BackgroundScheduler(timezone="UTC")
     scheduler.add_job(_tick, "interval", args=[gloss], minutes=INTERVAL_MINUTES, id=JOB_ID, max_instances=1, coalesce=True)
+    # 켜자마자 한 번, 그 뒤 하루마다(하루 안에 다시 켜도 빠지지 않게)
+    scheduler.add_job(_purge, "interval", days=1, id=PURGE_JOB_ID, max_instances=1, coalesce=True,
+                      next_run_time=datetime.now(timezone.utc))
     scheduler.start()
     return scheduler
