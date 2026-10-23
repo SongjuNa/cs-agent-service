@@ -100,7 +100,7 @@ class RecordingTransport:
         self.log = log
 
     def on_call(self, call_name: str, prompt_version: str, prompt: str) -> None:
-        self.log.calls.append(LlmCall(call_name, prompt_version, prompt))
+        self.log.calls.append(LlmCall(call_name, prompt_version, prompt, sub_ticket_id=self.log.current_sub))
 
     def send(self, prompt: str, schema: dict) -> str:
         record = self.log.calls[-1] if self.log.calls and self.log.calls[-1].prompt == prompt else None

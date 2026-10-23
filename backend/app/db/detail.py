@@ -12,7 +12,8 @@ from psycopg import Connection
 from app.db.replies import customer_followups, messages
 from app.db.store import body_sha, check_type_of, latest_gloss
 from app.llm.verify import VerifyResult
-from app.db.runs import pipeline_run
+from app.db.runs import pipeline_run, run_for_sub
+from app.pipeline.reprocess import last_pipeline_step
 from app.pipeline.state import VerifyFinding
 from app.sla.adjust import adjustments
 from app.sla.alerts import alert_history
@@ -40,7 +41,7 @@ def _row(conn: Connection, sql: str, params: tuple) -> dict[str, Any] | None:
 def ticket_detail(conn: Connection, ticket_id: str) -> dict[str, Any] | None:
     ticket = _row(conn, """
         SELECT t.ticket_id, t.received_at_utc, t.channel, t.language, t.body_language, t.body_language_uncertain,
-               t.customer_id, t.customer_tier, c.company_masked, c.country, t.source, t.source_ticket_id,
+               t.customer_id, t.customer_tier, c.company_masked, c.country, t.source, t.source_ticket_id, t.multi_yn,
                EXISTS (SELECT 1 FROM eval.gold_set g WHERE g.source_ticket_id = t.source_ticket_id) AS gold_set
           FROM svc.ticket t JOIN ref.customer c ON c.customer_id = t.customer_id
          WHERE t.ticket_id = %s""", (ticket_id,))
@@ -54,7 +55,11 @@ def ticket_detail(conn: Connection, ticket_id: str) -> dict[str, Any] | None:
     processing = run is None or run["status"] is None
     rows = _rows(conn, "SELECT * FROM svc.sub_ticket WHERE ticket_id = %s ORDER BY seq", (ticket_id,))
     sla = clocks(conn, [r["sub_ticket_id"] for r in rows])
-    subs = [_sub_detail(conn, s, run) | _state(conn, s, sla.get(s["sub_ticket_id"])) for s in rows]
+    # 하위 문의마다 자기 run(복합 문의는 하위 문의별 run, AC-036-4)
+    subs = [_sub_detail(conn, s, run_for_sub(conn, s["sub_ticket_id"])) | _state(conn, s, sla.get(s["sub_ticket_id"]))
+            for s in rows]
+    # FR-006 출력: 티켓의 유형 = 하위 문의 유형을 순번 순으로 ';'로 이은 값(표에 열이 없어 계산, 기술 명세서 §6-2)
+    ticket["category_code"] = ";".join(r["category_code"] for r in rows if r["category_code"]) or None
     summary = _row(conn, """SELECT status, rep_sub_ticket_id, rep_res_status, rep_remaining_h, open_count, inquiry_count
                               FROM svc.v_ticket_summary WHERE ticket_id = %s""", (ticket_id,))
     return {"ticket": ticket, "summary": summary, "run": run, "processing": processing, "sub_tickets": subs,
@@ -88,6 +93,8 @@ def _sub_detail(conn: Connection, sub: dict[str, Any], run: dict[str, Any] | Non
     run_id = run["run_id"] if run else None
     steps = _steps(conn, run_id)
     out = {name: (st["output_json"] or {}) for name, st in steps.items()}
+    if "T2" not in out and run_id is not None:  # 복합 문의의 T2는 티켓 run에 하위 문의별 몫으로 있다
+        out["T2"] = last_pipeline_step(conn, sub["sub_ticket_id"], "T2") or {}
     flags: list[str] = next((o["flags"] for o in reversed(list(out.values())) if "flags" in o), [])
     failed = _rows(conn, """SELECT check_type, detail FROM eval.self_check
                              WHERE run_id = %s AND sub_ticket_id = %s AND NOT passed_yn AND check_type <> ALL(%s)

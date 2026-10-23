@@ -1,7 +1,7 @@
 """처리 흐름 앞부분: T1 입력 고정 → T2 문의 이해(L1) → Q1 추출(L2) (기술 명세서 v1.4 §2-2).
 
-접수 입력 한 건을 받아 하위 문의 1개가 든 TicketState를 만든다(1순위는 하위 문의 1개, config.yaml).
-DB 저장과 그래프 엔진은 뒤 변경이 한다.
+접수 입력 한 건을 받아 하위 문의 n개가 든 TicketState를 만든다. L1이 나눈 요청마다 하위 문의 하나이고,
+추출(L2)은 하위 문의마다 자기 유형·근거 문장으로 부른다(FR-006 처리 4, 변경 add-compound-inquiry).
 """
 
 from __future__ import annotations
@@ -14,9 +14,10 @@ from psycopg import Connection
 
 from app.llm.client import LlmError, Transport
 from app.llm.extract import extract
-from app.llm.understand import understand
+from app.llm.understand import FLAG_LANG_UNCERTAIN, understand
 from app.llm.inputs import prepare_llm_input
 from app.masking import MaskingError
+from app.pipeline.runlog import track
 from app.pipeline.state import SubTicketState, TicketState
 from app.rules.lookup import lookup_product
 from app.rules.required_info import check_required_info
@@ -63,42 +64,45 @@ def understand_ticket(conn: Connection, transport: Transport, ticket_input: dict
     except LlmError as exc:
         return UnderstandOutcome(None, "FAILED", exc.error_type, MESSAGE_RETRY)
 
-    # Q1 추출 (L2). 필수 항목은 그 제품군×유형의 required_info (§3-1 L2 입력)
-    required = check_required_info(conn, product.product_family, l1.category_code, []).required_info
-    info_fields = _ref_rows(conn, "SELECT field, label FROM ref.info_field ORDER BY field")
-    product_codes = [r[0] for r in _ref_rows(conn, "SELECT product_code FROM ref.product")]
-    l2 = extract(
-        transport, body_masked, l1.evidence_sentences, info_fields, required,
-        product.product_family, l1.category_code, input_product, product_codes,
-    )
-
-    product_code = input_product or l2.product_code
-    family = product.product_family
-    if product_code and product_code != input_product:
-        family = lookup_product(conn, product_code).product_family  # 보완한 코드로 제품군을 다시 구한다
-
     received = data["received_at_utc"]
     if isinstance(received, str) and received:
         received = datetime.fromisoformat(received)
 
-    sub = SubTicketState(
-        sub_ticket_id=f"{ticket_id}-1",
-        ticket_id=ticket_id,
-        seq=1,
-        category_code=l1.category_code,
-        category_confidence=l1.category_confidence,
-        evidence_sentences=l1.evidence_sentences,
-        query_en=l1.query_en,
-        urgency_flag=l1.urgency_flag,
-        urgency_evidence=l1.urgency_evidence,
-        provided_fields=l2.provided_fields,
-        product_code=product_code,
-        product_family=family,
-        error_code=l2.error_code,
-        current_fw=l2.current_fw,
-        return_reason=l2.return_reason,
-        flags=l1.flags + l2.flags,
-    )
+    # Q1 추출 (L2). 하위 문의마다 그 제품군×유형의 required_info (§3-1 L2 입력, FR-006 처리 4)
+    info_fields = _ref_rows(conn, "SELECT field, label FROM ref.info_field ORDER BY field")
+    product_codes = [r[0] for r in _ref_rows(conn, "SELECT product_code FROM ref.product")]
+    ticket_flags = [f for f in l1.flags if f == FLAG_LANG_UNCERTAIN]  # 언어 판정은 티켓 하나에 한 번
+    subs, l2_names = [], []
+    for req in l1.requests:
+        required = check_required_info(conn, product.product_family, req.category_code, []).required_info
+        with track(transport, f"{ticket_id}-{req.seq}"):
+            l2 = extract(
+                transport, body_masked, req.evidence_sentences, info_fields, required,
+                product.product_family, req.category_code, input_product, product_codes,
+            )
+        l2_names = l2.field_names
+        product_code = input_product or l2.product_code
+        family = product.product_family
+        if product_code and product_code != input_product:
+            family = lookup_product(conn, product_code).product_family  # 보완한 코드로 제품군을 다시 구한다
+        subs.append(SubTicketState(
+            sub_ticket_id=f"{ticket_id}-{req.seq}",
+            ticket_id=ticket_id,
+            seq=req.seq,
+            category_code=req.category_code,
+            category_confidence=req.category_confidence,
+            evidence_sentences=req.evidence_sentences,
+            query_en=req.query_en,
+            urgency_flag=req.urgency_flag,
+            urgency_evidence=req.urgency_evidence,
+            provided_fields=l2.provided_fields,
+            product_code=product_code,
+            product_family=family,
+            error_code=l2.error_code,
+            current_fw=l2.current_fw,
+            return_reason=l2.return_reason,
+            flags=ticket_flags + req.flags + l2.flags,
+        ))
     state = TicketState(
         ticket_id=ticket_id,
         channel=data["channel"],
@@ -108,7 +112,7 @@ def understand_ticket(conn: Connection, transport: Transport, ticket_input: dict
         body_language_uncertain=l1.body_language_uncertain,
         body_masked=body_masked,
         received_at=received or None,
-        sub_tickets=[sub],
-        multi_yn=False,
+        sub_tickets=subs,
+        multi_yn=len(subs) > 1,
     )
-    return UnderstandOutcome(state, "SUCCESS", llm_field_names={"L1": l1.field_names, "L2": l2.field_names})
+    return UnderstandOutcome(state, "SUCCESS", llm_field_names={"L1": l1.field_names, "L2": l2_names})

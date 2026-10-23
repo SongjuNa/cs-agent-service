@@ -109,6 +109,7 @@ class SubTicketState(BaseModel):
     dept_reply: str | None = None
     flags: list[str] = Field(default_factory=list)
     pipeline_error: str | None = None
+    failed_step: str | None = None  # pipeline_error가 난 단계(Q7·Q8·Q10·T5). 실행 기록용, DB 열 아님
 
 
 class TicketState(BaseModel):

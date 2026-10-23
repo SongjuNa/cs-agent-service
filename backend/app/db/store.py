@@ -211,10 +211,54 @@ def save_outcome(conn: Connection, run_id: int, ticket_id: str, outcome: RunOutc
             "SELECT message_id FROM svc.ticket_message WHERE ticket_id = %s AND message_type = 'INQUIRY' ORDER BY message_no LIMIT 1",
             (ticket_id,),
         ).fetchone()
-        last = "Q6"
-        for sub in state.sub_tickets:
-            last = _save_sub(conn, run_id, state, sub, outcome, inquiry_id, reply_id)
-        finish_run(conn, run_id, _pipeline_done(conn, run_id, state.sub_tickets), last)
+        if state.multi_yn:
+            _add_sub_rows(conn, ticket_id, state.sub_tickets)
+        split = len(state.sub_tickets) > 1  # 하위 문의마다 run을 따로(AC-036-4). 하나면 이 run에 모두(AC-036-1)
+        if split:
+            (trigger,) = conn.execute("SELECT trigger FROM svc.agent_run WHERE run_id = %s", (run_id,)).fetchone()
+            add_step(conn, run_id, "T2", input_={"field_names": outcome.llm_field_names.get("L1", [])}, output={
+                "language": state.language, "body_language": state.body_language,
+                "body_language_uncertain": state.body_language_uncertain, "multi_yn": state.multi_yn,
+                "sub_tickets": [_t2_part(sub) for sub in state.sub_tickets]}, **_timing(outcome, "T2"))
+        last, failed = "Q6", 0
+        for sub in sorted(state.sub_tickets, key=lambda x: x.seq):
+            sub_run = start_run(conn, ticket_id, sub.sub_ticket_id, trigger) if split else run_id
+            sub_last = _save_sub(conn, sub_run, state, sub, outcome, inquiry_id, reply_id, ticket_run=run_id,
+                                 split=split)
+            failed += bool(sub.pipeline_error)
+            if split:
+                finish_run(conn, sub_run, "FAILED" if sub.pipeline_error else "SUCCESS", sub_last)
+            else:
+                last = sub_last
+        status = _pipeline_done(conn, run_id, [x for x in state.sub_tickets if not x.pipeline_error])
+        if failed:  # 한 하위 문의의 실패는 그 문의에만(FR-006 예외 3행). 모두 실패면 FAILED
+            status = "FAILED" if failed == len(state.sub_tickets) else "PARTIAL"
+        if split:  # 티켓 run의 마지막 단계(T6이 없으면 T5·T2)
+            (last,) = conn.execute("SELECT step_name FROM svc.agent_step WHERE run_id = %s ORDER BY step_order DESC LIMIT 1",
+                                   (run_id,)).fetchone()
+        finish_run(conn, run_id, status, last)
+
+
+def _add_sub_rows(conn: Connection, ticket_id: str, subs) -> None:
+    """복합 문의(FR-006 처리 3): multi_yn을 켜고 없는 하위 문의 행을 접수 시각의 NEW로 넣는다(FR-025 INTAKE)."""
+    received, product_code = conn.execute(
+        """SELECT t.received_at_utc, s.product_code FROM svc.ticket t JOIN svc.sub_ticket s ON s.ticket_id = t.ticket_id
+            WHERE t.ticket_id = %s AND s.seq = 1""", (ticket_id,)).fetchone()
+    conn.execute("UPDATE svc.ticket SET multi_yn = true WHERE ticket_id = %s", (ticket_id,))
+    for sub in subs:
+        added = conn.execute(
+            """INSERT INTO svc.sub_ticket (sub_ticket_id, ticket_id, seq, product_code) VALUES (%s, %s, %s, %s)
+               ON CONFLICT (sub_ticket_id) DO NOTHING RETURNING sub_ticket_id""",
+            (sub.sub_ticket_id, ticket_id, sub.seq, product_code)).fetchone()
+        if added:
+            conn.execute("SELECT svc.transition(%s, 'NEW', 'INTAKE', %s, 'SYSTEM')", (sub.sub_ticket_id, received))
+
+
+def _t2_part(sub) -> dict[str, Any]:
+    """T2 출력 중 한 하위 문의 몫(복합 문의의 티켓 run, last_pipeline_step이 seq로 꺼낸다)."""
+    return {"seq": sub.seq, "category_code": sub.category_code, "category_confidence": sub.category_confidence,
+            "urgency_flag": sub.urgency_flag, "urgency_evidence": sub.urgency_evidence,
+            "evidence_sentences": sub.evidence_sentences, "query_en": sub.query_en}
 
 
 def _pipeline_done(conn: Connection, run_id: int, subs) -> str:
@@ -255,7 +299,12 @@ def _save_failure(conn: Connection, run_id: int, ticket_id: str, outcome: RunOut
 MSG_NO_NEW_FIELDS = "제공 항목 변화 없음"  # FR-032 예외 5행
 
 
-def _save_sub(conn, run_id, state, sub, outcome: RunOutcome, inquiry_id: int, reply_id: int | None = None) -> str:
+def _save_sub(conn, run_id, state, sub, outcome: RunOutcome, inquiry_id: int, reply_id: int | None = None,
+              ticket_run: int | None = None, split: bool = False) -> str:
+    """하위 문의 하나의 결과. run_id = 그 하위 문의의 run, ticket_run = 티켓 run(T5를 쓰는 곳, AC-036-4).
+
+    split이면 T2는 티켓 run에 있으므로 여기서 쓰지 않고, 사용량은 그 하위 문의 몫만 센다(C-89).
+    """
     req = outcome.required.get(sub.sub_ticket_id)
     known = {r[0] for r in conn.execute("SELECT field FROM svc.inquiry_field WHERE sub_ticket_id = %s",
                                         (sub.sub_ticket_id,)).fetchall()}
@@ -274,13 +323,14 @@ def _save_sub(conn, run_id, state, sub, outcome: RunOutcome, inquiry_id: int, re
                sla_first_response_target_h = CASE WHEN priority_adjusted_by_agent THEN sla_first_response_target_h ELSE %s END,
                sla_resolution_target_h = CASE WHEN priority_adjusted_by_agent THEN sla_resolution_target_h ELSE %s END,
                evidence_json = %s,
-               reference_doc_id = %s, reference_section = %s, no_evidence_flag = %s, pipeline_error = NULL
+               reference_doc_id = %s, reference_section = %s, no_evidence_flag = %s, pipeline_error = %s
            WHERE sub_ticket_id = %s""",
         (sub.category_code, sub.evidence_sentences, sub.urgency_flag, sub.product_code, sub.error_code, sub.current_fw,
          sub.priority_final, sub.priority_rule_id, sub.routing_rule_id, sub.assigned_dept, sub.return_kind, sub.sla_id,
          req.required_info if req else [], provided, sub.missing_info, sub.missing_blocking_info,
          sub.fr_target_h, sub.res_target_h, _json(evidence), top.doc_id if top else None,
-         top.section_no if top else None, not blocking and not sub.doc_candidates, sub.sub_ticket_id),
+         top.section_no if top else None, not blocking and not sub.doc_candidates and not sub.pipeline_error, sub.pipeline_error,
+         sub.sub_ticket_id),
     )
     # 조정한 문의는 규칙값(priority_rule_id)만 새로 쓰고 조정값을 덮어쓰지 않는다(FR-011 예외 3행, C-69)
     added = [pf for pf in sub.provided_fields if pf.field not in known]  # 회신 재처리는 새 항목만(합집합)
@@ -298,12 +348,13 @@ def _save_sub(conn, run_id, state, sub, outcome: RunOutcome, inquiry_id: int, re
 
     # 실행 기록: 단계마다 결과 한 행("왜?"가 읽는다). 확인 표시 전체는 마지막 단계 결과의 flags에 둔다
     names = outcome.llm_field_names
-    steps: list[dict[str, Any]] = [
+    steps: list[dict[str, Any]] = [] if split else [
         {"name": "T2", "input_": {"field_names": names.get("L1", [])}, "output": {
             "language": state.language, "body_language": state.body_language,
             "body_language_uncertain": state.body_language_uncertain, "category_code": sub.category_code,
             "category_confidence": sub.category_confidence, "urgency_flag": sub.urgency_flag,
-            "urgency_evidence": sub.urgency_evidence, "evidence_sentences": sub.evidence_sentences}},
+            "urgency_evidence": sub.urgency_evidence, "evidence_sentences": sub.evidence_sentences}}]
+    steps += [
         {"name": "Q1", "input_": {"field_names": names.get("L2", [])}, "output": {
             "provided_fields": [pf.model_dump() for pf in sub.provided_fields], "product_code": sub.product_code,
             "error_code": sub.error_code, "current_fw": sub.current_fw, "return_reason": sub.return_reason,
@@ -321,7 +372,13 @@ def _save_sub(conn, run_id, state, sub, outcome: RunOutcome, inquiry_id: int, re
                                   "labels": req.labels if req else {}}},
         {"name": "Q6", "output": {"sla_id": sub.sla_id, "fr_target_h": sub.fr_target_h, "res_target_h": sub.res_target_h}},
     ]
-    if blocking:
+    if sub.pipeline_error and sub.failed_step in ("Q10", "T5"):  # 근거 단계까지는 마쳤다
+        steps.append({"name": "Q8", "output": {"doc_candidates": [c.model_dump() for c in sub.doc_candidates]}})
+        steps.append({"name": "Q9", "output": {"lookups": [lv.model_dump() for lv in sub.lookups]}})
+    if sub.pipeline_error:  # 이 하위 문의만 실패(FR-006 예외 3행). 그 뒤 단계는 없다
+        steps.append({"name": sub.failed_step or ("Q7" if blocking else "Q8"), "result": "FAILED", "error_kind": "UNKNOWN",
+                      "error": sub.pipeline_error, "output": {}})
+    elif blocking:
         steps.append({"name": "Q7", "output": {"requested": sub.missing_info}})
     else:
         steps.append({"name": "Q8", "output": {"doc_candidates": [c.model_dump() for c in sub.doc_candidates]}})
@@ -338,7 +395,14 @@ def _save_sub(conn, run_id, state, sub, outcome: RunOutcome, inquiry_id: int, re
             steps.append({"name": "Q10", "output": {"message_id": message_id, "lookups_used": draft.lookups_used}})
             add_self_check(conn, run_id, sub.sub_ticket_id, "DRAFT_CHECK", bool(draft.check and draft.check["passed"]),
                            {**(draft.check or {}), "body_sha256": body_sha(draft.body)}, message_id)
-            steps.append({"name": "Q11", "output": draft.check})
+            steps.append({"name": "Q11", "output": draft.compose["paragraph_check"] if draft.compose else draft.check})
+            if draft.compose:  # T5 메일 구성(FR-022). 티켓 run에 남긴다(AC-036-4)
+                t5 = {"message_id": message_id, "sub_ticket_id": sub.sub_ticket_id, **draft.compose,
+                      "check": draft.check}
+                if split:
+                    add_step(conn, ticket_run, "T5", output=t5, **_timing(outcome, "T5", sub.sub_ticket_id))
+                else:
+                    steps.append({"name": "T5", "output": t5})
         else:  # 정보 요청의 자체 대조 = 막는 항목 라벨 누락 검사(에이전트 설계서 6-1 3번)
             check = info_request_check(draft.body, sub.missing_blocking_info, req.labels if req else {})
             add_self_check(conn, run_id, sub.sub_ticket_id, "DRAFT_CHECK", check["passed"],
@@ -358,12 +422,12 @@ def _save_sub(conn, run_id, state, sub, outcome: RunOutcome, inquiry_id: int, re
     last = steps[-1]["name"]
     for step in steps:
         name = step.pop("name")
-        add_step(conn, run_id, name, **step, **_timing(outcome, name))
+        add_step(conn, run_id, name, **step, **_timing(outcome, name, sub.sub_ticket_id if split else None))
     return last
 
 
-def _timing(outcome: RunOutcome, step_name: str) -> dict[str, Any]:
-    return outcome.runlog.step_fields(step_name) if outcome.runlog is not None else {}
+def _timing(outcome: RunOutcome, step_name: str, sub_ticket_id: str | None = None) -> dict[str, Any]:
+    return outcome.runlog.step_fields(step_name, sub_ticket_id) if outcome.runlog is not None else {}
 
 
 def _chunk_quote(conn: Connection, chunk_id: str | None, title: str) -> str:
@@ -474,6 +538,11 @@ def recheck(conn: Connection, sub_ticket_id: str, body: str) -> dict[str, Any]:
     sources, lookups, provided, _ = draft_sources(conn, sub_ticket_id)
     allowed = ([s.text for s in sources] + [str(v) for _, v, _, _ in lookups]
                + [v for name, v in provided if name in CHECK_PROVIDED_FIELDS and v])
+    # 복합 문의 메일은 상태 목록의 문의 번호도 허용한다(FR-022 처리 5, 에이전트 설계서 6-1 2번)
+    allowed += [str(r[0]) for r in conn.execute(
+        """SELECT s.seq FROM svc.sub_ticket s JOIN svc.ticket t ON t.ticket_id = s.ticket_id
+            WHERE t.multi_yn AND s.ticket_id = (SELECT ticket_id FROM svc.sub_ticket WHERE sub_ticket_id = %s)""",
+        (sub_ticket_id,)).fetchall()]
     return check_draft(body, {(s.doc_id, s.section_no) for s in sources}, allowed).as_dict()
 
 

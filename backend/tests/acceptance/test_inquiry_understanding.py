@@ -151,15 +151,19 @@ def test_prompt_uses_customer_message_and_definitions(conn):
 # --- FR-007 ---
 
 
-def test_urgency_highest_across_requests(conn):
-    """FR-007 처리 3: 요청이 둘이면 가장 높은 긴급도를 쓰고 복합 문의 가능을 표시한다."""
+def test_requests_split_keep_own_urgency(conn):
+    """FR-006 처리 4(2순위, add-compound-inquiry): 요청이 둘이면 하위 문의 둘로 나누고 각자의 긴급도를 쓴다.
+
+    1순위는 하위 문의 하나에 가장 높은 긴급도를 모았다. 이제 SAFETY는 그 요청의 하위 문의에 남는다.
+    """
     second = {"seq": 2, "category_code": "DEFECT", "category_confidence": 0.9, "evidence_sentences": ["smoke"],
               "urgency_flag": "SAFETY", "urgency_evidence": "smoke", "query_en": "q2"}
     fake = FakeTransport([l1_reply(urgency="DEADLINE", extra=[second])], [EMPTY_L2])
     out = understand_ticket(conn, fake, ticket_input(conn, "CSV1-000004"))
-    sub = out.state.sub_tickets[0]
-    assert sub.category_code == "QUOTE" and sub.urgency_flag == "SAFETY"
-    assert "복합 문의 가능(FR-006, 2순위)" in sub.flags
+    first, other = out.state.sub_tickets
+    assert out.state.multi_yn and (first.seq, other.seq) == (1, 2)
+    assert (first.category_code, first.urgency_flag) == ("QUOTE", "DEADLINE")
+    assert (other.category_code, other.urgency_flag, other.sub_ticket_id) == ("DEFECT", "SAFETY", "CSV1-000004-2")
 
 
 def test_same_category_merged(conn):
@@ -169,7 +173,8 @@ def test_same_category_merged(conn):
     fake = FakeTransport([l1_reply(extra=[dup])], [EMPTY_L2])
     sub = understand_ticket(conn, fake, ticket_input(conn, "CSV1-000004")).state.sub_tickets[0]
     assert sub.evidence_sentences == ["s1", "s2"]
-    assert "복합 문의 가능(FR-006, 2순위)" not in sub.flags
+    assert len(understand_ticket(conn, FakeTransport([l1_reply(extra=[dup])], [EMPTY_L2]),
+                                 ticket_input(conn, "CSV1-000004")).state.sub_tickets) == 1
 
 
 # --- FR-008 (값 정리, 대역) ---
