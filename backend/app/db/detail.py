@@ -9,8 +9,10 @@ from typing import Any
 
 from psycopg import Connection
 
+from app.db.replies import customer_followups, messages
 from app.db.store import body_sha, check_type_of, latest_gloss
 from app.llm.verify import VerifyResult
+from app.pipeline.reprocess import PIPELINE_TRIGGERS
 from app.pipeline.state import VerifyFinding
 from app.sla.adjust import adjustments
 from app.sla.alerts import alert_history
@@ -44,15 +46,17 @@ def ticket_detail(conn: Connection, ticket_id: str) -> dict[str, Any] | None:
          WHERE t.ticket_id = %s""", (ticket_id,))
     if ticket is None:
         return None
-    run = _row(conn, """SELECT run_id, status, last_step, started_at_utc, finished_at_utc FROM svc.agent_run
-                         WHERE ticket_id = %s AND trigger = 'INTAKE' ORDER BY run_id DESC LIMIT 1""", (ticket_id,))
+    run = _row(conn, """SELECT run_id, trigger, status, last_step, started_at_utc, finished_at_utc FROM svc.agent_run
+                         WHERE ticket_id = %s AND trigger = ANY(%s) ORDER BY run_id DESC LIMIT 1""",
+               (ticket_id, list(PIPELINE_TRIGGERS)))  # 접수 또는 고객 회신 재처리(FR-032)
     processing = run is None or run["status"] is None
     rows = _rows(conn, "SELECT * FROM svc.sub_ticket WHERE ticket_id = %s ORDER BY seq", (ticket_id,))
     sla = clocks(conn, [r["sub_ticket_id"] for r in rows])
     subs = [_sub_detail(conn, s, run) | _state(conn, s, sla.get(s["sub_ticket_id"])) for s in rows]
     summary = _row(conn, """SELECT status, rep_sub_ticket_id, rep_res_status, rep_remaining_h, open_count, inquiry_count
                               FROM svc.v_ticket_summary WHERE ticket_id = %s""", (ticket_id,))
-    return {"ticket": ticket, "summary": summary, "run": run, "processing": processing, "sub_tickets": subs}
+    return {"ticket": ticket, "summary": summary, "run": run, "processing": processing, "sub_tickets": subs,
+            "messages": messages(conn, ticket_id)}  # FR-035 처리 7
 
 
 def _state(conn: Connection, sub: dict[str, Any], sla: dict[str, Any] | None) -> dict[str, Any]:
@@ -66,6 +70,7 @@ def _state(conn: Connection, sub: dict[str, Any], sla: dict[str, Any] | None) ->
         "history": hist,
         "wait_intervals": wait_intervals(hist),
         "alerts": alert_history(conn, sub["sub_ticket_id"]),  # FR-027 출력
+        "customer_followups": customer_followups(conn, sub["sub_ticket_id"]),  # FR-032 처리 6 (C-70)
     }
 
 
@@ -160,7 +165,7 @@ def _evidence_rows(conn, sub, out, flags, labels, status) -> list[dict[str, Any]
 
 
 def _drafts(conn: Connection, sub: dict[str, Any], labels: dict[str, str], failed_count: int) -> list[dict[str, Any]]:
-    drafts = _rows(conn, """SELECT message_id, message_type, message_status, language, body, sent_at_utc AS made_at_utc,
+    drafts = _rows(conn, """SELECT message_id, message_no, message_type, message_status, language, body, sent_at_utc AS made_at_utc,
                                    superseded_at
                               FROM svc.ticket_message
                              WHERE sub_ticket_id = %s AND sender = 'SYSTEM' AND message_type IN ('INFO_REQUEST','FINAL_REPLY')
@@ -173,12 +178,35 @@ def _drafts(conn: Connection, sub: dict[str, Any], labels: dict[str, str], faile
         sent = _row(conn, """SELECT message_id, sent_at_utc, sent_by_name, edited_yn, override_check, body
                                FROM svc.ticket_message WHERE source_draft_id = %s AND message_status = 'SENT'""",
                     (d["message_id"],))
-        out.append({**d,
+        re_request = d["message_type"] == "INFO_REQUEST" and _re_request(conn, sub["sub_ticket_id"], d)
+        out.append({**d, "re_request": re_request,
                     "gloss": None if gloss is None else {"language": gloss.language, "body": gloss.body,
                                                          "numbers_match": gloss.numbers_match, "made_at_utc": gloss.made_at},
                     "check": check, "verify": verify, "sent": sent,
                     "review_marks": review_marks(d, sub, labels, failed_count, check, verify)})
     return out
+
+
+def _requested(conn: Connection, message_id: int | None) -> set[str] | None:
+    """정보 요청 초안을 만든 실행의 Q7 요청 항목(실행 기록에서 읽는다. 저장 열이 없다)."""
+    row = conn.execute(
+        """SELECT q7.output_json -> 'requested' FROM svc.agent_step q13
+             JOIN svc.agent_step q7 ON q7.run_id = q13.run_id AND q7.step_name = 'Q7'
+            WHERE q13.step_name = 'Q13' AND (q13.output_json ->> 'message_id')::bigint = %s
+            ORDER BY q7.step_order DESC LIMIT 1""", (message_id,)).fetchone()
+    return set(row[0]) if row and row[0] is not None else None
+
+
+def _re_request(conn: Connection, sub_ticket_id: str, draft: dict[str, Any]) -> bool:
+    """FR-032 처리 4 "이전 요청과 같은 항목이면 재요청": 이 초안의 요청 항목이 모두 앞서 발송한 정보 요청에 있었으면 참(C-73)."""
+    prev = conn.execute(
+        """SELECT source_draft_id FROM svc.ticket_message WHERE sub_ticket_id = %s AND message_type = 'INFO_REQUEST'
+              AND message_status = 'SENT' AND message_no < %s ORDER BY message_no DESC LIMIT 1""",
+        (sub_ticket_id, draft["message_no"])).fetchone()
+    if prev is None:
+        return False
+    before, now = _requested(conn, prev[0]), _requested(conn, draft["message_id"])
+    return bool(before and now and now <= before)
 
 
 def _latest_check(conn: Connection, message_id: int, check_type: str) -> dict[str, Any] | None:
