@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from app.api.deps import Clients, get_clients, get_conn, get_connect
 from app.db.detail import ticket_detail
+from app.db.runs import latest_pipeline_run
 from app.db.replies import ReplyError, record_reply
 from app.db.store import IntakeError, create_ticket, save_outcome, start_run, ticket_input
 from app.pipeline.graph import RunOutcome, run_ticket
@@ -23,15 +24,18 @@ router = APIRouter()
 class TicketIn(BaseModel):
     """접수 입력: gold.v_inputs의 입력 열 + 제목·출처(svc.ticket 열)."""
 
-    channel: str
-    customer_id: str
+    channel: str | None = None  # 빠진 칸도 항목별 오류로 돌려준다(FR-001 처리 1)
+    customer_id: str | None = None
     product_code: str | None = None
-    language: str
-    inquiry_body: str
+    language: str | None = None
+    inquiry_body: str | None = None
     received_at_utc: datetime | None = None
     inquiry_subject: str | None = None
-    source: str = "SIMULATOR"
+    source: str | None = None  # SIMULATOR / LOAD / REPLAY. 비우면 원본 번호로 정한다
     source_ticket_id: str | None = None
+    contact_name: str | None = None  # 보낸 사람 연락처 원문(FR-001 입력 표 v1.5 가-7). 처리 흐름에는 넣지 않는다
+    contact_email: str | None = None
+    contact_phone: str | None = None
 
 
 MSG_REPROCESS_FAILED = "자동 처리 실패. 다시 처리"  # FR-032 예외 4행
@@ -46,13 +50,16 @@ class ReplyIn(BaseModel):
     target_sub_ticket_ids: list[str] | None = None
 
 
-def process_ticket(connect: Callable, clients: Clients, ticket_id: str, trigger: str = "INTAKE") -> None:
+def process_ticket(connect: Callable, clients: Clients, ticket_id: str, trigger: str = "INTAKE",
+                   run_id: int | None = None) -> None:
     """백그라운드 처리: 실행 기록을 열고 처리 흐름을 돌려 결과를 저장한다(§2-4).
 
     trigger: 접수는 INTAKE, 다시 처리는 RETRY. 다시 처리도 새 run이고 이전 run은 남는다(FR-036 처리 5).
+    run_id: 요청이 미리 연 실행(다시 시도는 응답 전에 열어 화면이 바로 "처리 중"을 본다).
     """
     with connect() as conn:
-        run_id = start_run(conn, ticket_id, None, trigger)  # 티켓 그래프 실행(schema.sql agent_run 주석)
+        if run_id is None:
+            run_id = start_run(conn, ticket_id, None, trigger)  # 티켓 그래프 실행(테이블 정의서 agent_run.ticket_id)
         runlog = RunLog.from_settings()
         try:
             with conn.transaction():  # 처리 흐름은 읽기만 한다. 오류가 나도 연결을 깨끗이 둔다
@@ -87,10 +94,39 @@ def post_ticket(data: TicketIn, background: BackgroundTasks, conn: Connection = 
                 connect: Callable = Depends(get_connect), clients: Clients = Depends(get_clients)) -> dict:
     try:
         ticket_id = create_ticket(conn, data.model_dump())
-    except IntakeError as exc:
-        raise HTTPException(400, str(exc)) from exc
+    except IntakeError as exc:  # 항목별 오류(FR-001 처리 1, 화면 정의서 v1 SCR-01-11)
+        raise HTTPException(400, {"message": str(exc), "errors": [{"field": f, "message": m} for f, m in exc.errors]}) from exc
     background.add_task(process_ticket, connect, clients, ticket_id)
     return {"ticket_id": ticket_id, "processing": True}
+
+
+MSG_PROCESSING = "처리 중"
+MSG_NOTHING_TO_RETRY = "다시 처리할 실패가 없음"
+
+
+@router.post("/tickets/{ticket_id}/reprocess", status_code=202)
+def reprocess(ticket_id: str, background: BackgroundTasks, conn: Connection = Depends(get_conn),
+              connect: Callable = Depends(get_connect), clients: Clients = Depends(get_clients)) -> dict:
+    """다시 시도: 마지막 처리 흐름 실행이 실패한 티켓을 같은 티켓으로 새 run(RETRY)에서 다시 돌린다(AC-001-4, §2-4).
+
+    실패가 아닌 티켓의 다시 처리(이전 DRAFT superseded)는 티켓 상세 전체판(FR-030)에서 붙인다(C-98).
+    """
+    run = latest_pipeline_run(conn, ticket_id)
+    if run is None:
+        if conn.execute("SELECT 1 FROM svc.ticket WHERE ticket_id = %s", (ticket_id,)).fetchone() is None:
+            raise HTTPException(404, "문의를 찾을 수 없음")
+        raise HTTPException(409, MSG_NOTHING_TO_RETRY)
+    if run["busy"]:
+        raise HTTPException(409, MSG_PROCESSING)
+    if run["status"] != "FAILED":
+        raise HTTPException(409, MSG_NOTHING_TO_RETRY)
+    with conn.transaction():  # 같은 티켓의 다시 시도가 겹치지 않게 잠그고 실행을 먼저 연다
+        conn.execute("SELECT 1 FROM svc.ticket WHERE ticket_id = %s FOR UPDATE", (ticket_id,))
+        if latest_pipeline_run(conn, ticket_id)["busy"]:
+            raise HTTPException(409, MSG_PROCESSING)
+        run_id = start_run(conn, ticket_id, None, "RETRY")
+    background.add_task(process_ticket, connect, clients, ticket_id, "RETRY", run_id)
+    return {"ticket_id": ticket_id, "processing": True, "run_id": run_id}
 
 
 @router.get("/tickets/{ticket_id}")

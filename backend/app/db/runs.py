@@ -17,10 +17,13 @@ MSG_INTERRUPTED = "UNKNOWN: 처리 중단(서버 재시작)"  # FR-036 예외 2�
 def pipeline_run(alias: str = "r") -> str:
     """처리 흐름 전체를 도는 실행인지 가리는 SQL 조건(접수·고객 회신·다시 처리).
 
-    RETRY는 대역 다시 만들기·[다시 검증]에도 쓰이므로(§6-5) 처리 흐름 단계(T2·Q1·Q2)를 남긴 RETRY만 넣는다(C-87).
+    RETRY는 대역 다시 만들기·[다시 검증]에도 쓰인다(§6-5). 그 둘은 늘 하위 문의를 가리키므로, 티켓 실행(sub_ticket_id
+    없음)인 RETRY와 처리 흐름 단계(T2·Q1·Q2)를 남긴 RETRY(복합 문의의 하위 문의 run)만 넣는다. 그래서 다시 처리가
+    도는 동안(단계 쓰기 전)에도 처리 중으로 보인다(C-87 해소).
     """
-    return (f"({alias}.trigger IN ('INTAKE','CUSTOMER_REPLY') OR ({alias}.trigger = 'RETRY' AND EXISTS "
-            f"(SELECT 1 FROM svc.agent_step ps WHERE ps.run_id = {alias}.run_id AND ps.step_name IN ('T2','Q1','Q2'))))")
+    return (f"({alias}.trigger IN ('INTAKE','CUSTOMER_REPLY') OR ({alias}.trigger = 'RETRY' AND ({alias}.sub_ticket_id IS NULL "
+            f"OR EXISTS (SELECT 1 FROM svc.agent_step ps WHERE ps.run_id = {alias}.run_id "
+            f"AND ps.step_name IN ('T2','Q1','Q2')))))")
 
 
 def for_sub(alias: str = "r") -> str:
@@ -122,3 +125,18 @@ def run_steps(conn: Connection, run_id: int) -> dict[str, Any] | None:
                prompt_version, input_tokens, output_tokens, llm_calls, input_json, output_json
           FROM svc.agent_step WHERE run_id = %s ORDER BY step_order""", (run_id,))
     return {"run": run[0], "steps": steps}
+
+
+def latest_pipeline_run(conn: Connection, ticket_id: str) -> dict[str, Any] | None:
+    """다시 시도(AC-001-4)가 보는 실행: 티켓의 마지막 접수·다시 처리 티켓 실행 {run_id, trigger, status}.
+
+    busy = 이 티켓에서 끝나지 않은 처리 흐름 실행(고객 회신 재처리 포함)이 있음.
+    """
+    row = conn.execute("""SELECT r.run_id, r.trigger, r.status FROM svc.agent_run r
+                           WHERE r.ticket_id = %s AND r.sub_ticket_id IS NULL AND r.trigger IN ('INTAKE','RETRY')
+                           ORDER BY r.run_id DESC LIMIT 1""", (ticket_id,)).fetchone()
+    if row is None:
+        return None
+    busy = conn.execute(f"""SELECT EXISTS (SELECT 1 FROM svc.agent_run r WHERE r.ticket_id = %s AND r.status IS NULL
+                                              AND {pipeline_run()})""", (ticket_id,)).fetchone()[0]
+    return {"run_id": row[0], "trigger": row[1], "status": row[2], "busy": busy}

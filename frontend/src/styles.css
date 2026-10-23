@@ -91,3 +91,18 @@ main { padding: 16px; }
 .lines { padding-left: 0; list-style: none; }
 .kv th { text-align: left; padding-right: 8px; vertical-align: top; color: var(--gray); font-weight: normal; }
 .chunk { white-space: pre-wrap; background: #fafbfc; padding: 8px; border-radius: 4px; }
+
+/* SCR-01 접수 시뮬레이터 */
+.banner { background: var(--surface-blue); color: var(--ls-blue); padding: 6px 10px; border-radius: 4px; margin: 0 0 12px; }
+.intake-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.intake-head h2 { margin: 0 8px 0 0; font-size: 18px; color: var(--ls-blue); }
+.intake-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; max-width: 900px; }
+.intake-form label, .intake-form fieldset { display: flex; flex-direction: column; gap: 4px; }
+.intake-form .wide { grid-column: 1 / -1; }
+.intake-form select, .intake-form textarea { font: inherit; padding: 4px 8px; border: 1px solid var(--line); border-radius: 4px; }
+.intake-form .contact { flex-direction: row; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 4px; }
+.intake-form .contact input { flex: 1; min-width: 160px; }
+.intake-buttons { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
+.req { color: var(--red); }
+@media (max-width: 700px) { .intake-form { grid-template-columns: 1fr; } }
+.h04 .retry { margin-left: 8px; }

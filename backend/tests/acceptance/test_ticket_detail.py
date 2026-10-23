@@ -133,11 +133,11 @@ def test_ac_038_1_raw_stored_log_masked(api):
 
 
 def test_unknown_customer_rejected(api):
-    """FR-010 D25: 미등록 고객은 접수 거부(400)."""
+    """FR-010 D25: 미등록 고객은 접수 거부(400). 문구는 FR-001 예외 1행(변경 add-intake-simulator)."""
     client, _, conn = api
     data = gold_input(conn, "CSV1-000004") | {"customer_id": "NO-SUCH"}
     res = client.post("/tickets", json=data)
-    assert res.status_code == 400 and res.json()["detail"] == "등록되지 않은 고객"
+    assert res.status_code == 400 and res.json()["detail"]["message"] == "고객 ID를 찾을 수 없음"
     assert client.get("/tickets/NO-SUCH").status_code == 404
 
 

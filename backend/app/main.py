@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from fastapi import FastAPI
 
-from app.api import chunks, messages, runs, sub_tickets, tickets
+from app.api import chunks, gold_inputs, messages, ref_lists, runs, sub_tickets, tickets
 from app.api.deps import open_connection
 from app.config import get_settings
 from app.db.runs import close_stale_runs
@@ -36,3 +36,5 @@ app.include_router(messages.router)
 app.include_router(chunks.router)
 app.include_router(sub_tickets.router)
 app.include_router(runs.router)
+app.include_router(ref_lists.router)
+app.include_router(gold_inputs.router)

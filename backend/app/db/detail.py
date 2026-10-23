@@ -12,7 +12,7 @@ from psycopg import Connection
 from app.db.replies import customer_followups, messages
 from app.db.store import body_sha, check_type_of, latest_gloss
 from app.llm.verify import VerifyResult
-from app.db.runs import pipeline_run, run_for_sub
+from app.db.runs import latest_pipeline_run, pipeline_run, run_for_sub
 from app.pipeline.reprocess import last_pipeline_step
 from app.pipeline.state import VerifyFinding
 from app.sla.adjust import adjustments
@@ -42,7 +42,8 @@ def ticket_detail(conn: Connection, ticket_id: str) -> dict[str, Any] | None:
     ticket = _row(conn, """
         SELECT t.ticket_id, t.received_at_utc, t.channel, t.language, t.body_language, t.body_language_uncertain,
                t.customer_id, t.customer_tier, c.company_masked, c.country, t.source, t.source_ticket_id, t.multi_yn,
-               EXISTS (SELECT 1 FROM eval.gold_set g WHERE g.source_ticket_id = t.source_ticket_id) AS gold_set
+               EXISTS (SELECT 1 FROM eval.gold_set g
+                       WHERE t.source_ticket_id IN (g.source_ticket_id, g.gold_set_id)) AS gold_set
           FROM svc.ticket t JOIN ref.customer c ON c.customer_id = t.customer_id
          WHERE t.ticket_id = %s""", (ticket_id,))
     if ticket is None:
@@ -53,6 +54,8 @@ def ticket_detail(conn: Connection, ticket_id: str) -> dict[str, Any] | None:
                            WHERE r.ticket_id = %s AND {pipeline_run()}
                            ORDER BY r.run_id DESC LIMIT 1""", (ticket_id,))
     processing = run is None or run["status"] is None
+    retry = latest_pipeline_run(conn, ticket_id)  # [다시 시도]를 보일지: 서버의 다시 시도 조건과 같다(AC-001-4)
+    can_retry = retry is not None and retry["status"] == "FAILED" and not retry["busy"]
     rows = _rows(conn, "SELECT * FROM svc.sub_ticket WHERE ticket_id = %s ORDER BY seq", (ticket_id,))
     sla = clocks(conn, [r["sub_ticket_id"] for r in rows])
     # 하위 문의마다 자기 run(복합 문의는 하위 문의별 run, AC-036-4)
@@ -62,7 +65,7 @@ def ticket_detail(conn: Connection, ticket_id: str) -> dict[str, Any] | None:
     ticket["category_code"] = ";".join(r["category_code"] for r in rows if r["category_code"]) or None
     summary = _row(conn, """SELECT status, rep_sub_ticket_id, rep_res_status, rep_remaining_h, open_count, inquiry_count
                               FROM svc.v_ticket_summary WHERE ticket_id = %s""", (ticket_id,))
-    return {"ticket": ticket, "summary": summary, "run": run, "processing": processing, "sub_tickets": subs,
+    return {"ticket": ticket, "summary": summary, "run": run, "processing": processing, "can_retry": can_retry, "sub_tickets": subs,
             "messages": messages(conn, ticket_id)}  # FR-035 처리 7
 
 
