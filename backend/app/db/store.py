@@ -8,8 +8,10 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import json
 from datetime import datetime, timezone
+from collections.abc import Callable
 from typing import Any
 
 from psycopg import Connection
@@ -17,7 +19,7 @@ from psycopg.types.json import Jsonb
 
 from app.checks.draft_check import check_draft
 from app.config import get_settings
-from app.llm.drafts import CHECK_PROVIDED_FIELDS, Draft, Gloss, Source
+from app.llm.drafts import CHECK_PROVIDED_FIELDS, Draft, Gloss, Source, write_gloss
 from app.masking import mask_fields, mask_text
 from app.pipeline.graph import RunOutcome
 from app.pipeline.reprocess import last_pipeline_step
@@ -365,6 +367,28 @@ def insert_gloss(conn: Connection, message_id: int, gloss: Gloss) -> None:
         "INSERT INTO svc.message_gloss (message_id, language, body, numbers_match, made_at_utc) VALUES (%s, %s, %s, %s, %s)",
         (message_id, gloss.language, gloss.body, gloss.numbers_match, gloss.made_at),
     )
+
+
+def gloss_reminders(transport_factory) -> Callable:
+    """주기 점검에 넘길 리마인드 대역 함수(L7, 기술 명세서 §6-4 주기 점검 2). 실패하면 대역 없이 둔다(FR-039 예외)."""
+
+    def run(conn: Connection, reminders: list[dict]) -> list[int]:
+        done: list[int] = []
+        if not reminders:
+            return done
+        try:
+            transport = transport_factory()
+        except Exception as exc:  # noqa: BLE001 — 키가 없으면 대역만 빠진다
+            logging.getLogger(__name__).warning("리마인드 대역 없음: %s", exc)
+            return done
+        for r in reminders:
+            draft = write_gloss(transport, Draft(r["sub_ticket_id"], "PROGRESS_NOTICE", r["language"], r["body"]))
+            if draft.gloss:
+                insert_gloss(conn, r["message_id"], draft.gloss)
+                done.append(r["message_id"])
+        return done
+
+    return run
 
 
 def save_verify(conn: Connection, run_id: int, sub_ticket_id: str, message_id: int, body: str, result) -> None:
