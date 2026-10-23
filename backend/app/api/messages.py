@@ -1,6 +1,6 @@
 """초안 다루기: 임시 저장, 대역 다시 만들기, 다시 검증, 승인·발송 (FR-031, FR-039, FR-049, 기술 명세서 v1.4 §8-1).
 
-발송은 SENT 행을 새로 쓰는 이 API만 한다(CLAUDE.md 규칙 3). 상태 전이는 하지 않는다(2순위 FR-025).
+발송은 SENT 행을 새로 쓰는 이 API만 한다(CLAUDE.md 규칙 3). 발송 뒤 상태 전이는 FR-025·FR-031 처리 4.
 """
 
 from __future__ import annotations
@@ -17,6 +17,7 @@ from app.db.store import (add_self_check, add_step, body_sha, check_body, draft_
                           insert_gloss, intake_step, load_draft, save_verify, send_draft, start_run, update_draft_body)
 from app.llm.drafts import FLAG_GLOSS_FAILED, write_gloss
 from app.llm.verify import KIND_NAMES, verify_draft
+from app.status.transitions import ConcurrentChange
 
 router = APIRouter()
 
@@ -31,6 +32,7 @@ class BodyIn(BaseModel):
 class SendIn(BaseModel):
     final_body: str
     override_check: bool = False
+    expected_version: int | None = None  # 상세를 읽을 때의 version (FR-025 예외 2행)
 
 
 def _draft(conn: Connection, message_id: int) -> dict:
@@ -130,10 +132,16 @@ def post_send(message_id: int, data: SendIn, conn: Connection = Depends(get_conn
     if issues and not data.override_check:
         return JSONResponse(status_code=409, content={"detail": "확인 필요", "issues": issues, "notes": notes})
     try:
-        sent_id = send_draft(conn, draft, data.final_body, x_agent_id.strip(), bool(issues) and data.override_check)
+        sent_id, refused = send_draft(conn, draft, data.final_body, x_agent_id.strip(),
+                                      bool(issues) and data.override_check, expected_version=data.expected_version)
     except errors.UniqueViolation as exc:  # 같은 초안의 두 번째 SENT (FR-031 예외 4행)
         raise HTTPException(409, MSG_SENT) from exc
-    return {"sent_message_id": sent_id, "override_check": bool(issues) and data.override_check, "notes": notes}
+    except ConcurrentChange as exc:  # FR-025 예외 2행
+        raise HTTPException(409, str(exc)) from exc
+    if refused:  # 발송은 기록, 상태는 그대로 (FR-031 예외 3행)
+        notes = [*notes, refused]
+    return {"sent_message_id": sent_id, "override_check": bool(issues) and data.override_check, "notes": notes,
+            "status_changed": refused is None}
 
 
 def _send_issues(conn: Connection, draft: dict, final_body: str) -> tuple[list[dict], list[str]]:

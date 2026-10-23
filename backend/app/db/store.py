@@ -20,6 +20,7 @@ from app.config import get_settings
 from app.llm.drafts import CHECK_PROVIDED_FIELDS, Draft, Gloss, Source
 from app.masking import mask_fields, mask_text
 from app.pipeline.graph import RunOutcome
+from app.status.transitions import ConcurrentChange, TransitionRefused, current, transition
 
 MAX_BODY = 2000  # svc.ticket.inquiry_body CHECK
 
@@ -190,7 +191,32 @@ def save_outcome(conn: Connection, run_id: int, ticket_id: str, outcome: RunOutc
         last = "Q6"
         for sub in state.sub_tickets:
             last = _save_sub(conn, run_id, state, sub, outcome, inquiry_id)
-        finish_run(conn, run_id, "SUCCESS", last)
+        finish_run(conn, run_id, _pipeline_done(conn, run_id, state.sub_tickets), last)
+
+
+def _pipeline_done(conn: Connection, run_id: int, subs) -> str:
+    """T6: 처리 흐름이 끝나면 NEW → IN_PROGRESS (기술 명세서 §2-2 T6, FR-001 처리 4).
+
+    NEW가 아닌 문의(다시 처리 등)는 그대로 둔다. 전이가 실패하면 NEW로 두고 run PARTIAL(§2-2 T6 실패 칸).
+    """
+    now = _now()
+    moved, failed = [], []
+    for sub in subs:
+        status, _ = current(conn, sub.sub_ticket_id)
+        if status != "NEW":
+            continue
+        try:
+            transition(conn, sub.sub_ticket_id, "IN_PROGRESS", "PIPELINE_DONE", now, "SYSTEM")
+            moved.append(sub.sub_ticket_id)
+        except (TransitionRefused, ConcurrentChange) as exc:
+            failed.append(f"{sub.sub_ticket_id}: {exc}")
+    if failed:
+        add_step(conn, run_id, "T6", output={"moved": moved}, result="FAILED", error_kind="VALIDATION",
+                 error="; ".join(failed))
+        return "PARTIAL"
+    if moved:
+        add_step(conn, run_id, "T6", output={"moved": moved, "to_status": "IN_PROGRESS"})
+    return "SUCCESS"
 
 
 def _save_failure(conn: Connection, run_id: int, ticket_id: str, outcome: RunOutcome) -> None:
@@ -412,11 +438,30 @@ def update_draft_body(conn: Connection, message_id: int, body: str) -> None:
                  (body, message_id))
 
 
-def send_draft(conn: Connection, draft: dict[str, Any], final_body: str, agent_id: str, override: bool) -> int:
-    """SENT 행을 새로 쓰고 초안을 APPROVED로, 처음이면 1차 응답 시각(FR-031 처리 3·5). 상태 전이는 하지 않는다."""
+MSG_CLOSED_RECORDED = "종료된 문의입니다. 메시지만 기록됨"  # FR-031 예외 3행
+SEND_TRANSITIONS = {  # 발송 뒤 전이 (FR-031 처리 4, FR-025 전이표)
+    "INFO_REQUEST": ("WAITING_CUSTOMER", "INFO_REQUEST_SENT"),
+    "FINAL_REPLY": ("RESOLVED", "FINAL_REPLY_SENT"),
+}
+
+
+def send_draft(conn: Connection, draft: dict[str, Any], final_body: str, agent_id: str, override: bool,
+               expected_version: int | None = None) -> tuple[int, str | None]:
+    """SENT 행을 새로 쓰고 초안을 APPROVED로, 처음이면 1차 응답 시각(FR-031 처리 3·5), 상태 전이(처리 4).
+
+    (SENT 행 번호, 전이가 거부됐을 때의 안내)를 돌려준다.
+    - 다른 사람이 먼저 바꿨으면(version 다름) ConcurrentChange, 아무것도 쓰지 않는다(FR-025 예외 2행).
+    - 전이표에 없는 전이면 발송 기록은 남기고 상태는 그대로, 실행 로그를 남긴다(FR-031 예외 3행).
+    """
     now = _now()
     _, mask_count = mask_text(final_body)
+    refused: str | None = None
     with conn.transaction():
+        to_status, event = SEND_TRANSITIONS[draft["message_type"]]
+        try:
+            transition(conn, draft["sub_ticket_id"], to_status, event, now, agent_id, expected_version=expected_version)
+        except TransitionRefused as exc:
+            refused = MSG_CLOSED_RECORDED if exc.status == "CLOSED" else f"{exc} — 메시지만 기록됨"
         (sent_id,) = conn.execute(
             """INSERT INTO svc.ticket_message (ticket_id, sub_ticket_id, sender, message_type, message_status, sent_at_utc,
                    language, body, source_draft_id, edited_yn, sent_by_name, override_check, mask_count)
@@ -431,4 +476,10 @@ def send_draft(conn: Connection, draft: dict[str, Any], final_body: str, agent_i
              WHERE sub_ticket_id = %s""",
             (now, draft["message_type"] == "INFO_REQUEST", draft["sub_ticket_id"]),
         )
-    return sent_id
+    if refused:  # 실행 로그 (FR-031 예외 3행, FR-025 예외 1행)
+        run_id = start_run(conn, draft["ticket_id"], draft["sub_ticket_id"], "AGENT_EDIT")
+        with conn.transaction():
+            add_step(conn, run_id, "T6", input_={"message_id": sent_id, "event_kind": event, "to_status": to_status},
+                     result="FAILED", error_kind="VALIDATION", error=refused)
+            finish_run(conn, run_id, "PARTIAL", "T6")
+    return sent_id, refused

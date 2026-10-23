@@ -102,11 +102,15 @@ def send(api, draft, body=None, override=False, agent="TS_LV_AGENT_09"):
 
 
 def test_ac_015_4_draft_only_status_unchanged(api):
-    """AC-015-4: 초안은 DRAFT 행으로만 있고 하위 문의 상태는 NEW."""
+    """AC-015-4: 초안은 DRAFT 행으로만 있고, 초안을 만든다고 상태가 바뀌지 않는다.
+
+    처리 흐름이 끝나면 T6이 NEW → IN_PROGRESS로 바꾸므로 발송 전 상태는 IN_PROGRESS다(add-status-and-sla, C-51).
+    """
     detail = info_request(api)
     draft = only_draft(detail)
     assert draft["message_type"] == "INFO_REQUEST" and draft["message_status"] == "DRAFT" and draft["sent"] is None
-    assert detail["sub_tickets"][0]["sub_ticket"]["status"] == "NEW"
+    assert detail["sub_tickets"][0]["sub_ticket"]["status"] == "IN_PROGRESS"
+    assert [h["event_kind"] for h in detail["sub_tickets"][0]["history"]] == ["INTAKE", "PIPELINE_DONE"]
     assert detail["ticket"]["source_ticket_id"] == "CSV1-000017" and detail["ticket"]["ticket_id"] != "CSV1-000017"
 
 
@@ -183,7 +187,7 @@ def test_ac_024_4_safety_mark(api):
 
 
 def test_ac_031_1_send_info_request(api):
-    """AC-031-1: 정보 요청 발송 → INFO_REQUEST SENT 행, 1차 응답 시각 = 발송 시각(상태 전이는 2순위)."""
+    """AC-031-1: 정보 요청 발송 → INFO_REQUEST SENT 행, 상태 WAITING_CUSTOMER, 1차 응답 시각 = 발송 시각."""
     draft = only_draft(info_request(api))
     res = send(api, draft)
     assert res.status_code == 200, res.text
@@ -194,7 +198,7 @@ def test_ac_031_1_send_info_request(api):
     first, sent_flag, status = conn.execute(
         "SELECT first_response_at_utc, info_request_sent, status FROM svc.sub_ticket WHERE sub_ticket_id = %s",
         (f"{draft_ticket(conn, draft)}-1",)).fetchone()
-    assert first == sent[3] and sent_flag and status == "NEW"
+    assert first == sent[3] and sent_flag and status == "WAITING_CUSTOMER"
 
 
 def test_info_request_label_removed_needs_confirmation(api):
@@ -229,6 +233,9 @@ def test_ac_031_2_and_039_2_edited_reply(api):
     original, status = conn.execute("SELECT body, message_status FROM svc.ticket_message WHERE message_id = %s",
                                     (draft["message_id"],)).fetchone()
     assert edited_yn is True and original == draft["body"] and status == "APPROVED"
+    sub_status, resolved = conn.execute("SELECT status, resolved_at_utc FROM svc.sub_ticket WHERE sub_ticket_id = %s",
+                                        (f"{draft_ticket(conn, draft)}-1",)).fetchone()
+    assert sub_status == "RESOLVED" and resolved is not None  # AC-031-2 "상태 RESOLVED"
     assert body == edited and "단가" not in body and "유효기간" not in body
 
 
