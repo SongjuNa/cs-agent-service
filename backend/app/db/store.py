@@ -2,7 +2,7 @@
 
 - 원문은 그대로 저장하고 메시지에 가린 곳 수(mask_count)만 남긴다. 실행 기록(agent_step)에는 가린 글만 넣는다.
 - 고객에게 가는 글은 DRAFT로만 저장한다(CLAUDE.md 규칙 3). SENT는 승인 API(send_draft)만 쓴다.
-- 상태 전이는 접수 이력(INTAKE)만 남긴다. 그 밖의 전이는 2순위(FR-025)다.
+- 고객 회신 재처리(reply_id)는 새 제공 항목만 넣고, 이전 초안을 밀어내고, 조정값을 지킨다(FR-032, FR-011 예외 3행).
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ from app.config import get_settings
 from app.llm.drafts import CHECK_PROVIDED_FIELDS, Draft, Gloss, Source
 from app.masking import mask_fields, mask_text
 from app.pipeline.graph import RunOutcome
+from app.pipeline.reprocess import last_pipeline_step
 from app.status.transitions import ConcurrentChange, TransitionRefused, current, transition
 
 MAX_BODY = 2000  # svc.ticket.inquiry_body CHECK
@@ -175,7 +176,8 @@ def add_self_check(conn: Connection, run_id: int, sub_ticket_id: str, check_type
 # --- 처리 결과 ---
 
 
-def save_outcome(conn: Connection, run_id: int, ticket_id: str, outcome: RunOutcome) -> None:
+def save_outcome(conn: Connection, run_id: int, ticket_id: str, outcome: RunOutcome, reply_id: int | None = None) -> None:
+    """처리 결과 저장. reply_id가 있으면 고객 회신 재처리 결과다(FR-032 처리 3·4, 변경 add-customer-reply)."""
     """처리 결과를 저장하고 실행을 끝낸다(design 결정 2)."""
     with conn.transaction():
         if outcome.run_status != "SUCCESS" or outcome.state is None:
@@ -190,7 +192,7 @@ def save_outcome(conn: Connection, run_id: int, ticket_id: str, outcome: RunOutc
         ).fetchone()
         last = "Q6"
         for sub in state.sub_tickets:
-            last = _save_sub(conn, run_id, state, sub, outcome, inquiry_id)
+            last = _save_sub(conn, run_id, state, sub, outcome, inquiry_id, reply_id)
         finish_run(conn, run_id, _pipeline_done(conn, run_id, state.sub_tickets), last)
 
 
@@ -228,8 +230,13 @@ def _save_failure(conn: Connection, run_id: int, ticket_id: str, outcome: RunOut
     finish_run(conn, run_id, "FAILED", step)
 
 
-def _save_sub(conn, run_id, state, sub, outcome: RunOutcome, inquiry_id: int) -> str:
+MSG_NO_NEW_FIELDS = "제공 항목 변화 없음"  # FR-032 예외 5행
+
+
+def _save_sub(conn, run_id, state, sub, outcome: RunOutcome, inquiry_id: int, reply_id: int | None = None) -> str:
     req = outcome.required.get(sub.sub_ticket_id)
+    known = {r[0] for r in conn.execute("SELECT field FROM svc.inquiry_field WHERE sub_ticket_id = %s",
+                                        (sub.sub_ticket_id,)).fetchall()}
     provided = [pf.field for pf in sub.provided_fields]
     evidence = [{"doc_id": c.doc_id, "section": c.section_no, "quote": _chunk_quote(conn, c.chunk_id, c.title),
                  "score": c.score, "chunk_id": c.chunk_id} for c in sub.doc_candidates]
@@ -237,10 +244,14 @@ def _save_sub(conn, run_id, state, sub, outcome: RunOutcome, inquiry_id: int) ->
     blocking = bool(sub.missing_blocking_info)
     conn.execute(
         """UPDATE svc.sub_ticket SET category_code = %s, evidence_sentences = %s, urgency_flag = %s, product_code = %s,
-               error_code_reported = %s, fw_version_reported = %s, priority = %s, priority_rule_id = %s,
-               routing_rule_id = %s, assigned_dept = %s, return_kind = %s, sla_id = %s,
+               error_code_reported = %s, fw_version_reported = %s,
+               priority = CASE WHEN priority_adjusted_by_agent THEN priority ELSE %s END, priority_rule_id = %s,
+               routing_rule_id = %s, assigned_dept = %s, return_kind = %s,
+               sla_id = CASE WHEN priority_adjusted_by_agent THEN sla_id ELSE %s END,
                required_info = %s, provided_info = %s, missing_info = %s, missing_blocking_info = %s,
-               sla_first_response_target_h = %s, sla_resolution_target_h = %s, evidence_json = %s,
+               sla_first_response_target_h = CASE WHEN priority_adjusted_by_agent THEN sla_first_response_target_h ELSE %s END,
+               sla_resolution_target_h = CASE WHEN priority_adjusted_by_agent THEN sla_resolution_target_h ELSE %s END,
+               evidence_json = %s,
                reference_doc_id = %s, reference_section = %s, no_evidence_flag = %s, pipeline_error = NULL
            WHERE sub_ticket_id = %s""",
         (sub.category_code, sub.evidence_sentences, sub.urgency_flag, sub.product_code, sub.error_code, sub.current_fw,
@@ -249,11 +260,14 @@ def _save_sub(conn, run_id, state, sub, outcome: RunOutcome, inquiry_id: int) ->
          sub.fr_target_h, sub.res_target_h, _json(evidence), top.doc_id if top else None,
          top.section_no if top else None, not blocking and not sub.doc_candidates, sub.sub_ticket_id),
     )
-    for pf in sub.provided_fields:
+    # 조정한 문의는 규칙값(priority_rule_id)만 새로 쓰고 조정값을 덮어쓰지 않는다(FR-011 예외 3행, C-69)
+    added = [pf for pf in sub.provided_fields if pf.field not in known]  # 회신 재처리는 새 항목만(합집합)
+    for pf in added:
         conn.execute(
             """INSERT INTO svc.inquiry_field (sub_ticket_id, field, value_raw, value_norm, source, source_message_id)
-               VALUES (%s, %s, %s, %s, 'INQUIRY', %s)""",
-            (sub.sub_ticket_id, pf.field, pf.value_raw, pf.value_norm, inquiry_id),
+               VALUES (%s, %s, %s, %s, %s, %s)""",
+            (sub.sub_ticket_id, pf.field, pf.value_raw, pf.value_norm,
+             "INQUIRY" if reply_id is None else "CUSTOMER_REPLY", inquiry_id if reply_id is None else reply_id),
         )
     for flag in sub.flags:
         kind = check_type_of(flag)
@@ -270,7 +284,9 @@ def _save_sub(conn, run_id, state, sub, outcome: RunOutcome, inquiry_id: int) ->
             "urgency_evidence": sub.urgency_evidence, "evidence_sentences": sub.evidence_sentences}},
         {"name": "Q1", "input_": {"field_names": names.get("L2", [])}, "output": {
             "provided_fields": [pf.model_dump() for pf in sub.provided_fields], "product_code": sub.product_code,
-            "error_code": sub.error_code, "current_fw": sub.current_fw, "return_reason": sub.return_reason}},
+            "error_code": sub.error_code, "current_fw": sub.current_fw, "return_reason": sub.return_reason,
+            **({} if reply_id is None else {"reply_message_id": reply_id, "added_fields": [pf.field for pf in added],
+                                            **({} if added else {"note": MSG_NO_NEW_FIELDS})})}},
         {"name": "Q2", "output": {"customer_id": state.customer_id, "customer_tier": sub.customer_tier,
                                   "product_code": sub.product_code, "product_family": sub.product_family}},
         {"name": "Q3", "output": {"priority": sub.priority_final, "priority_rule_id": sub.priority_rule_id,
@@ -289,6 +305,11 @@ def _save_sub(conn, run_id, state, sub, outcome: RunOutcome, inquiry_id: int) ->
         steps.append({"name": "Q8", "output": {"doc_candidates": [c.model_dump() for c in sub.doc_candidates]}})
         steps.append({"name": "Q9", "output": {"lookups": [lv.model_dump() for lv in sub.lookups]}})
 
+    if reply_id is not None:  # 재처리로 밀린 초안 (§2-4 "재처리")
+        conn.execute(
+            """UPDATE svc.ticket_message SET superseded_at = %s
+                WHERE sub_ticket_id = %s AND sender = 'SYSTEM' AND message_status = 'DRAFT' AND superseded_at IS NULL
+                  AND message_type IN ('INFO_REQUEST','FINAL_REPLY')""", (_now(), sub.sub_ticket_id))
     for draft in (d for d in outcome.drafts if d.sub_ticket_id == sub.sub_ticket_id):
         message_id = insert_draft(conn, state.ticket_id, draft)
         if draft.message_type == "FINAL_REPLY":
@@ -378,14 +399,8 @@ def latest_gloss(conn: Connection, message_id: int) -> Gloss | None:
 
 
 def intake_step(conn: Connection, sub_ticket_id: str, step_name: str) -> dict | None:
-    """그 하위 문의의 최신 INTAKE 실행에서 한 단계의 결과를 읽는다."""
-    row = conn.execute(
-        """SELECT st.output_json FROM svc.agent_step st JOIN svc.agent_run r ON r.run_id = st.run_id
-            WHERE r.sub_ticket_id = %s AND r.trigger = 'INTAKE' AND st.step_name = %s
-            ORDER BY r.run_id DESC, st.step_order DESC LIMIT 1""",
-        (sub_ticket_id, step_name),
-    ).fetchone()
-    return row[0] if row else None
+    """그 하위 문의의 마지막 처리 흐름 실행(접수 또는 고객 회신 재처리)에서 한 단계의 결과를 읽는다."""
+    return last_pipeline_step(conn, sub_ticket_id, step_name)
 
 
 def draft_sources(conn: Connection, sub_ticket_id: str) -> tuple[list[Source], list[tuple], list[tuple[str, str]], list[str]]:

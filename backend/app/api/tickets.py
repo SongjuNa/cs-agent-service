@@ -5,14 +5,16 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import datetime
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException
 from psycopg import Connection
 from pydantic import BaseModel
 
 from app.api.deps import Clients, get_clients, get_conn, get_connect
 from app.db.detail import ticket_detail
+from app.db.replies import ReplyError, record_reply
 from app.db.store import IntakeError, create_ticket, save_outcome, start_run, ticket_input
 from app.pipeline.graph import RunOutcome, run_ticket
+from app.pipeline.reprocess import reextract
 
 router = APIRouter()
 
@@ -31,6 +33,18 @@ class TicketIn(BaseModel):
     source_ticket_id: str | None = None
 
 
+MSG_REPROCESS_FAILED = "자동 처리 실패. 다시 처리"  # FR-032 예외 4행
+
+
+class ReplyIn(BaseModel):
+    """고객 회신 입력 (기술 명세서 §8-1 body, language, received_at, target_sub_ticket_ids)."""
+
+    body: str
+    language: str | None = None
+    received_at: datetime | None = None
+    target_sub_ticket_ids: list[str] | None = None
+
+
 def process_ticket(connect: Callable, clients: Clients, ticket_id: str) -> None:
     """백그라운드 처리: 실행 기록을 열고 처리 흐름을 돌려 결과를 저장한다(§2-4)."""
     with connect() as conn:
@@ -42,6 +56,21 @@ def process_ticket(connect: Callable, clients: Clients, ticket_id: str) -> None:
         except Exception as exc:  # noqa: BLE001 — 어떤 오류든 실행 실패로 남긴다
             outcome = RunOutcome(None, "FAILED", error_type=getattr(exc, "error_type", "UNKNOWN"), message=str(exc))
         save_outcome(conn, run_id, ticket_id, outcome)
+
+
+def reprocess_reply(connect: Callable, clients: Clients, ticket_id: str, reply_id: int, target_ids: list[str]) -> None:
+    """고객 회신 재처리: 대상 문의를 Q1부터(§2-4). 실패해도 회신과 전이는 그대로 둔다(FR-032 예외 4행)."""
+    with connect() as conn:
+        run_id = start_run(conn, ticket_id, target_ids[0] if len(target_ids) == 1 else None, "CUSTOMER_REPLY")
+        try:
+            with conn.transaction():
+                outcome = run_ticket(conn, clients.transport(), clients.embedder(),
+                                     {"ticket_id": ticket_id, "target_ids": target_ids}, understand_fn=reextract)
+        except Exception as exc:  # noqa: BLE001
+            outcome = RunOutcome(None, "FAILED", error_type=getattr(exc, "error_type", "UNKNOWN"), message=str(exc))
+        if outcome.run_status != "SUCCESS":
+            outcome.message = MSG_REPROCESS_FAILED
+        save_outcome(conn, run_id, ticket_id, outcome, reply_id=reply_id)
 
 
 @router.post("/tickets", status_code=201)
@@ -61,3 +90,22 @@ def get_ticket(ticket_id: str, conn: Connection = Depends(get_conn)) -> dict:
     if detail is None:
         raise HTTPException(404, "문의를 찾을 수 없음")
     return detail
+
+
+@router.post("/tickets/{ticket_id}/replies", status_code=201)
+def post_reply(ticket_id: str, data: ReplyIn, background: BackgroundTasks,
+               x_agent_id: str | None = Header(default=None), conn: Connection = Depends(get_conn),
+               connect: Callable = Depends(get_connect), clients: Clients = Depends(get_clients)) -> dict:
+    """고객 회신 입력(FR-032): 저장·전이 뒤 대상 문의를 백그라운드로 다시 처리한다."""
+    if not x_agent_id or not x_agent_id.strip():
+        raise HTTPException(400, "상담원 ID를 입력하세요")
+    try:
+        out = record_reply(conn, ticket_id, data.body, data.language, data.received_at,
+                           data.target_sub_ticket_ids, x_agent_id.strip())
+    except LookupError as exc:
+        raise HTTPException(404, "문의를 찾을 수 없음") from exc
+    except ReplyError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    if out["reprocess"]:
+        background.add_task(reprocess_reply, connect, clients, ticket_id, out["message_id"], out["reprocess"])
+    return {**out, "processing": bool(out["reprocess"])}

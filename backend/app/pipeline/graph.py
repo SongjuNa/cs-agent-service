@@ -51,9 +51,12 @@ class RunOutcome:
     llm_field_names: dict[str, list[str]] = field(default_factory=dict)
 
 
-def build_graph(conn: Connection, transport: Transport, embedder: Embedder):
+def build_graph(conn: Connection, transport: Transport, embedder: Embedder, understand_fn=None):
+    """understand_fn: 첫 노드(T1·T2·Q1)를 바꿔 끼운다. 고객 회신 재처리는 Q1부터(§2-4, reprocess.reextract)."""
+    first = understand_fn or understand_ticket
+
     def understand(gs: GraphState) -> GraphState:
-        out = understand_ticket(conn, transport, gs["ticket_input"])
+        out = first(conn, transport, gs["ticket_input"])
         return {"state": out.state, "run_status": out.run_status, "error_type": out.error_type,
                 "message": out.message, "drafts": [], "llm_field_names": out.llm_field_names or {}}
 
@@ -139,8 +142,9 @@ def build_graph(conn: Connection, transport: Transport, embedder: Embedder):
     return graph.compile()
 
 
-def run_ticket(conn: Connection, transport: Transport, embedder: Embedder, ticket_input: dict[str, Any]) -> RunOutcome:
-    final = build_graph(conn, transport, embedder).invoke({"ticket_input": ticket_input})
+def run_ticket(conn: Connection, transport: Transport, embedder: Embedder, ticket_input: dict[str, Any],
+               understand_fn=None) -> RunOutcome:
+    final = build_graph(conn, transport, embedder, understand_fn).invoke({"ticket_input": ticket_input})
     return RunOutcome(final.get("state"), final["run_status"], final.get("drafts", []),
                       final.get("error_type"), final.get("message"), final.get("required", {}),
                       final.get("sources", {}), final.get("llm_field_names", {}))
