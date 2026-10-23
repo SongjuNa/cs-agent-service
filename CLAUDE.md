@@ -4,11 +4,12 @@
 
 ## 무엇을 만들지
 - 만들 기능은 `openspec/changes/<변경 이름>/`의 proposal·specs·design·tasks를 따른다. 여기에 없는 기능은 만들지 않는다.
-- 현재 범위는 MVP 1순위 18개 기능이다(목록은 `openspec/config.yaml`). 2순위 이후 기능은 만들지 않는다.
+- 현재 범위는 MVP 2순위 15개 기능이다(1순위 18개는 완료, 목록은 `openspec/config.yaml`). 3순위와 여유 시 기능은 만들지 않는다.
 
 ## 기준 문서 (`docs/`)
 - 기능 요구사항 명세서 v1.5: `docs/requirements/functional-requirements.md`
 - 화면 정의서 v2: `docs/technical/screen-specification.md`
+- 화면 정의서 v1: `docs/technical/screen-specification-v1.md` (2순위 화면 바탕, v2 부록 B로 바뀐 곳 반영)
 - 기술 명세서 v1.4: `docs/technical/technical-specification.md`
 - 에이전트 설계서 v1.1: `docs/technical/agent-design.md`
 - 테이블 정의서 v1.3: `docs/database/table-specification.md`, DB 생성 스크립트 `docs/database/schema.sql`
