@@ -227,14 +227,15 @@ def add_self_check(conn: Connection, run_id: int, sub_ticket_id: str, check_type
 # --- 처리 결과 ---
 
 
-def save_outcome(conn: Connection, run_id: int, ticket_id: str, outcome: RunOutcome, reply_id: int | None = None) -> None:
+def save_outcome(conn: Connection, run_id: int, ticket_id: str, outcome: RunOutcome, reply_id: int | None = None,
+                 edit: dict | None = None) -> None:
     """처리 결과를 저장하고 실행을 끝낸다. reply_id가 있으면 고객 회신 재처리 결과다(FR-032 처리 3·4).
 
     단계 행에는 outcome.runlog의 시간·사용량을 붙인다(FR-036 처리 2, 변경 add-run-log).
     """
     with conn.transaction():
         if outcome.run_status != "SUCCESS" or outcome.state is None:
-            _save_failure(conn, run_id, ticket_id, outcome, reply_id)
+            _save_failure(conn, run_id, ticket_id, outcome, reply_id, edit)
             return
         state = outcome.state
         conn.execute("UPDATE svc.ticket SET body_language = %s, body_language_uncertain = %s WHERE ticket_id = %s",
@@ -246,8 +247,8 @@ def save_outcome(conn: Connection, run_id: int, ticket_id: str, outcome: RunOutc
         if state.multi_yn:
             _add_sub_rows(conn, ticket_id, state.sub_tickets)
         split = len(state.sub_tickets) > 1  # 하위 문의마다 run을 따로(AC-036-4). 하나면 이 run에 모두(AC-036-1)
+        (trigger,) = conn.execute("SELECT trigger FROM svc.agent_run WHERE run_id = %s", (run_id,)).fetchone()
         if split:
-            (trigger,) = conn.execute("SELECT trigger FROM svc.agent_run WHERE run_id = %s", (run_id,)).fetchone()
             add_step(conn, run_id, "T2", input_={"field_names": outcome.llm_field_names.get("L1", [])}, output={
                 "language": state.language, "body_language": state.body_language,
                 "body_language_uncertain": state.body_language_uncertain, "multi_yn": state.multi_yn,
@@ -256,7 +257,7 @@ def save_outcome(conn: Connection, run_id: int, ticket_id: str, outcome: RunOutc
         for sub in sorted(state.sub_tickets, key=lambda x: x.seq):
             sub_run = start_run(conn, ticket_id, sub.sub_ticket_id, trigger) if split else run_id
             sub_last = _save_sub(conn, sub_run, state, sub, outcome, inquiry_id, reply_id, ticket_run=run_id,
-                                 split=split)
+                                 split=split, trigger=trigger)
             failed += bool(sub.pipeline_error)
             if split:
                 finish_run(conn, sub_run, "FAILED" if sub.pipeline_error else "SUCCESS", sub_last)
@@ -318,13 +319,19 @@ def _pipeline_done(conn: Connection, run_id: int, subs) -> str:
     return "SUCCESS"
 
 
-def _save_failure(conn: Connection, run_id: int, ticket_id: str, outcome: RunOutcome, reply_id: int | None = None) -> None:
+def _save_failure(conn: Connection, run_id: int, ticket_id: str, outcome: RunOutcome, reply_id: int | None = None,
+                  edit: dict | None = None) -> None:
     kind = outcome.error_type if outcome.error_type in ERROR_KINDS else "UNKNOWN"
-    first = "T2" if reply_id is None else "Q1"  # 고객 회신 재처리는 Q1부터(§2-4)
+    trigger, run_sub = conn.execute("SELECT trigger, sub_ticket_id FROM svc.agent_run WHERE run_id = %s", (run_id,)).fetchone()
+    # 첫 노드: 접수·다시 처리는 T2, 고객 회신 재처리는 Q1, 상담원 수정은 Q2부터(§2-4)
+    first = {"CUSTOMER_REPLY": "Q1", "AGENT_EDIT": "Q2"}.get(trigger, "T2")
     step = first if outcome.state is None else "Q2"
-    add_step(conn, run_id, step, result="FAILED", error_kind=kind, error=outcome.message, **_timing(outcome, step))
-    conn.execute("UPDATE svc.sub_ticket SET pipeline_error = %s WHERE ticket_id = %s",
-                 (f"{kind}: {outcome.message or ''}".strip(), ticket_id))
+    edit = edit or (outcome.state.agent_edit if outcome.state is not None else None)  # 실패해도 "상담원 수정" 기록은 남긴다
+    add_step(conn, run_id, step, input_=edit, result="FAILED", error_kind=kind, error=outcome.message,
+             **_timing(outcome, step))
+    # 하위 문의 실행(회신·상담원 수정의 한 문의)이면 그 문의에만(FR-006 예외 3행)
+    conn.execute("UPDATE svc.sub_ticket SET pipeline_error = %s WHERE ticket_id = %s AND (%s::text IS NULL OR sub_ticket_id = %s)",
+                 (f"{kind}: {outcome.message or ''}".strip(), ticket_id, run_sub, run_sub))
     finish_run(conn, run_id, "FAILED", step)
 
 
@@ -332,10 +339,11 @@ MSG_NO_NEW_FIELDS = "제공 항목 변화 없음"  # FR-032 예외 5행
 
 
 def _save_sub(conn, run_id, state, sub, outcome: RunOutcome, inquiry_id: int, reply_id: int | None = None,
-              ticket_run: int | None = None, split: bool = False) -> str:
+              ticket_run: int | None = None, split: bool = False, trigger: str = "INTAKE") -> str:
     """하위 문의 하나의 결과. run_id = 그 하위 문의의 run, ticket_run = 티켓 run(T5를 쓰는 곳, AC-036-4).
 
     split이면 T2는 티켓 run에 있으므로 여기서 쓰지 않고, 사용량은 그 하위 문의 몫만 센다(C-89).
+    상담원 수정(AGENT_EDIT)은 T2·Q1을 돌지 않으므로 Q2부터 쓰고, 고친 기록을 Q2 input_json에 둔다(FR-030 처리 6).
     """
     req = outcome.required.get(sub.sub_ticket_id)
     known = {r[0] for r in conn.execute("SELECT field FROM svc.inquiry_field WHERE sub_ticket_id = %s",
@@ -380,19 +388,21 @@ def _save_sub(conn, run_id, state, sub, outcome: RunOutcome, inquiry_id: int, re
 
     # 실행 기록: 단계마다 결과 한 행("왜?"가 읽는다). 확인 표시 전체는 마지막 단계 결과의 flags에 둔다
     names = outcome.llm_field_names
-    steps: list[dict[str, Any]] = [] if split else [
+    edited = trigger == "AGENT_EDIT"
+    steps: list[dict[str, Any]] = [] if split or edited else [
         {"name": "T2", "input_": {"field_names": names.get("L1", [])}, "output": {
             "language": state.language, "body_language": state.body_language,
             "body_language_uncertain": state.body_language_uncertain, "category_code": sub.category_code,
             "category_confidence": sub.category_confidence, "urgency_flag": sub.urgency_flag,
             "urgency_evidence": sub.urgency_evidence, "evidence_sentences": sub.evidence_sentences}}]
-    steps += [
+    steps += [] if edited else [
         {"name": "Q1", "input_": {"field_names": names.get("L2", [])}, "output": {
             "provided_fields": [pf.model_dump() for pf in sub.provided_fields], "product_code": sub.product_code,
             "error_code": sub.error_code, "current_fw": sub.current_fw, "return_reason": sub.return_reason,
             **({} if reply_id is None else {"reply_message_id": reply_id, "added_fields": [pf.field for pf in added],
-                                            **({} if added else {"note": MSG_NO_NEW_FIELDS})})}},
-        {"name": "Q2", "output": {"customer_id": state.customer_id, "customer_tier": sub.customer_tier,
+                                            **({} if added else {"note": MSG_NO_NEW_FIELDS})})}}]
+    steps += [
+        {"name": "Q2", "input_": state.agent_edit if edited else None, "output": {"customer_id": state.customer_id, "customer_tier": sub.customer_tier,
                                   "product_code": sub.product_code, "product_family": sub.product_family}},
         {"name": "Q3", "output": {"priority": sub.priority_final, "priority_rule_id": sub.priority_rule_id,
                                   "priority_trace": [c.model_dump() for c in sub.priority_trace]}},
@@ -416,7 +426,7 @@ def _save_sub(conn, run_id, state, sub, outcome: RunOutcome, inquiry_id: int, re
         steps.append({"name": "Q8", "output": {"doc_candidates": [c.model_dump() for c in sub.doc_candidates]}})
         steps.append({"name": "Q9", "output": {"lookups": [lv.model_dump() for lv in sub.lookups]}})
 
-    if reply_id is not None:  # 재처리로 밀린 초안 (§2-4 "재처리")
+    if trigger != "INTAKE":  # 재처리(회신·다시 처리·상담원 수정)로 밀린 초안. 발송한 메시지는 그대로 (§2-4 "재처리", FR-030 처리 5)
         conn.execute(
             """UPDATE svc.ticket_message SET superseded_at = %s
                 WHERE sub_ticket_id = %s AND sender = 'SYSTEM' AND message_status = 'DRAFT' AND superseded_at IS NULL

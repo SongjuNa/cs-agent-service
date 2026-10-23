@@ -98,11 +98,9 @@ def test_ac_001_4_retry_same_ticket(api):
 
 
 def test_retry_refused(api):
-    """다시 시도는 마지막 처리가 실패한 티켓만, 도는 중이면 409(design 결정 4)."""
+    """없는 티켓 404, 도는 중이면 409(design 결정 4). 실패가 아닌 티켓의 다시 처리는 19번에서 열림(C-98)."""
     client, _, conn = api
     tid = post(api, gold_input(conn, "CSV1-000004")).json()["ticket_id"]
-    res = client.post(f"/tickets/{tid}/reprocess")
-    assert res.status_code == 409 and res.json()["detail"] == "다시 처리할 실패가 없음"
     assert client.post("/tickets/CSV1-999999/reprocess").status_code == 404
     with conn.transaction():
         conn.execute("""INSERT INTO svc.agent_run (ticket_id, trigger, started_at_utc, llm_model)

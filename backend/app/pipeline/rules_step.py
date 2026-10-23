@@ -37,7 +37,9 @@ def _apply(conn: Connection, sub: SubTicketState, required: dict[str, RequiredIn
     sub.priority_final = priority.priority  # 조정(FR-028)이 없으므로 규칙값 그대로
     _add_flags(sub, priority.flags)
 
-    if sub.category_code == "RETURN":  # Q4 반품 구분: L2가 영어로 정리한 사유(§5-3)
+    if sub.category_code != "RETURN":
+        sub.return_kind = None  # schema.sql CHECK: 반품 구분은 RETURN만
+    elif sub.return_kind is None:  # Q4 반품 구분: L2가 영어로 정리한 사유(§5-3). 상담원이 고른 값이면 그대로(FR-030 처리 6)
         sub.return_kind = decide_return_kind(sub.return_reason).return_kind
     routing = assign_dept(conn, sub.product_family, sub.category_code, sub.return_kind)
     sub.assigned_dept = routing.assigned_dept

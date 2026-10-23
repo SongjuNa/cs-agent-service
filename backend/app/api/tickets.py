@@ -14,9 +14,10 @@ from app.db.detail import ticket_detail
 from app.db.inbox import InboxQuery, inbox
 from app.db.runs import latest_pipeline_run
 from app.db.replies import ReplyError, record_reply
+from app.db.timeline import timeline
 from app.db.store import IntakeError, create_ticket, save_outcome, start_run, ticket_input
 from app.pipeline.graph import RunOutcome, run_ticket
-from app.pipeline.reprocess import reextract
+from app.pipeline.reprocess import keep_agent_edits, reextract, reuse
 from app.pipeline.runlog import RunLog
 
 router = APIRouter()
@@ -39,6 +40,7 @@ class TicketIn(BaseModel):
     contact_phone: str | None = None
 
 
+MSG_NO_TICKET = "티켓을 찾을 수 없음"  # FR-030 예외 1행
 MSG_REPROCESS_FAILED = "자동 처리 실패. 다시 처리"  # FR-032 예외 4행
 
 
@@ -56,6 +58,7 @@ def process_ticket(connect: Callable, clients: Clients, ticket_id: str, trigger:
     """백그라운드 처리: 실행 기록을 열고 처리 흐름을 돌려 결과를 저장한다(§2-4).
 
     trigger: 접수는 INTAKE, 다시 처리는 RETRY. 다시 처리도 새 run이고 이전 run은 남는다(FR-036 처리 5).
+    다시 처리는 상담원이 고친 값을 이어 받는다(reprocess.keep_agent_edits, C-112).
     run_id: 요청이 미리 연 실행(다시 시도는 응답 전에 열어 화면이 바로 "처리 중"을 본다).
     """
     with connect() as conn:
@@ -65,7 +68,7 @@ def process_ticket(connect: Callable, clients: Clients, ticket_id: str, trigger:
         try:
             with conn.transaction():  # 처리 흐름은 읽기만 한다. 오류가 나도 연결을 깨끗이 둔다
                 outcome = run_ticket(conn, clients.transport(), clients.embedder(), ticket_input(conn, ticket_id),
-                                     runlog=runlog)
+                                     understand_fn=keep_agent_edits if trigger == "RETRY" else None, runlog=runlog)
         except Exception as exc:  # noqa: BLE001 — 어떤 오류든 실행 실패로 남긴다
             outcome = RunOutcome(None, "FAILED", error_type=getattr(exc, "error_type", "UNKNOWN"), message=str(exc),
                                  runlog=runlog)
@@ -101,26 +104,45 @@ def post_ticket(data: TicketIn, background: BackgroundTasks, conn: Connection = 
     return {"ticket_id": ticket_id, "processing": True}
 
 
+def process_edit(connect: Callable, clients: Clients, sub_ticket_id: str, run_id: int, record: dict) -> None:
+    """상담원 수정 뒤 그 하위 문의를 규칙 단계(Q2)부터 다시 돌린다(FR-030 처리 6, §2-4 부분 재실행)."""
+    ticket_id = sub_ticket_id.rsplit("-", 1)[0]
+    with connect() as conn:
+        runlog = RunLog.from_settings()
+        try:
+            with conn.transaction():
+                outcome = run_ticket(conn, clients.transport(), clients.embedder(),
+                                     {"ticket_id": ticket_id, "target_ids": [sub_ticket_id], "agent_edit": record},
+                                     understand_fn=reuse, runlog=runlog)
+        except Exception as exc:  # noqa: BLE001
+            outcome = RunOutcome(None, "FAILED", error_type=getattr(exc, "error_type", "UNKNOWN"), message=str(exc),
+                                 runlog=runlog)
+        save_outcome(conn, run_id, ticket_id, outcome, edit=record)
+
+
 MSG_PROCESSING = "처리 중"
-MSG_NOTHING_TO_RETRY = "다시 처리할 실패가 없음"
+MSG_NOTHING_TO_RETRY = "다시 처리할 실행이 없음"
+MSG_CLOSED = "종료된 문의입니다"  # 화면 정의서 v1 SCR-03-P8
 
 
 @router.post("/tickets/{ticket_id}/reprocess", status_code=202)
 def reprocess(ticket_id: str, background: BackgroundTasks, conn: Connection = Depends(get_conn),
               connect: Callable = Depends(get_connect), clients: Clients = Depends(get_clients)) -> dict:
-    """다시 시도: 마지막 처리 흐름 실행이 실패한 티켓을 같은 티켓으로 새 run(RETRY)에서 다시 돌린다(AC-001-4, §2-4).
+    """다시 시도·다시 처리: 같은 티켓을 새 run(RETRY)에서 처음부터 다시 돌린다(AC-001-4, FR-030 처리 5, §2-4).
 
-    실패가 아닌 티켓의 다시 처리(이전 DRAFT superseded)는 티켓 상세 전체판(FR-030)에서 붙인다(C-98).
+    처리 중이 아니면 언제나 연다. 이전 DRAFT는 저장 때 superseded가 되고 발송한 메시지는 그대로다(C-98 해소).
     """
     run = latest_pipeline_run(conn, ticket_id)
     if run is None:
         if conn.execute("SELECT 1 FROM svc.ticket WHERE ticket_id = %s", (ticket_id,)).fetchone() is None:
-            raise HTTPException(404, "문의를 찾을 수 없음")
+            raise HTTPException(404, MSG_NO_TICKET)
         raise HTTPException(409, MSG_NOTHING_TO_RETRY)
     if run["busy"]:
         raise HTTPException(409, MSG_PROCESSING)
-    if run["status"] != "FAILED":
-        raise HTTPException(409, MSG_NOTHING_TO_RETRY)
+    open_count = conn.execute("SELECT count(*) FILTER (WHERE status <> 'CLOSED') FROM svc.sub_ticket WHERE ticket_id = %s",
+                              (ticket_id,)).fetchone()[0]
+    if not open_count:  # 화면 정의서 v1 SCR-03 ⑥ 종료 "버튼 전부 비활성"
+        raise HTTPException(409, MSG_CLOSED)
     with conn.transaction():  # 같은 티켓의 다시 시도가 겹치지 않게 잠그고 실행을 먼저 연다
         conn.execute("SELECT 1 FROM svc.ticket WHERE ticket_id = %s FOR UPDATE", (ticket_id,))
         if latest_pipeline_run(conn, ticket_id)["busy"]:
@@ -152,8 +174,17 @@ def list_tickets(dept: str | None = None, status: str | None = None, priority: s
 def get_ticket(ticket_id: str, conn: Connection = Depends(get_conn)) -> dict:
     detail = ticket_detail(conn, ticket_id)
     if detail is None:
-        raise HTTPException(404, "문의를 찾을 수 없음")
+        raise HTTPException(404, MSG_NO_TICKET)
     return detail
+
+
+@router.get("/tickets/{ticket_id}/timeline")
+def get_timeline(ticket_id: str, conn: Connection = Depends(get_conn)) -> list[dict]:
+    """메시지·상태 변경·경고·조정을 시각순으로(FR-030 처리 4, §8-1)."""
+    rows = timeline(conn, ticket_id)
+    if rows is None:
+        raise HTTPException(404, MSG_NO_TICKET)
+    return rows
 
 
 @router.post("/tickets/{ticket_id}/replies", status_code=201)

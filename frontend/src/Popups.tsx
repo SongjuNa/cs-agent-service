@@ -2,7 +2,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { api, type Chunk, type Lookup, type Mark, type SendIssue } from "./api";
 
-function Modal({ title, children, buttons, onClose }: { title: string; children: ReactNode; buttons: ReactNode; onClose: () => void }) {
+export function Modal({ title, children, buttons, onClose }: { title: string; children: ReactNode; buttons: ReactNode; onClose: () => void }) {
   return (
     <div className="modal-back" role="presentation" onClick={onClose}>
       <div className="modal" role="dialog" aria-label={title} onClick={(e) => e.stopPropagation()}>

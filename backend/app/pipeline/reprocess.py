@@ -10,14 +10,14 @@ from typing import Any
 
 from psycopg import Connection
 
-from app.db.runs import for_sub, pipeline_run, ticket_of
+from app.db.runs import agent_edits, for_sub, pipeline_run, ticket_of
 from app.llm.client import Transport
 from app.llm.extract import extract
 from app.llm.inputs import prepare_llm_input
 from app.masking import MaskingError
 from app.pipeline.runlog import track
 from app.pipeline.state import ProvidedField, SubTicketState, TicketState
-from app.pipeline.understand import UnderstandOutcome, _ref_rows
+from app.pipeline.understand import UnderstandOutcome, _ref_rows, understand_ticket
 from app.rules.lookup import lookup_product
 from app.rules.required_info import check_required_info
 
@@ -68,8 +68,8 @@ def reextract(conn: Connection, transport: Transport, ticket_input: dict[str, An
     for sub_id in ticket_input["target_ids"]:
         row = conn.execute(
             """SELECT seq, category_code, evidence_sentences, urgency_flag, product_code, error_code_reported,
-                      fw_version_reported FROM svc.sub_ticket WHERE sub_ticket_id = %s""", (sub_id,)).fetchone()
-        seq, category, evidence, urgency, product_code, error_code, fw = row
+                      fw_version_reported, return_kind FROM svc.sub_ticket WHERE sub_ticket_id = %s""", (sub_id,)).fetchone()
+        seq, category, evidence, urgency, product_code, error_code, fw, return_kind = row
         t2 = last_pipeline_step(conn, sub_id, "T2") or {}
         q1 = last_pipeline_step(conn, sub_id, "Q1") or {}
         flags = last_pipeline_step(conn, sub_id, _last_step_name(conn, sub_id)) or {}
@@ -93,6 +93,7 @@ def reextract(conn: Connection, transport: Transport, ticket_input: dict[str, An
             provided_fields=merged, product_code=new_code, product_family=family,
             error_code=error_code or l2.error_code, current_fw=fw or l2.current_fw,
             return_reason=l2.return_reason or q1.get("return_reason"),
+            return_kind=return_kind if _agent_chose_return(conn, sub_id) else None,  # 상담원이 고른 반품 구분(FR-030 처리 6)
             flags=[f for f in flags.get("flags", []) if f.startswith(T2_FLAGS)] + l2.flags,
         ))
         names = l2.field_names
@@ -108,3 +109,91 @@ def _last_step_name(conn: Connection, sub_ticket_id: str) -> str:
                 AND r.last_step IS NOT NULL ORDER BY r.run_id DESC LIMIT 1""",
         (sub_ticket_id, ticket_of(sub_ticket_id))).fetchone()
     return row[0] if row else "Q6"
+
+
+def reuse(conn: Connection, transport: Transport, ticket_input: dict[str, Any]) -> UnderstandOutcome:
+    """상담원 수정(AGENT_EDIT)의 첫 노드: 언어 모델을 부르지 않고 규칙 단계(Q2)부터(FR-030 처리 6, §2-4 부분 재실행).
+
+    ticket_input = {"ticket_id", "target_ids", "agent_edit"}. 고친 값은 이미 sub_ticket 열과 inquiry_field(source AGENT)에
+    있으므로 지금 값을 그대로 읽는다. T2 표시 중 상담원이 고친 항목의 표시는 뗀다.
+    """
+    ticket_id = ticket_input["ticket_id"]
+    record = ticket_input.get("agent_edit") or {}
+    changed = set(record.get("agent_edit", {}))
+    t = conn.execute("SELECT channel, customer_id, language, body_language, body_language_uncertain, received_at_utc, "
+                     "multi_yn, inquiry_body FROM svc.ticket WHERE ticket_id = %s", (ticket_id,)).fetchone()
+    subs = []
+    for sub_id in ticket_input["target_ids"]:
+        seq, category, evidence, urgency, product_code, error_code, fw, return_kind = conn.execute(
+            """SELECT seq, category_code, evidence_sentences, urgency_flag, product_code, error_code_reported,
+                      fw_version_reported, return_kind FROM svc.sub_ticket WHERE sub_ticket_id = %s""",
+            (sub_id,)).fetchone()
+        t2 = last_pipeline_step(conn, sub_id, "T2") or {}
+        q1 = last_pipeline_step(conn, sub_id, "Q1") or {}
+        flags = (last_pipeline_step(conn, sub_id, _last_step_name(conn, sub_id)) or {}).get("flags", [])
+        dropped = ((("확신 낮음", "분류 실패") if "category_code" in changed else ())
+                   + (("긴급도 판정 실패",) if "urgency_flag" in changed else ()))
+        provided = [ProvidedField(field=f, value_raw=raw or "", value_norm=norm) for f, raw, norm in conn.execute(
+            "SELECT field, value_raw, value_norm FROM svc.inquiry_field WHERE sub_ticket_id = %s ORDER BY field_id",
+            (sub_id,)).fetchall()]
+        subs.append(SubTicketState(
+            sub_ticket_id=sub_id, ticket_id=ticket_id, seq=seq, category_code=category,
+            category_confidence=t2.get("category_confidence"), evidence_sentences=list(evidence),
+            query_en=t2.get("query_en"), urgency_flag=urgency, urgency_evidence=t2.get("urgency_evidence"),
+            provided_fields=provided, product_code=product_code,
+            product_family=lookup_product(conn, product_code).product_family, error_code=error_code, current_fw=fw,
+            return_reason=q1.get("return_reason"),
+            return_kind=return_kind if "return_kind" in changed or _agent_chose_return(conn, sub_id) else None,
+            flags=[f for f in flags if f.startswith(T2_FLAGS) and not (dropped and f.startswith(dropped))],
+        ))
+    try:  # 처리 흐름의 뒤 노드(Q8 검색 등)가 쓰는 가린 본문. 원문 + 고객 회신(§7)
+        body_masked = prepare_llm_input({"inquiry_body": reply_text(conn, ticket_id)}).fields["inquiry_body"]
+    except MaskingError as exc:
+        return UnderstandOutcome(None, "FAILED", MaskingError.kind, str(exc))
+    state = TicketState(ticket_id=ticket_id, channel=t[0], customer_id=t[1], language=t[2], body_language=t[3],
+                        body_language_uncertain=t[4], body_masked=body_masked, received_at=t[5], sub_tickets=subs,
+                        multi_yn=t[6], agent_edit=record or None)
+    return UnderstandOutcome(state, "SUCCESS", llm_field_names={})
+
+
+def _agent_chose_return(conn: Connection, sub_ticket_id: str) -> bool:
+    """이전 상담원 수정에서 반품 구분을 골랐는지(고른 값은 규칙이 다시 판정하지 않는다, design 결정 3)."""
+    return conn.execute(
+        """SELECT 1 FROM svc.agent_step st JOIN svc.agent_run r ON r.run_id = st.run_id
+            WHERE r.sub_ticket_id = %s AND r.trigger = 'AGENT_EDIT' AND st.step_name = 'Q2'
+              AND st.input_json -> 'agent_edit' ? 'return_kind' LIMIT 1""", (sub_ticket_id,)).fetchone() is not None
+
+
+def keep_agent_edits(conn: Connection, transport: Transport, ticket_input: dict[str, Any]) -> UnderstandOutcome:
+    """다시 처리(RETRY)의 첫 노드: 처음부터 다시 이해한 뒤 상담원이 고친 값을 덮어 둔다(FR-030 처리 5·6, C-112).
+
+    고친 유형·긴급도·제품·반품 구분은 언어 모델의 새 판정보다 앞서고, 상담원이 "받았음"으로 둔 항목(inquiry_field
+    source AGENT)은 제공 항목에 넣는다. 그 하위 문의가 없어졌으면(나눔이 달라짐) 덮을 것이 없다.
+    """
+    outcome = understand_ticket(conn, transport, ticket_input)
+    if outcome.state is None:
+        return outcome
+    for sub in outcome.state.sub_tickets:
+        edits = agent_edits(conn, sub.sub_ticket_id)
+        if not edits:
+            continue
+        to = {name: e["to"] for name, e in edits.items()}
+        dropped: tuple[str, ...] = ()
+        if "category_code" in to:
+            sub.category_code = to["category_code"]
+            dropped += ("확신 낮음", "분류 실패")
+        if "urgency_flag" in to:
+            sub.urgency_flag = to["urgency_flag"]
+            dropped += ("긴급도 판정 실패",)
+        if "product_code" in to:
+            sub.product_code = to["product_code"]
+            sub.product_family = lookup_product(conn, sub.product_code).product_family
+        if "return_kind" in to and sub.category_code == "RETURN":
+            sub.return_kind = to["return_kind"]
+        if dropped:
+            sub.flags = [f for f in sub.flags if not f.startswith(dropped)]
+        known = {pf.field for pf in sub.provided_fields}
+        sub.provided_fields += [ProvidedField(field=f, value_raw=raw or "", value_norm=norm) for f, raw, norm in conn.execute(
+            """SELECT field, value_raw, value_norm FROM svc.inquiry_field WHERE sub_ticket_id = %s AND source = 'AGENT'
+                ORDER BY field_id""", (sub.sub_ticket_id,)).fetchall() if f not in known]
+    return outcome

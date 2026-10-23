@@ -126,3 +126,4 @@ class TicketState(BaseModel):
     sub_tickets: list[SubTicketState] = Field(default_factory=list)
     multi_yn: bool = False
     run_id: int | None = None  # 실행 기록(svc.agent_run) 저장은 접수 API와 함께 만든다
+    agent_edit: dict[str, Any] | None = None  # 상담원 수정 실행의 기록(FR-030 처리 6). Q2 단계 input_json에 남긴다. DB 열 아님
