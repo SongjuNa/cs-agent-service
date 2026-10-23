@@ -40,7 +40,7 @@ class WordCountEmbedder:
         return out
 
 
-CALLS = {"L1": "You read one", "L2": "You extract", "L3": "Write a short email", "L4": "Write a reply",
+CALLS = {"L1": "You read one", "L2": "You extract", "L3": "Write a short email", "L4": "Write a reply", "L5": "Write a greeting",
          "L7": "Translate the email", "L8": "You review a draft"}
 NO_FINDINGS = {"findings": []}
 
@@ -321,7 +321,9 @@ def test_ac_021_1_live(live):
 
 @needs_key
 def test_ac_021_2_live(live):
-    (draft,) = live("CSV1-000008").drafts
+    # 2순위부터 000008은 복합 문의(FW_UPDATE + MANUAL)로 나뉜다(add-compound-inquiry). 펌웨어 하위 문의의 메일을 본다.
+    # 단락 모드에서 인용을 빼고 쓴 적이 있다(C-94)
+    draft = next(d for d in live("CSV1-000008").drafts if d.sub_ticket_id == "CSV1-000008-1")
     assert draft.language == "ar" and "RN-ESS-BMS-V3" in draft.body and "3.50" not in draft.body
     assert "최신" in draft.gloss.body  # "이미 최신" 취지는 한국어 대역으로 확인한다
 

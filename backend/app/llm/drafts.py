@@ -21,6 +21,9 @@ SKELETONS_FILE = "l4_category_skeletons_v1.md"
 
 VERDICT_EN = {VERDICT_LATEST: "already the latest version", VERDICT_UPDATE: "update available"}
 GLOSS_LANGUAGE = "ko"  # FR-039 처리 1 (기본 한국어)
+# L4 모드 (에이전트 설계서 4-6: 단일 문의 = 완성문 / 복합 문의 = 단락)
+MODE_SINGLE = "Write the full email body."
+MODE_COMPOSITE = "Write ONE paragraph for this request only; greeting and closing are added separately."
 MAX_REPLY_CHARS = 1500  # FR-021 예외 4행 (제안 상한)
 # 숫자 대조에서 허용하는 제공 항목: 수량, 고객 버전, 날짜 (기술 명세서 §3-4 2번, 에이전트 설계서 6-1절)
 CHECK_PROVIDED_FIELDS = {"quantity", "current_fw", "tool_version", "required_date", "install_date"}
@@ -71,6 +74,7 @@ class Draft:
     check: dict[str, Any] | None = None
     gloss: Gloss | None = None
     verify: Any = None  # 검증 에이전트 결과(app.llm.verify.VerifyResult, FR-049)
+    compose: dict[str, Any] | None = None  # 복합 문의 메일 구성 결과(T5, FR-022). 단일 문의는 None
     flags: list[str] = field(default_factory=list)
 
 
@@ -171,8 +175,12 @@ def write_reply(
     lookups: list[tuple[str, Any, str | None, str]],
     sources: list[Source],
     optional_missing_labels: list[str],
+    composite: bool = False,
 ) -> tuple[Draft | None, list[str]]:
-    """답변 초안을 만들고 대조한다. (초안 또는 None, 표시 목록)."""
+    """답변 초안을 만들고 대조한다. (초안 또는 None, 표시 목록).
+
+    composite: 복합 문의면 이 요청의 단락 하나만 쓴다. 인사말·맺음말은 T5가 붙인다(에이전트 설계서 4-6 모드).
+    """
     if not sources:
         return None, [FLAG_NO_EVIDENCE_DRAFT]  # FR-021 처리 2
     optional_line = (
@@ -185,7 +193,7 @@ def write_reply(
     fields = {
         "language_name": LANGUAGE_NAMES.get(language, language),
         "category_name": CATEGORY_NAMES.get(category_code or "", "support"),
-        "mode_instruction": "Write the full email body.",
+        "mode_instruction": MODE_COMPOSITE if composite else MODE_SINGLE,
         "category_skeleton": load_skeleton(category_code),
         "optional_missing_line": optional_line,
         "evidence_sentences": "\n".join(evidence_sentences),

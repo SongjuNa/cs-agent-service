@@ -1,0 +1,9 @@
+{
+  "head": "Status of your requests:",
+  "S-1": "{n}. {topic}: answered in this email.",
+  "S-2": "{n}. {topic}: answered previously.",
+  "S-3": "{n}. {topic}: we are still working on this.",
+  "S-4": "{n}. {topic}: waiting for the information we requested in a separate email.",
+  "S-5": "{n}. {topic}: being reviewed by our specialist team.",
+  "S-6": "{n}. {topic}: a member of our team is checking this."
+}

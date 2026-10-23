@@ -17,8 +17,10 @@ def _provided(sub: SubTicketState, name: str) -> str | None:
     return None
 
 
-def add_evidence(conn: Connection, embedder: Embedder, state: TicketState) -> TicketState:
-    for sub in state.sub_tickets:
+def add_evidence(conn: Connection, embedder: Embedder, state: TicketState,
+                 subs: list[SubTicketState] | None = None) -> TicketState:
+    """subs: 이 하위 문의들만(복합 문의에서 막는 정보가 없는 하위 문의). 없으면 모두."""
+    for sub in state.sub_tickets if subs is None else subs:
         # 검색문은 L1의 영어 검색문(§4-3 방식 A). 분류 실패로 없으면 근거 문장으로 대신한다
         query = sub.query_en or " ".join(sub.evidence_sentences) or None
         found = search_evidence(

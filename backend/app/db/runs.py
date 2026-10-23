@@ -23,6 +23,27 @@ def pipeline_run(alias: str = "r") -> str:
             f"(SELECT 1 FROM svc.agent_step ps WHERE ps.run_id = {alias}.run_id AND ps.step_name IN ('T2','Q1','Q2'))))")
 
 
+def for_sub(alias: str = "r") -> str:
+    """하위 문의의 실행인지 가리는 SQL 조건. 자리 두 개(%s: sub_ticket_id, ticket_id).
+
+    그 하위 문의의 run이거나 티켓 run(sub_ticket_id 없음, 단일 문의는 여기에 모든 단계가 있다)(C-93).
+    """
+    return f"({alias}.sub_ticket_id = %s OR ({alias}.sub_ticket_id IS NULL AND {alias}.ticket_id = %s))"
+
+
+def ticket_of(sub_ticket_id: str) -> str:
+    """하위 문의 ID `{ticket_id}-{seq}`의 ticket_id(기술 명세서 §2-3, 분리안 K1)."""
+    return sub_ticket_id.rsplit("-", 1)[0]
+
+
+def run_for_sub(conn: Connection, sub_ticket_id: str) -> dict[str, Any] | None:
+    """그 하위 문의의 가장 최근 처리 흐름 실행(FR-036 처리 5)."""
+    rows = _rows(conn, f"""SELECT r.run_id, r.trigger, r.status, r.last_step, r.started_at_utc, r.finished_at_utc
+                             FROM svc.agent_run r WHERE {for_sub()} AND {pipeline_run()}
+                            ORDER BY r.run_id DESC LIMIT 1""", (sub_ticket_id, ticket_of(sub_ticket_id)))
+    return rows[0] if rows else None
+
+
 def _rows(conn: Connection, sql: str, params: tuple) -> list[dict[str, Any]]:
     cur = conn.execute(sql, params)
     names = [d.name for d in cur.description]

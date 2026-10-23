@@ -52,8 +52,7 @@ def process_ticket(connect: Callable, clients: Clients, ticket_id: str, trigger:
     trigger: 접수는 INTAKE, 다시 처리는 RETRY. 다시 처리도 새 run이고 이전 run은 남는다(FR-036 처리 5).
     """
     with connect() as conn:
-        sub_ticket_id = f"{ticket_id}-1"
-        run_id = start_run(conn, ticket_id, sub_ticket_id, trigger)
+        run_id = start_run(conn, ticket_id, None, trigger)  # 티켓 그래프 실행(schema.sql agent_run 주석)
         runlog = RunLog.from_settings()
         try:
             with conn.transaction():  # 처리 흐름은 읽기만 한다. 오류가 나도 연결을 깨끗이 둔다

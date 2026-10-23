@@ -30,7 +30,6 @@ FLAG_LANG_UNCERTAIN = "언어 판정 불확실"
 FLAG_LOW_CONFIDENCE = "확신 낮음"
 FLAG_CLASSIFY_FAILED = "분류 실패"
 FLAG_URGENCY_FAILED = "긴급도 판정 실패"
-FLAG_MULTI_REQUEST = "복합 문의 가능(FR-006, 2순위)"
 
 SCHEMA: dict = {
     "type": "object",
@@ -63,8 +62,22 @@ SCHEMA: dict = {
 
 
 @dataclass
+class Request:
+    """나눈 요청 하나 = 하위 문의 하나(FR-006 처리 1·4). seq는 합친 뒤 1..n으로 다시 매긴다."""
+
+    seq: int
+    category_code: str | None
+    category_confidence: float | None
+    evidence_sentences: list[str]
+    urgency_flag: str
+    urgency_evidence: str | None
+    query_en: str | None
+    flags: list[str] = field(default_factory=list)
+
+
+@dataclass
 class Understanding:
-    """L1 결과를 검사한 뒤의 값. 하위 문의는 1순위에서 1개만 쓴다(config.yaml)."""
+    """L1 결과를 검사한 뒤의 값. requests가 하위 문의 목록이고(FR-006), 아래 유형 칸들은 첫 요청 값이다."""
 
     body_language: str
     body_language_uncertain: bool
@@ -77,6 +90,7 @@ class Understanding:
     flags: list[str] = field(default_factory=list)
     field_names: list[str] = field(default_factory=list)
     prompt_version: str | None = None
+    requests: list[Request] = field(default_factory=list)
 
 
 def urgency_text(urgency_rows: list[tuple[str, str]]) -> str:
@@ -144,6 +158,7 @@ def understand(
             flags=[FLAG_LANG_UNCERTAIN, FLAG_CLASSIFY_FAILED, FLAG_URGENCY_FAILED],
             field_names=list(fields),
             prompt_version=PROMPT_FILE.removesuffix(".md"),
+            requests=[Request(1, None, None, [], "NONE", None, None, [FLAG_CLASSIFY_FAILED, FLAG_URGENCY_FAILED])],
         )
 
     data = result.data
@@ -155,25 +170,26 @@ def understand(
         body_language = language
         flags.append(FLAG_LANG_UNCERTAIN)
 
-    requests = merge_same_category(data["sub_tickets"])
-    if len(requests) > 1:
-        flags.append(FLAG_MULTI_REQUEST)
+    # 같은 유형은 합치고 본문 순서대로 1..n (FR-006 처리 2·3). 하위 문의마다 자기 긴급도(FR-006 처리 4)
+    requests = [
+        Request(seq=i, category_code=r["category_code"], category_confidence=r["category_confidence"],
+                evidence_sentences=r["evidence_sentences"], urgency_flag=r["urgency_flag"],
+                urgency_evidence=r["urgency_evidence"], query_en=r["query_en"],
+                flags=[FLAG_LOW_CONFIDENCE] if r["category_confidence"] < CONFIDENCE_MIN else [])
+        for i, r in enumerate(merge_same_category(data["sub_tickets"]), 1)
+    ]
     first = requests[0]
-    if first["category_confidence"] < CONFIDENCE_MIN:
-        flags.append(FLAG_LOW_CONFIDENCE)
-    # 긴급도는 모든 요청 중 가장 높은 값 (FR-007 처리 3). 다른 요청의 SAFETY를 버리지 않는다
-    top = min(requests, key=lambda r: URGENCY_ORDER.index(r["urgency_flag"]))
-
     return Understanding(
         body_language=body_language,
         body_language_uncertain=uncertain,
-        category_code=first["category_code"],
-        category_confidence=first["category_confidence"],
-        evidence_sentences=first["evidence_sentences"],
-        urgency_flag=top["urgency_flag"],
-        urgency_evidence=top["urgency_evidence"],
-        query_en=first["query_en"],
-        flags=flags,
+        category_code=first.category_code,
+        category_confidence=first.category_confidence,
+        evidence_sentences=first.evidence_sentences,
+        urgency_flag=first.urgency_flag,
+        urgency_evidence=first.urgency_evidence,
+        query_en=first.query_en,
+        flags=flags + first.flags,
         field_names=result.field_names,
         prompt_version=result.prompt_version,
+        requests=requests,
     )
