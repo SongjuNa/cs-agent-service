@@ -28,7 +28,7 @@ def _hours(h: Decimal | float) -> timedelta:
     return timedelta(hours=float(h))
 
 
-def due_alerts(conn: Connection, as_of: datetime, schema: str = "svc") -> list[dict]:
+def due_alerts(conn: Connection, as_of: datetime, schema: str = "svc", sub_ticket_ids: list[str] | None = None) -> list[dict]:
     """as_of에 조건을 넘은 경고 후보 (이미 있는지는 보지 않는다).
 
     1차 응답 여부는 inquiry_sla가 주지 않으므로 sub_ticket.first_response_at_utc ≤ as_of로 본다.
@@ -42,8 +42,8 @@ def due_alerts(conn: Connection, as_of: datetime, schema: str = "svc") -> list[d
                    s.first_response_at_utc IS NOT NULL AND s.first_response_at_utc <= %s AS responded
               FROM {schema}.inquiry_sla(%s) f
               JOIN {schema}.sub_ticket s ON s.sub_ticket_id = f.sub_ticket_id
-             WHERE f.status = ANY(%s)""",
-        (as_of, as_of, list(OPEN)),
+             WHERE f.status = ANY(%s) AND (%s::text[] IS NULL OR f.sub_ticket_id = ANY(%s))""",
+        (as_of, as_of, list(OPEN), sub_ticket_ids, sub_ticket_ids),
     ).fetchall()
     out = []
     for sub_id, status, received, fr_t, res_t, fr_el, wait_h, res_el, responded in rows:
@@ -65,11 +65,12 @@ def _alert(sub_id: str, kind: str, raised: datetime, elapsed: Decimal, target: i
     return {"sub_ticket_id": sub_id, "alert_type": kind, "raised_at_utc": raised, "elapsed_h": elapsed, "target_h": target}
 
 
-def raise_alerts(conn: Connection, as_of: datetime, schema: str = "svc") -> list[tuple[str, str, datetime]]:
+def raise_alerts(conn: Connection, as_of: datetime, schema: str = "svc",
+                 sub_ticket_ids: list[str] | None = None) -> list[tuple[str, str, datetime]]:
     """새로 넣은 경고 (sub_ticket_id, 종류, 발생 시각) 목록. 같은 종류는 문의당 한 번(UNIQUE)."""
     added = []
     with conn.transaction():
-        for a in due_alerts(conn, as_of, schema):
+        for a in due_alerts(conn, as_of, schema, sub_ticket_ids):
             row = conn.execute(
                 f"""INSERT INTO {schema}.sla_alert (sub_ticket_id, alert_type, raised_at_utc, elapsed_h, target_h)
                     VALUES (%s, %s, %s, %s, %s) ON CONFLICT (sub_ticket_id, alert_type) DO NOTHING
@@ -81,17 +82,19 @@ def raise_alerts(conn: Connection, as_of: datetime, schema: str = "svc") -> list
     return added
 
 
-def clear_alerts(conn: Connection, as_of: datetime, schema: str = "svc") -> list[tuple[str, str]]:
+def clear_alerts(conn: Connection, as_of: datetime, schema: str = "svc",
+                 sub_ticket_ids: list[str] | None = None) -> list[tuple[str, str]]:
     """목표가 바뀌어 조건이 풀린 경고에 해제 시각을 쓴다 (FR-027 처리 6)."""
     if schema not in SCHEMAS:
         raise ValueError(schema)
-    due = {(a["sub_ticket_id"], a["alert_type"]) for a in due_alerts(conn, as_of, schema)}
+    due = {(a["sub_ticket_id"], a["alert_type"]) for a in due_alerts(conn, as_of, schema, sub_ticket_ids)}
     rows = conn.execute(
         f"""SELECT a.alert_id, a.sub_ticket_id, a.alert_type
               FROM {schema}.sla_alert a JOIN {schema}.sub_ticket s ON s.sub_ticket_id = a.sub_ticket_id
-             WHERE a.cleared_at_utc IS NULL
-               AND a.target_h IS DISTINCT FROM CASE WHEN a.alert_type LIKE 'FR%' THEN s.sla_first_response_target_h
+             WHERE a.cleared_at_utc IS NULL AND (%s::text[] IS NULL OR a.sub_ticket_id = ANY(%s))
+               AND a.target_h IS DISTINCT FROM CASE WHEN a.alert_type LIKE 'FR%%' THEN s.sla_first_response_target_h
                                                     ELSE s.sla_resolution_target_h END""",
+        (sub_ticket_ids, sub_ticket_ids),
     ).fetchall()
     cleared = []
     with conn.transaction():

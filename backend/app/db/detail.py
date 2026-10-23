@@ -12,6 +12,7 @@ from psycopg import Connection
 from app.db.store import body_sha, check_type_of, latest_gloss
 from app.llm.verify import VerifyResult
 from app.pipeline.state import VerifyFinding
+from app.sla.adjust import adjustments
 from app.sla.alerts import alert_history
 from app.sla.clock import clocks
 from app.status.transitions import history, wait_intervals
@@ -58,7 +59,9 @@ def _state(conn: Connection, sub: dict[str, Any], sla: dict[str, Any] | None) ->
     """상태·SLA·이력 (FR-025 출력, FR-026 출력, 기술 명세서 §6-4)."""
     hist = history(conn, sub["sub_ticket_id"])
     return {
-        "state": {k: sub[k] for k in ("status", "version", "resolved_at_utc", "final_action")},
+        "state": {k: sub[k] for k in ("status", "version", "resolved_at_utc", "final_action", "priority",
+                                      "priority_rule_id", "priority_adjusted_by_agent")},
+        "adjustments": adjustments(conn, sub["sub_ticket_id"]),  # FR-028 출력
         "sla": sla,
         "history": hist,
         "wait_intervals": wait_intervals(hist),

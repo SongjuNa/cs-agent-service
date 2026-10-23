@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api import chunks, messages, tickets
+from app.api import chunks, messages, sub_tickets, tickets
 from app.config import get_settings
 from app.scheduler import start_scheduler
 
@@ -21,3 +21,4 @@ app = FastAPI(title="CS Agent Service", lifespan=lifespan)
 app.include_router(tickets.router)
 app.include_router(messages.router)
 app.include_router(chunks.router)
+app.include_router(sub_tickets.router)
