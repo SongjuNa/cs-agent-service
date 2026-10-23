@@ -12,6 +12,8 @@ from psycopg import Connection
 from app.db.store import body_sha, check_type_of, latest_gloss
 from app.llm.verify import VerifyResult
 from app.pipeline.state import VerifyFinding
+from app.sla.clock import clocks
+from app.status.transitions import history, wait_intervals
 
 SAFETY_URGENCY = {"SAFETY", "SITE_DOWN"}
 # ③에서 빼는 자체 검사: ⑤ 검증(§5-7 ③, 화면 정의서 v2 0-6)
@@ -43,9 +45,23 @@ def ticket_detail(conn: Connection, ticket_id: str) -> dict[str, Any] | None:
     run = _row(conn, """SELECT run_id, status, last_step, started_at_utc, finished_at_utc FROM svc.agent_run
                          WHERE ticket_id = %s AND trigger = 'INTAKE' ORDER BY run_id DESC LIMIT 1""", (ticket_id,))
     processing = run is None or run["status"] is None
-    subs = [_sub_detail(conn, s, run) for s in _rows(
-        conn, "SELECT * FROM svc.sub_ticket WHERE ticket_id = %s ORDER BY seq", (ticket_id,))]
-    return {"ticket": ticket, "run": run, "processing": processing, "sub_tickets": subs}
+    rows = _rows(conn, "SELECT * FROM svc.sub_ticket WHERE ticket_id = %s ORDER BY seq", (ticket_id,))
+    sla = clocks(conn, [r["sub_ticket_id"] for r in rows])
+    subs = [_sub_detail(conn, s, run) | _state(conn, s, sla.get(s["sub_ticket_id"])) for s in rows]
+    summary = _row(conn, """SELECT status, rep_sub_ticket_id, rep_res_status, rep_remaining_h, open_count, inquiry_count
+                              FROM svc.v_ticket_summary WHERE ticket_id = %s""", (ticket_id,))
+    return {"ticket": ticket, "summary": summary, "run": run, "processing": processing, "sub_tickets": subs}
+
+
+def _state(conn: Connection, sub: dict[str, Any], sla: dict[str, Any] | None) -> dict[str, Any]:
+    """상태·SLA·이력 (FR-025 출력, FR-026 출력, 기술 명세서 §6-4)."""
+    hist = history(conn, sub["sub_ticket_id"])
+    return {
+        "state": {k: sub[k] for k in ("status", "version", "resolved_at_utc", "final_action")},
+        "sla": sla,
+        "history": hist,
+        "wait_intervals": wait_intervals(hist),
+    }
 
 
 def _steps(conn: Connection, run_id: int | None) -> dict[str, Any]:

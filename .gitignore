@@ -10,3 +10,6 @@ __pycache__/
 .venv/
 *.egg-info/
 .pytest_cache/
+
+# 채점 결과 csv (정답지 값이 들어 있다, CLAUDE.md 규칙 8)
+scoring/
