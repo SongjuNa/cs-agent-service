@@ -57,7 +57,24 @@ log = logging.getLogger(__name__)
 
 
 class IntakeError(ValueError):
-    """접수 입력 거부 (API는 400)."""
+    """접수 입력 거부 (API는 400). errors = [(항목, 문구)], 첫 문구가 메시지(FR-001 처리 1 "항목별 오류")."""
+
+    def __init__(self, errors: list[tuple[str, str]]):
+        super().__init__(errors[0][1])
+        self.errors = errors
+
+
+CHANNELS = ("EMAIL", "CHAT", "PHONE", "WEB_FORM", "PARTNER_PORTAL")  # FR-001 입력 표, svc.ticket CHECK
+LANGUAGES = ("ar", "de", "en", "es", "fr", "id", "it", "ja", "pl", "pt", "ru", "th", "tr", "vi", "zh")
+# 화면 정의서 v1 SCR-01 ⑥ 검증 오류 문구. 채널·언어는 구현 선택 문구
+MSG_CHANNEL = "채널을 고르세요"
+MSG_CUSTOMER = "고객 ID를 찾을 수 없음"  # FR-001 예외 1행
+MSG_PRODUCT = "제품 코드를 찾을 수 없음(모르면 비우세요)"  # FR-001 예외 2행
+MSG_LANGUAGE = "고객 언어를 고르세요"
+MSG_BODY_EMPTY = "내용을 입력하세요"
+MSG_FUTURE = "접수 시각은 미래일 수 없음"
+SOURCES = ("SIMULATOR", "LOAD", "REPLAY")  # svc.ticket source CHECK
+MSG_SOURCE = "출처는 SIMULATOR, LOAD, REPLAY 중 하나(LOAD·REPLAY는 원본 번호 필요)"  # 구현 선택 문구
 
 
 def check_type_of(flag: str) -> str | None:
@@ -86,19 +103,33 @@ def _now() -> datetime:
 
 def create_ticket(conn: Connection, data: dict[str, Any]) -> str:
     """접수 입력을 검사하고 티켓·하위 문의·INQUIRY·접수 이력을 한 트랜잭션으로 넣는다. 새 ticket_id를 돌려준다."""
-    body = data.get("inquiry_body") or ""
-    if not body.strip():
-        raise IntakeError("내용을 입력하세요")
-    if len(body) > MAX_BODY:
-        raise IntakeError(f"본문은 {MAX_BODY}자 이하여야 합니다")
+    errors: list[tuple[str, str]] = []
+    if data.get("channel") not in CHANNELS:
+        errors.append(("channel", MSG_CHANNEL))
     customer = conn.execute("SELECT tier FROM ref.customer WHERE customer_id = %s", (data.get("customer_id"),)).fetchone()
-    if customer is None:  # 명세서 FR-010 D25: 미등록 고객 거부
-        raise IntakeError("등록되지 않은 고객")
+    if customer is None:  # D25: 미등록 고객 거부
+        errors.append(("customer_id", MSG_CUSTOMER))
     product_code = data.get("product_code") or None
     if product_code and conn.execute("SELECT 1 FROM ref.product WHERE product_code = %s", (product_code,)).fetchone() is None:
-        raise IntakeError("등록되지 않은 제품")
-    source = data.get("source") or "SIMULATOR"
+        errors.append(("product_code", MSG_PRODUCT))
+    if data.get("language") not in LANGUAGES:
+        errors.append(("language", MSG_LANGUAGE))
+    body = data.get("inquiry_body") or ""
+    if not body.strip():
+        errors.append(("inquiry_body", MSG_BODY_EMPTY))
+    elif len(body) > MAX_BODY:
+        errors.append(("inquiry_body", f"본문은 {MAX_BODY}자 이하여야 합니다"))
     received = data.get("received_at_utc") or _now()
+    if received.tzinfo is None:  # 시각은 모두 UTC(§8-1)
+        received = received.replace(tzinfo=timezone.utc)
+    if received > _now():
+        errors.append(("received_at_utc", MSG_FUTURE))
+    # 출처를 안 주면 원본 번호가 있을 때 LOAD(불러오기, FR-003 처리 4), 없으면 SIMULATOR
+    source = data.get("source") or ("LOAD" if data.get("source_ticket_id") else "SIMULATOR")
+    if source not in SOURCES or (source != "SIMULATOR" and not data.get("source_ticket_id")):
+        errors.append(("source", MSG_SOURCE))
+    if errors:
+        raise IntakeError(errors)
 
     with conn.transaction():
         (no,) = conn.execute("SELECT nextval('svc.ticket_new_no')").fetchone()
@@ -106,9 +137,10 @@ def create_ticket(conn: Connection, data: dict[str, Any]) -> str:
         sub_ticket_id = f"{ticket_id}-1"
         conn.execute(
             """INSERT INTO svc.ticket (ticket_id, received_at_utc, channel, language, customer_id, customer_tier,
-                   inquiry_subject, inquiry_body, source, source_ticket_id)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                   contact_name, contact_email, contact_phone, inquiry_subject, inquiry_body, source, source_ticket_id)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
             (ticket_id, received, data.get("channel"), data.get("language"), data["customer_id"], customer[0],
+             data.get("contact_name") or None, data.get("contact_email") or None, data.get("contact_phone") or None,
              data.get("inquiry_subject"), body, source, data.get("source_ticket_id")),
         )
         conn.execute("INSERT INTO svc.sub_ticket (sub_ticket_id, ticket_id, seq, product_code) VALUES (%s, %s, 1, %s)",

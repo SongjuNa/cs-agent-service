@@ -19,6 +19,7 @@ export interface Ticket {
 
 export interface Run {
   run_id: number;
+  trigger: string;
   status: string | null; // null = 처리 중
   last_step: string | null;
 }
@@ -114,6 +115,7 @@ export interface Detail {
   ticket: Ticket;
   run: Run | null;
   processing: boolean;
+  can_retry: boolean; // [다시 시도]: 마지막 처리가 실패했고 도는 중이 아님(AC-001-4)
   sub_tickets: SubTicket[];
 }
 
@@ -162,13 +164,53 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
   const res = await fetch(`/api${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
   const data = await res.json().catch(() => null);
   if (!res.ok) {
-    const detail = data && typeof data.detail === "string" ? data.detail : `요청 실패(${res.status})`;
+    const detail = data && typeof data.detail === "string" ? data.detail
+      : data?.detail?.message ?? `요청 실패(${res.status})`;
     throw new ApiError(res.status, detail, data);
   }
   return data as T;
 }
 
+// 접수 시뮬레이터 (화면 정의서 v1 SCR-01, 기술 명세서 §8-1)
+export interface Customer { customer_id: string; company_masked: string; country: string; tier: string }
+export interface Product { product_code: string; product_name: string }
+export interface Loaded {
+  source_ticket_id: string;
+  channel: string;
+  customer_id: string;
+  product_code: string | null;
+  language: string;
+  inquiry_body: string;
+  received_at_utc: string | null;
+  gold_set: boolean;
+}
+export interface TicketInput {
+  channel: string;
+  customer_id: string;
+  product_code: string | null;
+  language: string;
+  inquiry_subject: string | null;
+  inquiry_body: string;
+  received_at_utc: string | null;
+  source_ticket_id: string | null;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+}
+export interface FieldError { field: string; message: string }
+
+/** 접수 400의 항목별 오류(detail.errors). 없으면 빈 목록 */
+export function fieldErrors(e: unknown): FieldError[] {
+  const body = e instanceof ApiError ? (e.body as { detail?: { errors?: FieldError[] } } | null) : null;
+  return body?.detail?.errors ?? [];
+}
+
 export const api = {
+  customers: (q: string) => call<Customer[]>("GET", `/ref/customers?q=${encodeURIComponent(q)}`),
+  products: () => call<Product[]>("GET", "/ref/products"),
+  load: (id: string) => call<Loaded>("GET", `/gold/tickets/${encodeURIComponent(id)}`),
+  intake: (data: TicketInput) => call<{ ticket_id: string; processing: boolean }>("POST", "/tickets", data),
+  reprocess: (id: string) => call<{ ticket_id: string; processing: boolean }>("POST", `/tickets/${encodeURIComponent(id)}/reprocess`),
   ticket: (id: string) => call<Detail>("GET", `/tickets/${encodeURIComponent(id)}`),
   chunk: (chunkId: string) => call<Chunk>("GET", `/chunks/${encodeURIComponent(chunkId)}`),
   save: (draftId: number, body: string) => call<{ gloss: boolean }>("PUT", `/messages/${draftId}`, { body }),

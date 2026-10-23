@@ -17,6 +17,7 @@ export function TicketDetailPage({ ticketId, agent }: { ticketId: string; agent:
   const [why, setWhy] = useState<EvidenceRow | null>(null);
   const [source, setSource] = useState<SourceTarget | null>(null);
   const [fail, setFail] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -53,6 +54,19 @@ export function TicketDetailPage({ ticketId, agent }: { ticketId: string; agent:
   const evidenceRow = (id: string) => sub?.evidence_rows.find((r) => r.id === id);
   const lookups = evidenceRow("M-C-02")?.lookups ?? [];
 
+  // 다시 시도: 같은 티켓으로 새 실행(FR-001 예외 4행, AC-001-4)
+  async function retry() {
+    setRetrying(true);
+    try {
+      await api.reprocess(ticketId);
+    } catch (e) {
+      setFail(e instanceof ApiError ? e.message : "다시 시도 실패");
+    } finally {
+      setRetrying(false);
+      void load();
+    }
+  }
+
   const reloadDraft = (messageId: number) => async () => {
     const d = await load();
     return d?.sub_tickets[0]?.drafts.find((x) => x.message_id === messageId);
@@ -82,6 +96,9 @@ export function TicketDetailPage({ ticketId, agent }: { ticketId: string; agent:
         </div>
         <div className={`h04 ${run?.status === "FAILED" ? "bad" : detail.processing ? "gray" : ""}`}>
           {detail.processing ? "⏳ " : run?.status === "FAILED" ? "! " : "✓ "}{runText}
+          {detail.can_retry && (
+            <button type="button" className="retry" onClick={() => void retry()} disabled={retrying}>다시 시도</button>
+          )}
         </div>
       </header>
 
