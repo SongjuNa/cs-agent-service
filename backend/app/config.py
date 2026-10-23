@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     llm_model_small: str = "gemini-3.8-flash"
     embedding_model: str = "gemini-embedding-2"
     data_dir: str = "data/CS_AI_Agent_Training_Data_v1"
+    scheduler_enabled: bool = True  # 5분 주기 점검(§6-4). 끄면 periodic_check를 직접 부른다
 
     @property
     def data_path(self) -> Path:
