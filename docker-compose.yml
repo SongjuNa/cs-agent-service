@@ -21,8 +21,14 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
+      LLM_MODEL_SMALL: ${LLM_MODEL_SMALL:-gemini-3.8-flash}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-gemini-embedding-2}
     ports:
       - "8000:8000"
+    volumes:
+      # 지시문과 반품 단어장은 저장소 맨 위에 있어 이미지에 없다. 서버가 찾는 자리(/prompts, /config)에 붙인다
+      - ./prompts:/prompts:ro
+      - ./config:/config:ro
     depends_on:
       db:
         condition: service_healthy
