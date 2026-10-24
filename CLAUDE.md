@@ -4,7 +4,7 @@
 
 ## 무엇을 만들지
 - 만들 기능은 `openspec/changes/<변경 이름>/`의 proposal·specs·design·tasks를 따른다. 여기에 없는 기능은 만들지 않는다.
-- 현재 범위는 MVP 2순위 15개 기능이다(1순위 18개는 완료, 목록은 `openspec/config.yaml`). 3순위와 여유 시 기능은 만들지 않는다.
+- 현재 범위는 MVP 3순위 3개 기능이다(1순위 18개와 2순위 15개는 완료, 목록은 `openspec/config.yaml`). 여유 시 기능은 만들지 않는다.
 
 ## 기준 문서 (`docs/`)
 - 기능 요구사항 명세서 v1.5: `docs/requirements/functional-requirements.md`
