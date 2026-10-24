@@ -1,4 +1,5 @@
-"""하위 문의 동작: 우선순위 조정과 미리 보기(FR-028, SCR-03-P3), 분류 직접 수정(FR-030 처리 6) (기술 명세서 v1.4 §8-1)."""
+"""하위 문의 동작: 우선순위 조정과 미리 보기(FR-028, SCR-03-P3), 분류 직접 수정(FR-030 처리 6), 이관(FR-033, SCR-03-P4)
+(기술 명세서 v1.4 §8-1)."""
 
 from __future__ import annotations
 
@@ -16,6 +17,7 @@ from app.api.deps import Clients, get_clients, get_conn, get_connect
 from app.api.tickets import process_edit
 from app.db.edits import Edit, EditError, apply_edit
 from app.sla.adjust import AdjustError, adjust, preview
+from app.status.escalation import EscalateError, escalate
 from app.status.transitions import ConcurrentChange
 
 router = APIRouter()
@@ -101,3 +103,29 @@ def patch_sub_ticket(sub_ticket_id: str, data: EditIn, background: BackgroundTas
     background.add_task(process_edit, connect, clients, sub_ticket_id, out["run_id"], out["record"])
     return {"sub_ticket_id": sub_ticket_id, "processing": True, "run_id": out["run_id"], "version": out["version"],
             "changes": out["changes"]}
+
+
+class EscalateIn(BaseModel):
+    """이관 팝업 P4(§8-1): 부서·사유 코드 필수, 메모 선택."""
+
+    dept: str | None = None
+    reason_code: str | None = None
+    memo: str | None = None
+    expected_version: int | None = None  # FR-025 예외 2행
+
+
+@router.post("/sub-tickets/{sub_ticket_id}/escalate")
+def post_escalate(sub_ticket_id: str, data: EscalateIn, conn: Connection = Depends(get_conn),
+                  x_agent_id: str | None = Header(default=None)) -> dict:
+    """이관 확정 → ESCALATED, ESCALATION_NOTE SENT(FR-033 처리 1~4). 이관 안내 초안은 만들지 않는다(처리 5)."""
+    if not x_agent_id or not x_agent_id.strip():
+        raise HTTPException(400, "상담원 ID를 입력하세요")
+    try:
+        return escalate(conn, sub_ticket_id, data.dept, data.reason_code, data.memo, x_agent_id.strip(),
+                        datetime.now(timezone.utc), expected_version=data.expected_version)
+    except LookupError as exc:
+        raise HTTPException(404, MSG_NOT_FOUND) from exc
+    except ConcurrentChange as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except EscalateError as exc:
+        raise HTTPException(exc.status, str(exc)) from exc

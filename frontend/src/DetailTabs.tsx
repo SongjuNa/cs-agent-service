@@ -315,7 +315,6 @@ export function SystemTab({ detail, locked, focus, onWhy, onSource, onAdjust, on
                                onReceived={(field, value) => onEdit(sub, { received_fields: [{ field, value: value || null }] })} />
             {sub.diagnosis && <DiagnosisPanel diagnosis={sub.diagnosis} />}
             {sub.escalation && <EscalationPanel escalation={sub.escalation} />}
-            <p className="muted small">[이관]은 다음 3순위 변경에서 붙습니다.</p>
             <EvidencePanel sub={sub} focus={focus} onWhy={onWhy} onSource={onSource} />
           </div>
         );

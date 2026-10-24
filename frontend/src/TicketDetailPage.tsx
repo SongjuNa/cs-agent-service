@@ -1,7 +1,7 @@
 // SCR-03 티켓 상세 전체판 (화면 정의서 v1 SCR-03, v2 0-7절 A안 탭 4개, 명세서 FR-030).
 // 머리 + 탭 4개(고객이 보낸 것 / 시스템이 판단한 것 / 보낼 것 기본 / 이력). 처리 중이면 2초마다 다시 읽는다.
 import { useCallback, useEffect, useState } from "react";
-import { AdjustPopup, ReplyPopup } from "./ActionPopups";
+import { AdjustPopup, EscalatePopup, ReplyPopup } from "./ActionPopups";
 import { api, ApiError, type Detail, type Draft, type EvidenceRow, type SubTicket } from "./api";
 import { Clocks, CustomerTab, HistoryTab, StatusBadge, SystemTab } from "./DetailTabs";
 import { DraftCard } from "./DraftCard";
@@ -23,6 +23,7 @@ export function TicketDetailPage({ ticketId, agent, onBack }: { ticketId: string
   const [busy, setBusy] = useState(false);
   const [adjusting, setAdjusting] = useState<SubTicket | null>(null);
   const [replying, setReplying] = useState(false);
+  const [escalating, setEscalating] = useState(false);
   const [historyKey, setHistoryKey] = useState(0);
 
   const load = useCallback(async () => {
@@ -96,6 +97,12 @@ export function TicketDetailPage({ ticketId, agent, onBack }: { ticketId: string
     return "근거 없음 — 상담원 작성 필요";
   }
 
+  // R-07 [이관]: IN_PROGRESS인 하위 문의가 있을 때만(FR-033 처리 1). 모두 이관됐으면 "이미 이관됨"
+  const canEscalate = subs.some((s) => s.sub_ticket.status === "IN_PROGRESS");
+  const escalatedTo = subs.map((s) => s.sub_ticket.escalated_to).filter(Boolean);
+  const escalateTitle = canEscalate ? "전문 부서로 이관(FR-033)"
+    : escalatedTo.length ? `이미 이관됨(${escalatedTo.join(", ")})` : "처리 중인 문의만 이관할 수 있음";
+
   const jump = (rowId: string) => { setTab("system"); setFocus(null); setTimeout(() => setFocus(rowId)); };
 
   return (
@@ -149,7 +156,8 @@ export function TicketDetailPage({ ticketId, agent, onBack }: { ticketId: string
                 </button>
               ))}
               <button disabled title="여유 시 기능(FR-048)">진행 안내 <small>여유 시</small></button>
-              <button disabled title="3순위 기능(FR-033)" className="escalate">이관 <small>3순위</small></button>
+              <button className="escalate" disabled={locked || busy || !canEscalate} title={escalateTitle}
+                      onClick={() => setEscalating(true)}>이관</button>
             </nav>
             {subs.map((sub) => {
               const drafts = live(sub).filter((d) => d.message_type === activeType);
@@ -180,6 +188,9 @@ export function TicketDetailPage({ ticketId, agent, onBack }: { ticketId: string
       {fail && <FailPopup message={fail} onClose={() => setFail(null)} />}
       {adjusting && (
         <AdjustPopup sub={adjusting} onClose={() => setAdjusting(null)} onDone={() => { setAdjusting(null); void load(); }} />
+      )}
+      {escalating && (
+        <EscalatePopup subs={subs} onClose={() => setEscalating(false)} onDone={() => { setEscalating(false); void load(); }} />
       )}
       {replying && (
         <ReplyPopup ticketId={ticketId} language={ticket.language} subs={subs} onClose={() => setReplying(false)}

@@ -162,7 +162,11 @@ export interface SubTicket {
     missing_blocking_info: string[];
     pipeline_error: string | null;
     evidence_json: Candidate[];
+    escalated: boolean;
+    escalated_to: string | null; // 이관 부서(FR-033)
+    escalation_reason: string | null;
   };
+  escalated_at_utc: string | null;
   checks: { check_type: string; flag: string | null }[];
   other_flags: string[];
   evidence_rows: EvidenceRow[];
@@ -446,6 +450,8 @@ export const api = {
     call<unknown>("POST", `/sub-tickets/${encodeURIComponent(subId)}/priority`, data),
   reply: (id: string, data: { body: string; language: string; received_at: string | null; target_sub_ticket_ids: string[] | null }) =>
     call<{ processing: boolean }>("POST", `/tickets/${encodeURIComponent(id)}/replies`, data),
+  escalate: (subId: string, data: { dept: string; reason_code: string; memo: string; expected_version: number }) =>
+    call<unknown>("POST", `/sub-tickets/${encodeURIComponent(subId)}/escalate`, data),
   departments: () => call<Department[]>("GET", "/ref/departments"),
   agents: () => call<Agent[]>("GET", "/ref/agents"),
   inbox: (query: URLSearchParams) => call<Inbox>("GET", `/tickets?${query.toString()}`),
