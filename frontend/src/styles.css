@@ -174,3 +174,4 @@ mark.extract { background: transparent; text-decoration: underline 2px #e0b400; 
 .fault-body { display: grid; grid-template-columns: 40px 1fr; gap: 2px 8px; margin: 6px 0 0; font-size: 13px; }
 .fault-body dt { color: var(--gray); }
 .fault-body dd { margin: 0; }
+.escalation-lines { margin: 6px 0 0; padding-left: 18px; font-size: 13px; }

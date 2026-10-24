@@ -15,6 +15,7 @@ from app.llm.verify import VerifyResult
 from app.db.runs import agent_edits, latest_pipeline_run, pipeline_run, run_for_sub
 from app.pipeline.reprocess import last_pipeline_step
 from app.pipeline.state import VerifyFinding
+from app.rules.escalation import load_team_rules
 from app.sla.adjust import adjustments
 from app.sla.alerts import alert_history
 from app.sla.clock import clocks
@@ -120,6 +121,7 @@ def _sub_detail(conn: Connection, sub: dict[str, Any], run: dict[str, Any] | Non
         "checks": [{"check_type": r["check_type"], "flag": (r["detail"] or {}).get("flag")} for r in failed],
         "other_flags": [f for f in flags if check_type_of(f) is None and f not in DRAFT_FLAGS],
         "diagnosis": out.get("Q8a"),  # 고장 진단 후보(FR-018). 고장 계열이 아니면 None
+        "escalation": out.get("Q9a"),  # 이관 후보(FR-020). 버튼 없이 표시만
         "evidence_rows": _with_steps(_evidence_rows(conn, sub, out, flags, labels, status, edits), run_id, steps),
         "drafts": drafts,
         "fields": _fields(conn, sub["sub_ticket_id"], labels),
@@ -139,7 +141,8 @@ def _fields(conn: Connection, sub_ticket_id: str, labels: dict[str, str]) -> lis
 
 # 근거 줄 → 그 줄을 만든 단계 (FR-036 처리 7 "왜?에서 해당 단계로", 기술 명세서 §2-2 단계 표)
 ROW_STEPS = {"C-01": ("T2",), "C-02": ("T2",), "M-C-01": ("Q2",), "C-03": ("Q3",), "C-04": ("Q4",), "C-07": ("Q5",),
-             "C-06": ("Q6",), "M-C-02": ("Q7", "Q9", "Q8"), "C-08": ("Q8a",)}  # ⑧은 화면 정의서 v2 SCR-03M "agent_step(Q9)"
+             "C-06": ("Q6",), "M-C-02": ("Q7", "Q9", "Q8"), "C-08": ("Q8a",),
+             "C-09": ("Q9a",)}  # ⑧은 화면 정의서 v2 SCR-03M "agent_step(Q9)"
 
 
 def _with_steps(rows: list[dict[str, Any]], run_id: int | None, steps: dict[str, Any]) -> list[dict[str, Any]]:
@@ -228,7 +231,29 @@ def _evidence_rows(conn, sub, out, flags, labels, status, edits=None) -> list[di
                      "evidence": ([top["cause"]] if top and top.get("cause") else []) + notes,
                      "why": {"rule": _row(conn, "SELECT * FROM ref.fault WHERE fault_id = %s", (top["fault_id"],)) if top else None,
                              "method": q8a.get("method"), "score": top.get("score") if top else None}})
+    q9a = out.get("Q9a")
+    if q9a is not None:  # 이관 후보(FR-020 처리 3·4, AC-024-1). 부서별 한 줄(예외 3행)
+        found = q9a.get("escalation_candidates") or []
+        by_dept: dict[str, list[str]] = {}
+        for c in found:
+            by_dept.setdefault(c["dept"], []).append(f"{c['rule_id']} ({c['reason']})" + (" (팀 규칙)" if c.get("team") else ""))
+        lines = [f"{dept} — {', '.join(rules)}" for dept, rules in by_dept.items()]
+        condition = q9a.get("escalation_condition")
+        rows.append({"id": "C-09", "label": "⑩ 이관 후보",
+                     "result": " / ".join(lines) if found else "없음" + (f" — 이관 조건: {condition}" if condition else ""),
+                     "evidence": q9a.get("notes") or [],
+                     "why": {"rules": [_escalation_rule(conn, c) for c in found]}})
     return rows
+
+
+def _escalation_rule(conn: Connection, c: dict[str, Any]) -> dict[str, Any] | None:
+    """맞은 규칙 행: 운영진 행은 ref.routing_rule, 팀 규칙은 설정 파일 행(design 결정 3)."""
+    if not c.get("team"):
+        return _row(conn, "SELECT * FROM ref.routing_rule WHERE rule_id = %s", (c["rule_id"],))
+    try:
+        return next((dict(r) for r in load_team_rules() if r["rule_id"] == c["rule_id"]), None)
+    except Exception:  # noqa: BLE001 — 설정 파일을 못 읽으면 행만 비운다
+        return None
 
 
 def _drafts(conn: Connection, sub: dict[str, Any], labels: dict[str, str], failed_count: int) -> list[dict[str, Any]]:

@@ -145,7 +145,7 @@ def test_unknown_customer_rejected(api):
 
 
 def test_ac_024_1_evidence_rows(api):
-    """AC-024-1: 긴급도 근거, PR-02 판정 과정, RT-LV_BREAKER-DEFECT와 이관 조건, serial_no 막는 항목, SLA, 근거 절, 고장 진단 줄."""
+    """AC-024-1: 긴급도 근거, PR-02 판정 과정, RT-LV_BREAKER-DEFECT와 이관 조건, serial_no 막는 항목, SLA, 근거 절, 고장 진단 줄, 이관 후보 줄."""
     r = rows(info_request(api))
     assert r["C-02"]["result"] == "SITE_DOWN" and r["C-02"]["evidence"] == ["plant stopped"]
     assert r["C-03"]["result"] == "P1 (PR-02)" and "PR-01 ✗" in r["C-03"]["evidence"][0] and "PR-02 ✓" in r["C-03"]["evidence"][0]
@@ -156,6 +156,7 @@ def test_ac_024_1_evidence_rows(api):
     assert r["C-06"]["evidence"] == ["SLA-DEFECT-PLATINUM-P1"]
     assert r["M-C-02"]["result"] == "없음(정보 요청 중)"
     assert r["C-08"]["label"] == "⑨ 고장 진단" and r["C-08"]["result"]  # 고장 진단 후보 줄(3순위 add-fault-diagnosis)
+    assert r["C-09"]["label"] == "⑩ 이관 후보" and r["C-09"]["result"]  # 이관 후보 줄(3순위 add-escalation-candidates)
 
 
 def test_ac_024_2_citation_opens_section(api):

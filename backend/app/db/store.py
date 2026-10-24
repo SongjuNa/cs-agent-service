@@ -25,6 +25,7 @@ from app.masking import mask_fields, mask_text
 from app.pipeline.graph import RunOutcome
 from app.pipeline.reprocess import last_pipeline_step
 from app.retrieval.fault import NOTE_FAILED
+from app.rules.escalation import NOTE_RULES_FAILED
 from app.status.transitions import ConcurrentChange, TransitionRefused, current, transition
 
 MAX_BODY = 2000  # svc.ticket.inquiry_body CHECK
@@ -421,6 +422,10 @@ def _save_sub(conn, run_id, state, sub, outcome: RunOutcome, inquiry_id: int, re
         failed = NOTE_FAILED in sub.diagnosis.get("notes", [])  # 진단 실패도 흐름은 계속, 기록만(FR-018 예외 4행, C-141)
         steps.append({"name": "Q8a", "output": sub.diagnosis, "result": "FAILED" if failed else "SUCCESS",
                       "error_kind": "UNKNOWN" if failed else None, "error": NOTE_FAILED if failed else None})
+    if sub.escalation is not None:  # 이관 후보(FR-020). 조회 실패도 흐름은 계속, 기록만(예외 2행)
+        failed = NOTE_RULES_FAILED in sub.escalation.get("notes", [])
+        steps.append({"name": "Q9a", "output": sub.escalation, "result": "FAILED" if failed else "SUCCESS",
+                      "error_kind": "UNKNOWN" if failed else None, "error": NOTE_RULES_FAILED if failed else None})
     if sub.pipeline_error and sub.failed_step in ("Q10", "T5"):  # 근거 단계까지는 마쳤다
         steps.append({"name": "Q8", "output": {"doc_candidates": [c.model_dump() for c in sub.doc_candidates]}})
         steps.append({"name": "Q9", "output": {"lookups": [lv.model_dump() for lv in sub.lookups]}})

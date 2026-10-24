@@ -20,7 +20,7 @@ from tests.acceptance.test_drafts import FakeTransport
 from tests.acceptance.test_status_sla import db, seed  # noqa: F401  (db 픽스처를 함께 쓴다)
 from tests.acceptance.test_ticket_detail import api, gold_input, index, quote  # noqa: F401  (api 픽스처)
 
-PIPELINE_STEPS = ["T2", "Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q8", "Q9", "Q10", "Q11", "Q13", "Q14", "T6"]
+PIPELINE_STEPS = ["T2", "Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q9a", "Q8", "Q9", "Q10", "Q11", "Q13", "Q14", "T6"]
 LLM_STEPS = {"T2": "l1_understand_v1", "Q1": "l2_extract_v2", "Q10": "l4_draft_v2", "Q13": "l7_gloss_v1",
              "Q14": "l8_verify_v1"}
 
@@ -113,7 +113,7 @@ def test_why_rows_point_to_steps(api):
     detail = quote(api)
     refs = {r["id"]: (r["why"]["step"] or {}).get("step_name") for r in detail["sub_tickets"][0]["evidence_rows"]}
     assert refs == {"C-01": "T2", "C-02": "T2", "M-C-01": "Q2", "C-03": "Q3", "C-04": "Q4", "C-07": "Q5",
-                    "C-06": "Q6", "M-C-02": "Q9"}
+                    "C-06": "Q6", "M-C-02": "Q9", "C-09": "Q9a"}
 
 
 def test_timing_and_usage(api):
