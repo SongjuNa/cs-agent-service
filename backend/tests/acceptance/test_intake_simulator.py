@@ -138,7 +138,7 @@ def test_contact_saved_not_in_pipeline(api, monkeypatch):
     assert row == tuple(contact.values())
     logs = str(conn.execute("""SELECT json_agg(json_build_array(st.input_json, st.output_json)) FROM svc.agent_step st
                                 JOIN svc.agent_run r USING (run_id) WHERE r.ticket_id = %s""", (tid,)).fetchone()[0])
-    assert "Kim Minsu" not in logs and "minsu.kim" not in logs and "5555" not in logs
+    assert "Kim Minsu" not in logs and "minsu.kim" not in logs and "5555-0101" not in logs  # 티켓 번호(CSV1-005555 등)와 겹치지 않게
 
 
 # --- FR-003 ---

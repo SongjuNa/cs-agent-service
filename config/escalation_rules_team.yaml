@@ -1,0 +1,14 @@
+# 팀 보충 이관 규칙 v1 (2026-10-22, 다-15)
+# 출처: 기술 명세서 v1.4 §5-6 팀 보충 이관 규칙, 보충_이관_규칙_v1_20261022.md 4장
+# 운영진 이관 행 3개(routing_rules.csv)는 그대로 두고 따로 둔다. 조장 결정(2026-10-23): 설정 파일로 시작, 나중에 DB·관리 화면.
+# 반품 사유는 L2가 영어로 바꾼 사유를 소문자로 바꿔 단어가 들어 있는지 본다(§5-3과 같은 방식).
+- rule_id: RT-ESC-TEAM-RETURN-QUALITY
+  category: RETURN
+  return_reason_words: [dead on arrival, doa, does not power, quality problem, quality issue, recurring]
+  escalation_dept: QA_CLAIM
+  escalation_reason: QUALITY_RETURN
+- rule_id: RT-ESC-TEAM-INSTALL-P1
+  category: INSTALL
+  priority: P1
+  escalation_dept: FIELD_SVC
+  escalation_reason: P1

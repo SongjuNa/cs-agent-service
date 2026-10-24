@@ -1,7 +1,7 @@
 // 상세 전체판 탭 3개: 고객이 보낸 것(L), 시스템이 판단한 것(C, 하위 문의마다 구역), 이력(B)
 // (화면 정의서 v1 SCR-03 L·C·B, 명세서 FR-030 처리 1·2·4·6, 변경 add-ticket-detail-full)
 import { useEffect, useState, type ReactNode } from "react";
-import { api, ApiError, type Detail, type Diagnosis, type EvidenceRow, type FaultCandidate, type Field, type RunRow, type SubTicket, type TimelineItem } from "./api";
+import { api, ApiError, type Detail, type Diagnosis, type Escalation, type EscalationCandidate, type EvidenceRow, type FaultCandidate, type Field, type RunRow, type SubTicket, type TimelineItem } from "./api";
 import { EvidencePanel } from "./EvidencePanel";
 import type { SourceTarget } from "./Popups";
 
@@ -229,6 +229,33 @@ function DiagnosisPanel({ diagnosis }: { diagnosis: Diagnosis }) {
   );
 }
 
+/** 이관 후보(화면 정의서 v1 SCR-03 C-09, FR-020 출력): 부서별 한 줄, 팀 규칙 표시, 버튼 없음. */
+function EscalationPanel({ escalation }: { escalation: Escalation }) {
+  const byDept = new Map<string, EscalationCandidate[]>();
+  for (const c of escalation.escalation_candidates) byDept.set(c.dept, [...(byDept.get(c.dept) ?? []), c]);
+  return (
+    <div className="card escalation">
+      <header><h5>이관 후보</h5><span className="muted small">확정은 상담원이 함</span>
+        {escalation.notes.map((n) => <span key={n} className="chip gray">{n}</span>)}
+      </header>
+      {byDept.size === 0 ? (
+        <p>없음{escalation.escalation_condition && <span className="muted"> — 이관 조건: {escalation.escalation_condition}</span>}</p>
+      ) : (
+        <ul className="escalation-lines">
+          {[...byDept].map(([dept, rules]) => (
+            <li key={dept}>
+              <b>{dept}</b> —{" "}
+              {rules.map((c, i) => (
+                <span key={c.rule_id}>{i > 0 && ", "}{c.rule_id} ({c.reason}){c.team && <span className="chip human">팀 규칙</span>}</span>
+              ))}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function RunList({ ticketId }: { ticketId: string }) {
   const [runs, setRuns] = useState<RunRow[] | null>(null);
   const [open, setOpen] = useState(false);
@@ -287,7 +314,8 @@ export function SystemTab({ detail, locked, focus, onWhy, onSource, onAdjust, on
             <RequiredChecklist sub={sub} locked={locked || closed}
                                onReceived={(field, value) => onEdit(sub, { received_fields: [{ field, value: value || null }] })} />
             {sub.diagnosis && <DiagnosisPanel diagnosis={sub.diagnosis} />}
-            <p className="muted small">이관 후보·[이관]은 다음 3순위 변경에서 붙습니다.</p>
+            {sub.escalation && <EscalationPanel escalation={sub.escalation} />}
+            <p className="muted small">[이관]은 다음 3순위 변경에서 붙습니다.</p>
             <EvidencePanel sub={sub} focus={focus} onWhy={onWhy} onSource={onSource} />
           </div>
         );

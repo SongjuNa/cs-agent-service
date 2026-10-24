@@ -43,6 +43,8 @@ class EscalationHint(BaseModel):
     rule_id: str
     dept: str
     reason: str | None = None
+    reason_code: str | None = None  # escalation_reason 코드([이관] 기본값, C-146)
+    team: bool = False  # 팀 보충 규칙(설정 파일)에서 나온 후보
 
 
 class DocCandidate(BaseModel):
@@ -103,6 +105,7 @@ class SubTicketState(BaseModel):
     fault_candidates: list[FaultCandidate] = Field(default_factory=list)
     diagnosis: dict[str, Any] | None = None  # Q8a 결과(후보·찾은 방법·표시 문구). 진단 대상이 아니면 None. DB 열 아님
     escalation_candidates: list[EscalationHint] = Field(default_factory=list)
+    escalation: dict[str, Any] | None = None  # Q9a 결과(후보·이관 조건 문구·표시·실패 여부). DB 열 아님
     doc_candidates: list[DocCandidate] = Field(default_factory=list)
     lookups: list[LookupValue] = Field(default_factory=list)
     draft_id: int | None = None

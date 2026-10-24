@@ -168,6 +168,21 @@ export interface SubTicket {
   evidence_rows: EvidenceRow[];
   drafts: Draft[];
   diagnosis: Diagnosis | null; // 고장 진단(FR-018). 고장 계열이 아니면 null
+  escalation: Escalation | null; // 이관 후보(FR-020). 표시만 하고 상태는 그대로
+}
+
+export interface EscalationCandidate {
+  rule_id: string;
+  dept: string;
+  reason: string;
+  reason_code: string;
+  team: boolean;
+}
+
+export interface Escalation {
+  escalation_candidates: EscalationCandidate[];
+  escalation_condition: string | null;
+  notes: string[];
 }
 
 export interface FaultCandidate {
