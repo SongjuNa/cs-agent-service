@@ -1,10 +1,14 @@
-// 상세 전체판 팝업: P3 우선순위 조정, P6 고객 회신 입력 (화면 정의서 v1 SCR-03-P3·P6, FR-028, FR-032).
+// 상세 전체판 팝업: P3 우선순위 조정, P4 이관, P6 고객 회신 입력 (화면 정의서 v1 SCR-03-P3·P4·P6, FR-028, FR-033, FR-032).
 import { useEffect, useState } from "react";
-import { api, ApiError, type AdjustPreview, type SubTicket } from "./api";
+import { api, ApiError, type AdjustPreview, type Department, type SubTicket } from "./api";
 import { Modal } from "./Popups";
 
 const PRIORITIES = ["P1", "P2", "P3", "P4"];
 const REASONS: [string, string][] = [["CUSTOMER_REQUEST", "고객 요청"], ["IMPACT_REASSESSED", "영향 범위 재평가"], ["OTHER", "기타"]]; // FR-028 처리 6
+
+// 이관 사유 11값(화면 정의서 v1 CP-6, schema.sql escalation_reason)
+const ESCALATION_REASONS = ["ONSITE_REQUIRED", "QUALITY_RETURN", "RMA_REQUIRED", "COMMERCIAL_TERMS", "CAUSE_ANALYSIS",
+  "FW_UPDATE_FAILURE", "SPEC_INTERPRETATION", "P1", "OUT_OF_SCOPE_TEST", "CUSTOM_SPEC", "SAFETY"];
 
 const errorText = (e: unknown, fallback: string) => (e instanceof ApiError ? e.message : fallback);
 
@@ -114,6 +118,72 @@ export function ReplyPopup({ ticketId, language, subs, onDone, onClose }: {
           </fieldset>
         )}
       </div>
+      {error && <p className="bad">! {error}</p>}
+    </Modal>
+  );
+}
+
+/** P4 이관(FR-033 처리 1~4): 부서 기본값 = 이관 후보 첫 부서, 사유 기본값 = 그 후보의 사유 코드(변경 23 C-146). */
+export function EscalatePopup({ subs, onDone, onClose }: { subs: SubTicket[]; onDone: () => void; onClose: () => void }) {
+  const open = subs.filter((s) => s.sub_ticket.status === "IN_PROGRESS");
+  const [subId, setSubId] = useState(open[0]?.sub_ticket.sub_ticket_id ?? "");
+  const sub = open.find((s) => s.sub_ticket.sub_ticket_id === subId);
+  const top = sub?.escalation?.escalation_candidates[0];
+  const [dept, setDept] = useState(top?.dept ?? "");
+  const [reason, setReason] = useState(top?.reason_code ?? "");
+  const [memo, setMemo] = useState("");
+  const [depts, setDepts] = useState<Department[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => { api.departments().then(setDepts).catch(() => setDepts([])); }, []);
+
+  function pick(id: string) {
+    const c = open.find((s) => s.sub_ticket.sub_ticket_id === id)?.escalation?.escalation_candidates[0];
+    setSubId(id); setDept(c?.dept ?? ""); setReason(c?.reason_code ?? ""); setError(null);
+  }
+
+  async function submit() {
+    if (!sub) return;
+    if (!reason) { setError("이관 사유를 고르세요"); return; } // FR-033 예외 1행
+    setBusy(true);
+    try {
+      await api.escalate(subId, { dept, reason_code: reason, memo: memo.trim(), expected_version: sub.version });
+      onDone();
+    } catch (e) {
+      setError(errorText(e, "이관 실패"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal title="이관" onClose={onClose}
+           buttons={<><button onClick={onClose}>취소</button><button className="primary" disabled={busy || !sub} onClick={() => void submit()}>이관</button></>}>
+      <div className="form-grid">
+        {open.length > 1 && (
+          <label className="wide">문의
+            <select value={subId} onChange={(e) => pick(e.target.value)}>
+              {open.map((s) => <option key={s.sub_ticket.sub_ticket_id} value={s.sub_ticket.sub_ticket_id}>
+                문의 {s.sub_ticket.seq}: {s.sub_ticket.category_code ?? "유형 미정"}</option>)}
+            </select>
+          </label>
+        )}
+        <label>이관 부서
+          <select value={dept} onChange={(e) => setDept(e.target.value)}>
+            <option value="">고르세요</option>
+            {depts.map((d) => <option key={d.dept_code} value={d.dept_code}>{d.dept_code}{d.dept_code === top?.dept ? " (이관 후보)" : ""}</option>)}
+          </select>
+        </label>
+        <label>이관 사유
+          <select value={reason} onChange={(e) => setReason(e.target.value)}>
+            <option value="">고르세요</option>
+            {ESCALATION_REASONS.map((r) => <option key={r}>{r}</option>)}
+          </select>
+        </label>
+        <label className="wide">메모(선택) <textarea rows={3} value={memo} onChange={(e) => setMemo(e.target.value)} /></label>
+      </div>
+      {sub && <p className="muted small">현재 담당 {sub.sub_ticket.assigned_dept ?? "—"}. 고객 이관 안내 초안은 만들지 않습니다.</p>}
       {error && <p className="bad">! {error}</p>}
     </Modal>
   );

@@ -117,7 +117,9 @@ def _sub_detail(conn: Connection, sub: dict[str, Any], run: dict[str, Any] | Non
             "sub_ticket_id", "seq", "category_code", "assignee_masked", "urgency_flag", "product_code", "priority", "priority_rule_id",
             "routing_rule_id", "assigned_dept", "return_kind", "sla_id", "required_info", "provided_info",
             "missing_info", "missing_blocking_info", "sla_first_response_target_h", "sla_resolution_target_h",
-            "first_response_at_utc", "info_request_sent", "status", "pipeline_error", "evidence_json")},
+            "first_response_at_utc", "info_request_sent", "status", "pipeline_error", "evidence_json",
+            "escalated", "escalated_to", "escalation_reason")},
+        "escalated_at_utc": _escalated_at(conn, sub["sub_ticket_id"]) if sub["escalated_to"] else None,  # FR-033
         "checks": [{"check_type": r["check_type"], "flag": (r["detail"] or {}).get("flag")} for r in failed],
         "other_flags": [f for f in flags if check_type_of(f) is None and f not in DRAFT_FLAGS],
         "diagnosis": out.get("Q8a"),  # 고장 진단 후보(FR-018). 고장 계열이 아니면 None
@@ -194,6 +196,10 @@ def _evidence_rows(conn, sub, out, flags, labels, status, edits=None) -> list[di
         dept_evidence.append(f"이관 조건: {q4['escalation_condition']}")
     if sub["return_kind"]:
         dept_evidence.append(f"반품 구분: {sub['return_kind']}")
+    if sub["status"] == "ESCALATED" and sub["escalated_to"]:  # 화면 정의서 v1 C-04 "→ {이관 부서} ({사유}, {시각})"
+        at = _escalated_at(conn, sub["sub_ticket_id"])
+        dept_evidence.append(f"→ {sub['escalated_to']} ({sub['escalation_reason']}, {at:%Y-%m-%d %H:%M} UTC)" if at
+                             else f"→ {sub['escalated_to']} ({sub['escalation_reason']})")
     rows.append({"id": "C-04", "label": "⑤ 부서", "result": sub["assigned_dept"] or _empty(status, "배정 규칙 없음"),
                  "evidence": dept_evidence,
                  "why": {"rule": _row(conn, "SELECT * FROM ref.routing_rule WHERE rule_id = %s", (sub["routing_rule_id"],))}})
@@ -244,6 +250,13 @@ def _evidence_rows(conn, sub, out, flags, labels, status, edits=None) -> list[di
                      "evidence": q9a.get("notes") or [],
                      "why": {"rules": [_escalation_rule(conn, c) for c in found]}})
     return rows
+
+
+def _escalated_at(conn: Connection, sub_ticket_id: str):
+    """이관 시각 = 마지막 ESCALATE 이력(§5-6 저장, FR-033)."""
+    row = conn.execute("""SELECT max(changed_at_utc) FROM svc.ticket_status_history
+                           WHERE sub_ticket_id = %s AND event_kind = 'ESCALATE'""", (sub_ticket_id,)).fetchone()
+    return row[0] if row else None
 
 
 def _escalation_rule(conn: Connection, c: dict[str, Any]) -> dict[str, Any] | None:
