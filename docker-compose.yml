@@ -29,9 +29,12 @@ services:
       # 지시문과 반품 단어장은 저장소 맨 위에 있어 이미지에 없다. 서버가 찾는 자리(/prompts, /config)에 붙인다
       - ./prompts:/prompts:ro
       - ./config:/config:ro
+      # 고장 사전 증상 벡터 캐시(FR-018). 컨테이너를 다시 만들어도 남긴다
+      - fault-cache:/app/.cache
     depends_on:
       db:
         condition: service_healthy
 
 volumes:
   db-data:
+  fault-cache:

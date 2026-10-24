@@ -167,6 +167,24 @@ export interface SubTicket {
   other_flags: string[];
   evidence_rows: EvidenceRow[];
   drafts: Draft[];
+  diagnosis: Diagnosis | null; // 고장 진단(FR-018). 고장 계열이 아니면 null
+}
+
+export interface FaultCandidate {
+  fault_id: string;
+  cause: string | null;
+  check: string | null;
+  action: string | null;
+  onsite_required: boolean | null;
+  replace_required: boolean | null;
+  method: "EXACT" | "SYMPTOM" | null;
+  score: number | null;
+}
+
+export interface Diagnosis {
+  fault_candidates: FaultCandidate[];
+  method: "EXACT" | "SYMPTOM" | null;
+  notes: string[];
 }
 
 export interface Detail {

@@ -13,3 +13,6 @@ __pycache__/
 
 # 채점 결과 csv (정답지 값이 들어 있다, CLAUDE.md 규칙 8)
 scoring/
+
+# 고장 사전 증상 벡터 캐시 (운영진 데이터에서 만든 것, CLAUDE.md 규칙 8)
+.cache/
