@@ -15,15 +15,18 @@ MSG_INTERRUPTED = "UNKNOWN: 처리 중단(서버 재시작)"  # FR-036 예외 2�
 
 
 def pipeline_run(alias: str = "r") -> str:
-    """처리 흐름 전체를 도는 실행인지 가리는 SQL 조건(접수·고객 회신·다시 처리·상담원 수정).
+    """처리 흐름 전체를 도는 실행인지 가리는 SQL 조건(접수·고객 회신·다시 처리·상담원 수정·부서 회신).
 
     RETRY는 대역 다시 만들기·[다시 검증]에도 쓰인다(§6-5). 그 둘은 늘 하위 문의를 가리키므로, 티켓 실행(sub_ticket_id
     없음)인 RETRY와 처리 흐름 단계(T2·Q1·Q2)를 남긴 RETRY(복합 문의의 하위 문의 run)만 넣는다. 그래서 다시 처리가
     도는 동안(단계 쓰기 전)에도 처리 중으로 보인다(C-87 해소).
+    AGENT_EDIT도 임시 저장(Q11·Q13)·발송·이관 거부 기록(T6)에 쓰이므로, Q2를 남겼거나 아직 단계가 없는(처리 중) 것만 넣는다(C-169).
     """
-    return (f"({alias}.trigger IN ('INTAKE','CUSTOMER_REPLY','AGENT_EDIT') OR ({alias}.trigger = 'RETRY' AND ({alias}.sub_ticket_id IS NULL "
-            f"OR EXISTS (SELECT 1 FROM svc.agent_step ps WHERE ps.run_id = {alias}.run_id "
-            f"AND ps.step_name IN ('T2','Q1','Q2')))))")
+    steps = f"SELECT 1 FROM svc.agent_step ps WHERE ps.run_id = {alias}.run_id"
+    return (f"({alias}.trigger IN ('INTAKE','CUSTOMER_REPLY','DEPT_REPLY') "
+            f"OR ({alias}.trigger = 'AGENT_EDIT' AND (EXISTS ({steps} AND ps.step_name = 'Q2') OR NOT EXISTS ({steps}))) "
+            f"OR ({alias}.trigger = 'RETRY' AND ({alias}.sub_ticket_id IS NULL "
+            f"OR EXISTS ({steps} AND ps.step_name IN ('T2','Q1','Q2')))))")
 
 
 def for_sub(alias: str = "r") -> str:

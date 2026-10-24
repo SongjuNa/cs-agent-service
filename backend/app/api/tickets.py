@@ -17,7 +17,7 @@ from app.db.replies import ReplyError, record_reply
 from app.db.timeline import timeline
 from app.db.store import IntakeError, create_ticket, save_outcome, start_run, ticket_input
 from app.pipeline.graph import RunOutcome, run_ticket
-from app.pipeline.reprocess import keep_agent_edits, reextract, reuse
+from app.pipeline.reprocess import keep_agent_edits, reextract, reuse, with_dept_reply
 from app.pipeline.runlog import RunLog
 
 router = APIRouter()
@@ -120,6 +120,24 @@ def process_edit(connect: Callable, clients: Clients, sub_ticket_id: str, run_id
         save_outcome(conn, run_id, ticket_id, outcome, edit=record)
 
 
+def process_dept_reply(connect: Callable, clients: Clients, sub_ticket_id: str, run_id: int) -> None:
+    """이관 부서 회신 뒤 그 하위 문의를 다시 처리해 회신을 반영한 답변 초안을 만든다(FR-033 처리 8, §2-4, C-160)."""
+    ticket_id = sub_ticket_id.rsplit("-", 1)[0]
+    with connect() as conn:
+        runlog = RunLog.from_settings()
+        try:
+            with conn.transaction():
+                outcome = run_ticket(conn, clients.transport(), clients.embedder(),
+                                     {"ticket_id": ticket_id, "target_ids": [sub_ticket_id]},
+                                     understand_fn=with_dept_reply, runlog=runlog)
+        except Exception as exc:  # noqa: BLE001
+            outcome = RunOutcome(None, "FAILED", error_type=getattr(exc, "error_type", "UNKNOWN"), message=str(exc),
+                                 runlog=runlog)
+        if outcome.run_status != "SUCCESS":
+            outcome.message = MSG_REPROCESS_FAILED
+        save_outcome(conn, run_id, ticket_id, outcome)
+
+
 MSG_PROCESSING = "처리 중"
 MSG_NOTHING_TO_RETRY = "다시 처리할 실행이 없음"
 MSG_CLOSED = "종료된 문의입니다"  # 화면 정의서 v1 SCR-03-P8
@@ -171,8 +189,9 @@ def list_tickets(dept: str | None = None, status: str | None = None, priority: s
 
 
 @router.get("/tickets/{ticket_id}")
-def get_ticket(ticket_id: str, conn: Connection = Depends(get_conn)) -> dict:
-    detail = ticket_detail(conn, ticket_id)
+def get_ticket(ticket_id: str, conn: Connection = Depends(get_conn),
+               x_agent_dept: str | None = Header(default=None)) -> dict:
+    detail = ticket_detail(conn, ticket_id, agent_dept=(x_agent_dept or "").strip() or None)  # 부서별 작성 영역(C-164)
     if detail is None:
         raise HTTPException(404, MSG_NO_TICKET)
     return detail

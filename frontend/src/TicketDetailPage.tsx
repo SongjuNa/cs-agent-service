@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AdjustPopup, EscalatePopup, ReplyPopup } from "./ActionPopups";
 import { api, ApiError, type Detail, type Draft, type EvidenceRow, type SubTicket } from "./api";
 import { Clocks, CustomerTab, HistoryTab, StatusBadge, SystemTab } from "./DetailTabs";
+import { DeptWriter } from "./DeptWriter";
 import { DraftCard } from "./DraftCard";
 import { FailPopup, SourcePopup, WhyPopup, type SourceTarget } from "./Popups";
 
@@ -103,6 +104,9 @@ export function TicketDetailPage({ ticketId, agent, onBack }: { ticketId: string
   const escalateTitle = canEscalate ? "전문 부서로 이관(FR-033)"
     : escalatedTo.length ? `이미 이관됨(${escalatedTo.join(", ")})` : "처리 중인 문의만 이관할 수 있음";
 
+  // 고른 부서가 이관받은 부서면 그 문의는 부서 작성 영역만(§8-2, AC-033-7). 모두 그렇면 C/S 탭 머리·[이관]을 숨긴다
+  const deptOnly = subs.length > 0 && subs.every((s) => s.writer !== "CS");
+
   const jump = (rowId: string) => { setTab("system"); setFocus(null); setTimeout(() => setFocus(rowId)); };
 
   return (
@@ -149,7 +153,7 @@ export function TicketDetailPage({ ticketId, agent, onBack }: { ticketId: string
           <HistoryTab ticketId={ticketId} reloadKey={historyKey} locked={closed || detail.processing} onReply={() => setReplying(true)} />
         ) : (
           <div className="send">
-            <nav className="subtabs">
+            {!deptOnly && <nav className="subtabs">
               {types.map((t) => (
                 <button key={t} aria-selected={activeType === t} onClick={() => setSendTab(t)}>
                   {t === "INFO_REQUEST" ? "정보 요청" : "답변"}
@@ -158,8 +162,17 @@ export function TicketDetailPage({ ticketId, agent, onBack }: { ticketId: string
               <button disabled title="여유 시 기능(FR-048)">진행 안내 <small>여유 시</small></button>
               <button className="escalate" disabled={locked || busy || !canEscalate} title={escalateTitle}
                       onClick={() => setEscalating(true)}>이관</button>
-            </nav>
+            </nav>}
             {subs.map((sub) => {
+              if (sub.writer !== "CS") {
+                return (
+                  <div key={sub.sub_ticket.sub_ticket_id}>
+                    {subs.length > 1 && <h4>문의 {sub.sub_ticket.seq}/{subs.length}: {sub.sub_ticket.category_code ?? "유형 미정"}</h4>}
+                    <DeptWriter key={`${sub.sub_ticket.sub_ticket_id}-${sub.version}`} sub={sub} language={ticket.language}
+                                onDone={() => void load()} onFail={setFail} />
+                  </div>
+                );
+              }
               const drafts = live(sub).filter((d) => d.message_type === activeType);
               const old = sub.drafts.filter((d) => d.superseded_at && d.message_type === activeType);
               const lookups = sub.evidence_rows.find((r) => r.id === "M-C-02")?.lookups ?? [];

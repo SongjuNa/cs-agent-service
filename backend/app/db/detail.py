@@ -19,6 +19,7 @@ from app.rules.escalation import load_team_rules
 from app.sla.adjust import adjustments
 from app.sla.alerts import alert_history
 from app.sla.clock import clocks
+from app.status.dept_reply import EXCEPTION_DEPTS
 from app.status.transitions import history, wait_intervals
 
 SAFETY_URGENCY = {"SAFETY", "SITE_DOWN"}
@@ -39,7 +40,7 @@ def _row(conn: Connection, sql: str, params: tuple) -> dict[str, Any] | None:
     return rows[0] if rows else None
 
 
-def ticket_detail(conn: Connection, ticket_id: str) -> dict[str, Any] | None:
+def ticket_detail(conn: Connection, ticket_id: str, agent_dept: str | None = None) -> dict[str, Any] | None:
     ticket = _row(conn, """
         SELECT t.ticket_id, t.received_at_utc, t.channel, t.language, t.body_language, t.body_language_uncertain,
                t.customer_id, t.customer_tier, c.company_masked, c.country, t.source, t.source_ticket_id, t.multi_yn,
@@ -65,7 +66,7 @@ def ticket_detail(conn: Connection, ticket_id: str) -> dict[str, Any] | None:
     sla = clocks(conn, [r["sub_ticket_id"] for r in rows])
     # 하위 문의마다 자기 run(복합 문의는 하위 문의별 run, AC-036-4)
     subs = [_sub_detail(conn, s, run_for_sub(conn, s["sub_ticket_id"])) | _state(conn, s, sla.get(s["sub_ticket_id"]))
-            for s in rows]
+            | _dept(conn, s, agent_dept) for s in rows]
     # FR-006 출력: 티켓의 유형 = 하위 문의 유형을 순번 순으로 ';'로 이은 값(표에 열이 없어 계산, 기술 명세서 §6-2)
     ticket["category_code"] = ";".join(r["category_code"] for r in rows if r["category_code"]) or None
     summary = _row(conn, """SELECT status, rep_sub_ticket_id, rep_res_status, rep_remaining_h, open_count, inquiry_count
@@ -250,6 +251,25 @@ def _evidence_rows(conn, sub, out, flags, labels, status, edits=None) -> list[di
                      "evidence": q9a.get("notes") or [],
                      "why": {"rules": [_escalation_rule(conn, c) for c in found]}})
     return rows
+
+
+def _dept(conn: Connection, sub: dict[str, Any], agent_dept: str | None) -> dict[str, Any]:
+    """부서 회신 영역(FR-030 처리 2)과 예외 부서 메일, 고른 부서의 작성 영역(§8-2, C-164).
+
+    writer: 이관받은 부서가 고른 부서와 같으면 예외 부서는 DEPT_MAIL, 그 밖의 부서는 DEPT_REPLY, 나머지는 CS.
+    """
+    to = sub["escalated_to"]
+    writer = "CS" if not to or to != agent_dept else ("DEPT_MAIL" if to in EXCEPTION_DEPTS else "DEPT_REPLY")
+    replies = _rows(conn, """SELECT message_id, body, sent_by_name, sent_at_utc FROM svc.ticket_message
+                              WHERE sub_ticket_id = %s AND message_type = 'ESCALATION_NOTE' AND message_status = 'RECEIVED'
+                              ORDER BY sent_at_utc, message_no""", (sub["sub_ticket_id"],))
+    mails = _rows(conn, """SELECT message_id, message_status, body, sent_by_name, sent_at_utc, superseded_at FROM svc.ticket_message
+                            WHERE sub_ticket_id = %s AND sender = 'DEPT' AND message_type = 'FINAL_REPLY'
+                              AND message_status IN ('DRAFT','SENT') ORDER BY message_no""", (sub["sub_ticket_id"],))
+    for m in mails:  # 임시 저장 때 만든 대역(C-165)
+        gloss = latest_gloss(conn, m["message_id"]) if m["message_status"] == "DRAFT" else None
+        m["gloss"] = gloss.body if gloss else None
+    return {"writer": writer, "dept_replies": replies, "dept_mails": mails}
 
 
 def _escalated_at(conn: Connection, sub_ticket_id: str):

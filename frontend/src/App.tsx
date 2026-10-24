@@ -130,7 +130,7 @@ export function App() {
           {page.kind === "intake" ? <IntakePage onCreated={go} />
             : page.kind === "my" ? <MyWorkPage key={`${dept}|${mode}|${agent.trim()}`} dept={dept} agent={agent.trim()}
                                                asOf={mode === "snapshot" ? SNAPSHOT : null} onOpen={go} />
-            : page.kind === "ticket" ? <TicketDetailPage ticketId={page.id} agent={agent.trim()} onBack={back} />
+            : page.kind === "ticket" ? <TicketDetailPage key={`${page.id}|${dept}`} ticketId={page.id} agent={agent.trim()} onBack={back} />
             : <InboxPage key={`${dept}|${mode}`} flash={flash} dept={dept} asOf={mode === "snapshot" ? SNAPSHOT : null} onOpen={go} />}
         </main>
       </div>

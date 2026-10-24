@@ -97,7 +97,7 @@ def verify_draft(
     evidence_sentences: list[str],
     sources: list[Source],
     lookups: list[tuple[str, Any, str | None, str]],
-    dept_reply: str = "",  # 이관(FR-033)이 2순위라 지금은 늘 비어 있다
+    dept_reply: str = "",  # 이관 부서 회신(있을 때, §2-2 Q14 입력)
 ) -> VerifyResult:
     gloss_body = draft.gloss.body if draft.gloss else ""
     fields = {

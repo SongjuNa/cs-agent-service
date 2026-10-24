@@ -1,6 +1,7 @@
 """초안 다루기: 임시 저장, 대역 다시 만들기, 다시 검증, 승인·발송 (FR-031, FR-039, FR-049, 기술 명세서 v1.4 §8-1).
 
 발송은 SENT 행을 새로 쓰는 이 API만 한다(CLAUDE.md 규칙 3). 발송 뒤 상태 전이는 FR-025·FR-031 처리 4.
+예외 부서 메일(sender DEPT)은 자체 대조·대역·검증 없이 본문만 저장·발송하고 DEPT_MAIL_SENT로 전이한다(FR-031 처리 9, D34).
 """
 
 from __future__ import annotations
@@ -18,13 +19,16 @@ from app.db.store import (add_self_check, add_step, body_sha, check_body, draft_
 from app.llm.drafts import FLAG_GLOSS_FAILED, write_gloss
 from app.llm.verify import KIND_NAMES, verify_draft
 from app.llm.client import RecordingTransport
+from app.pipeline.reprocess import dept_reply_text
 from app.pipeline.runlog import RunLog
+from app.status.dept_reply import DeptError, check_mail_dept, mail_dept_of
 from app.status.transitions import ConcurrentChange
 
 router = APIRouter()
 
 MSG_SENT = "이미 발송된 초안"
 MSG_SAVE_FAILED = "저장하지 못함. 다시 시도"
+MSG_DEPT_NO_VERIFY = "부서 메일은 검증하지 않음"  # FR-031 처리 9, 구현 선택 C-165
 
 
 class BodyIn(BaseModel):
@@ -42,6 +46,14 @@ def _draft(conn: Connection, message_id: int) -> dict:
     if draft is None:
         raise HTTPException(404, "초안을 찾을 수 없음")
     return draft
+
+
+def _dept_check(conn: Connection, draft: dict, x_agent_dept: str | None) -> None:
+    """예외 부서 메일이면 고른 부서가 이관받은 예외 부서인지 본다(§8-1 "초안 만들 때와 send 때 모두", C-166)."""
+    try:
+        check_mail_dept(mail_dept_of(conn, draft["sub_ticket_id"]), x_agent_dept)
+    except DeptError as exc:
+        raise HTTPException(exc.status, str(exc)) from exc
 
 
 def _make_gloss(conn: Connection, clients: Clients, draft: dict, run_id: int) -> bool:
@@ -67,21 +79,28 @@ def _make_gloss(conn: Connection, clients: Clients, draft: dict, run_id: int) ->
 
 @router.put("/messages/{message_id}")
 def put_message(message_id: int, data: BodyIn, conn: Connection = Depends(get_conn),
-                clients: Clients = Depends(get_clients)) -> dict:
-    """임시 저장: DRAFT 본문만 바꾸고 대역을 다시 만든다. 검증은 다시 부르지 않는다(추가 결정 가3)."""
+                clients: Clients = Depends(get_clients), x_agent_dept: str | None = Header(default=None)) -> dict:
+    """임시 저장: DRAFT 본문만 바꾸고 대역을 다시 만든다. 검증은 다시 부르지 않는다(추가 결정 가3).
+
+    예외 부서 메일은 자체 대조 없이 본문과 대역만(C-165).
+    """
     draft = _draft(conn, message_id)
     if draft["message_status"] != "DRAFT":
         raise HTTPException(409, MSG_SENT)
     if not data.body.strip():
         raise HTTPException(400, "내용을 입력하세요")
+    dept = draft["sender"] == "DEPT"
+    if dept:
+        _dept_check(conn, draft, x_agent_dept)
     try:
         run_id = start_run(conn, draft["ticket_id"], draft["sub_ticket_id"], "AGENT_EDIT")
         with conn.transaction():
             update_draft_body(conn, message_id, data.body)
-            check = check_body(conn, draft["message_type"], draft["sub_ticket_id"], data.body)  # 고친 본문의 ① 대조(코드)
-            add_self_check(conn, run_id, draft["sub_ticket_id"], "DRAFT_CHECK", check["passed"],
-                           {**check, "body_sha256": body_sha(data.body)}, message_id)
-            add_step(conn, run_id, "Q11", output=check)
+            if not dept:  # 부서 메일은 Q11을 거치지 않는다(FR-031 처리 9)
+                check = check_body(conn, draft["message_type"], draft["sub_ticket_id"], data.body)  # 고친 본문의 ① 대조(코드)
+                add_self_check(conn, run_id, draft["sub_ticket_id"], "DRAFT_CHECK", check["passed"],
+                               {**check, "body_sha256": body_sha(data.body)}, message_id)
+                add_step(conn, run_id, "Q11", output=check)
     except psycopg.Error as exc:  # 화면 정의서 v2 P8
         raise HTTPException(500, MSG_SAVE_FAILED) from exc
     draft["body"] = data.body
@@ -108,13 +127,15 @@ def post_gloss(message_id: int, conn: Connection = Depends(get_conn), clients: C
 def post_verify(message_id: int, conn: Connection = Depends(get_conn), clients: Clients = Depends(get_clients)) -> dict:
     """다시 검증(FR-049): L8 1회, 결과는 VERIFY 새 행."""
     draft = _draft(conn, message_id)
+    if draft["sender"] == "DEPT":
+        raise HTTPException(400, MSG_DEPT_NO_VERIFY)
     run_id = start_run(conn, draft["ticket_id"], draft["sub_ticket_id"], "RETRY")
     sources, lookups, _, evidence = draft_sources(conn, draft["sub_ticket_id"])
     runlog = RunLog.from_settings()
 
     def check(_):
         return verify_draft(RecordingTransport(clients.transport(), runlog), draft_object(conn, draft), evidence,
-                            sources, lookups)
+                            sources, lookups, dept_reply=dept_reply_text(conn, draft["sub_ticket_id"]))
 
     try:
         result = runlog.timed("verify", check)(None)
@@ -131,7 +152,7 @@ def post_verify(message_id: int, conn: Connection = Depends(get_conn), clients: 
 
 @router.post("/messages/{message_id}/send")
 def post_send(message_id: int, data: SendIn, conn: Connection = Depends(get_conn),
-              x_agent_id: str | None = Header(default=None)):
+              x_agent_id: str | None = Header(default=None), x_agent_dept: str | None = Header(default=None)):
     """승인·발송(FR-031 처리 1·2·3·5). 확인이 필요한 것이 있으면 409 + 목록, override_check로 다시 보내면 발송."""
     if not x_agent_id or not x_agent_id.strip():
         raise HTTPException(400, "상담원 ID를 입력하세요")
@@ -141,7 +162,11 @@ def post_send(message_id: int, data: SendIn, conn: Connection = Depends(get_conn
     if draft["message_status"] != "DRAFT":
         raise HTTPException(409, MSG_SENT)
 
-    issues, notes = _send_issues(conn, draft, data.final_body)
+    if draft["sender"] == "DEPT":  # 예외 부서 메일: 대조·검증 없이(FR-031 처리 9, D34)
+        _dept_check(conn, draft, x_agent_dept)
+        issues, notes = [], []
+    else:
+        issues, notes = _send_issues(conn, draft, data.final_body)
     if issues and not data.override_check:
         return JSONResponse(status_code=409, content={"detail": "확인 필요", "issues": issues, "notes": notes})
     try:
