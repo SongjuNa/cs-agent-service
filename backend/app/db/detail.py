@@ -119,6 +119,7 @@ def _sub_detail(conn: Connection, sub: dict[str, Any], run: dict[str, Any] | Non
             "first_response_at_utc", "info_request_sent", "status", "pipeline_error", "evidence_json")},
         "checks": [{"check_type": r["check_type"], "flag": (r["detail"] or {}).get("flag")} for r in failed],
         "other_flags": [f for f in flags if check_type_of(f) is None and f not in DRAFT_FLAGS],
+        "diagnosis": out.get("Q8a"),  # 고장 진단 후보(FR-018). 고장 계열이 아니면 None
         "evidence_rows": _with_steps(_evidence_rows(conn, sub, out, flags, labels, status, edits), run_id, steps),
         "drafts": drafts,
         "fields": _fields(conn, sub["sub_ticket_id"], labels),
@@ -138,7 +139,7 @@ def _fields(conn: Connection, sub_ticket_id: str, labels: dict[str, str]) -> lis
 
 # 근거 줄 → 그 줄을 만든 단계 (FR-036 처리 7 "왜?에서 해당 단계로", 기술 명세서 §2-2 단계 표)
 ROW_STEPS = {"C-01": ("T2",), "C-02": ("T2",), "M-C-01": ("Q2",), "C-03": ("Q3",), "C-04": ("Q4",), "C-07": ("Q5",),
-             "C-06": ("Q6",), "M-C-02": ("Q7", "Q9", "Q8")}  # ⑧은 화면 정의서 v2 SCR-03M "agent_step(Q9)"
+             "C-06": ("Q6",), "M-C-02": ("Q7", "Q9", "Q8"), "C-08": ("Q8a",)}  # ⑧은 화면 정의서 v2 SCR-03M "agent_step(Q9)"
 
 
 def _with_steps(rows: list[dict[str, Any]], run_id: int | None, steps: dict[str, Any]) -> list[dict[str, Any]]:
@@ -217,6 +218,16 @@ def _evidence_rows(conn, sub, out, flags, labels, status, edits=None) -> list[di
         result = f"후보 {len(candidates)}개" if candidates else _empty(status, "근거 없음")
     rows.append({"id": "M-C-02", "label": "⑧ 근거 절·조회값", "result": result, "evidence": [],
                  "candidates": candidates, "lookups": lookups, "why": {}})
+    q8a = out.get("Q8a")
+    if q8a is not None:  # 고장 계열만(FR-018 처리 1, FR-024 입력, AC-024-1)
+        top = (q8a.get("fault_candidates") or [None])[0]
+        notes = q8a.get("notes") or []
+        method = {"EXACT": "정확 일치", "SYMPTOM": "증상 검색"}.get(q8a.get("method"), "")
+        rows.append({"id": "C-08", "label": "⑨ 고장 진단",
+                     "result": f"{top['fault_id']} ({method})" if top else f"없음({', '.join(notes) or '진단 없음'})",
+                     "evidence": ([top["cause"]] if top and top.get("cause") else []) + notes,
+                     "why": {"rule": _row(conn, "SELECT * FROM ref.fault WHERE fault_id = %s", (top["fault_id"],)) if top else None,
+                             "method": q8a.get("method"), "score": top.get("score") if top else None}})
     return rows
 
 

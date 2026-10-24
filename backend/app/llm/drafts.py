@@ -76,6 +76,7 @@ class Draft:
     verify: Any = None  # 검증 에이전트 결과(app.llm.verify.VerifyResult, FR-049)
     compose: dict[str, Any] | None = None  # 복합 문의 메일 구성 결과(T5, FR-022). 단일 문의는 None
     flags: list[str] = field(default_factory=list)
+    input_fields: list[str] = field(default_factory=list)  # L4에 넣은 항목 이름(실행 기록 Q10 input_json, AC-018-4)
 
 
 # --- L3 정보 요청 (FR-015) ---
@@ -222,7 +223,8 @@ def write_reply(
     if len(body) > MAX_REPLY_CHARS:
         flags.append(FLAG_TOO_LONG)
     draft = Draft(sub_ticket_id, "FINAL_REPLY", language, body, citations=cites,
-                  lookups_used=lookups_in_body(body, lookups), check=check.as_dict(), flags=flags)
+                  lookups_used=lookups_in_body(body, lookups), check=check.as_dict(), flags=flags,
+                  input_fields=list(fields))
     return draft, flags
 
 

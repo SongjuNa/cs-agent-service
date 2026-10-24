@@ -24,6 +24,7 @@ from app.llm.drafts import CHECK_PROVIDED_FIELDS, Draft, Gloss, Source, write_gl
 from app.masking import mask_fields, mask_text
 from app.pipeline.graph import RunOutcome
 from app.pipeline.reprocess import last_pipeline_step
+from app.retrieval.fault import NOTE_FAILED
 from app.status.transitions import ConcurrentChange, TransitionRefused, current, transition
 
 MAX_BODY = 2000  # svc.ticket.inquiry_body CHECK
@@ -416,6 +417,10 @@ def _save_sub(conn, run_id, state, sub, outcome: RunOutcome, inquiry_id: int, re
                                   "labels": req.labels if req else {}}},
         {"name": "Q6", "output": {"sla_id": sub.sla_id, "fr_target_h": sub.fr_target_h, "res_target_h": sub.res_target_h}},
     ]
+    if sub.diagnosis is not None:  # 고장 진단(FR-018). 고장 계열이 아니면 단계가 없다(AC-018-3)
+        failed = NOTE_FAILED in sub.diagnosis.get("notes", [])  # 진단 실패도 흐름은 계속, 기록만(FR-018 예외 4행, C-141)
+        steps.append({"name": "Q8a", "output": sub.diagnosis, "result": "FAILED" if failed else "SUCCESS",
+                      "error_kind": "UNKNOWN" if failed else None, "error": NOTE_FAILED if failed else None})
     if sub.pipeline_error and sub.failed_step in ("Q10", "T5"):  # 근거 단계까지는 마쳤다
         steps.append({"name": "Q8", "output": {"doc_candidates": [c.model_dump() for c in sub.doc_candidates]}})
         steps.append({"name": "Q9", "output": {"lookups": [lv.model_dump() for lv in sub.lookups]}})
@@ -436,7 +441,8 @@ def _save_sub(conn, run_id, state, sub, outcome: RunOutcome, inquiry_id: int, re
     for draft in (d for d in outcome.drafts if d.sub_ticket_id == sub.sub_ticket_id):
         message_id = insert_draft(conn, state.ticket_id, draft)
         if draft.message_type == "FINAL_REPLY":
-            steps.append({"name": "Q10", "output": {"message_id": message_id, "lookups_used": draft.lookups_used}})
+            steps.append({"name": "Q10", "input_": {"field_names": draft.input_fields},
+                          "output": {"message_id": message_id, "lookups_used": draft.lookups_used}})
             add_self_check(conn, run_id, sub.sub_ticket_id, "DRAFT_CHECK", bool(draft.check and draft.check["passed"]),
                            {**(draft.check or {}), "body_sha256": body_sha(draft.body)}, message_id)
             steps.append({"name": "Q11", "output": draft.compose["paragraph_check"] if draft.compose else draft.check})

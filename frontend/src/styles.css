@@ -169,3 +169,8 @@ mark.extract { background: transparent; text-decoration: underline 2px #e0b400; 
 .waitbar { position: relative; display: inline-block; width: 120px; height: 8px; background: #f1f2f2; border-radius: 4px; vertical-align: middle; }
 .waitbar .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--gold); border-radius: 4px; }
 .waitbar .tick { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--red); }
+.diagnosis h5 { margin: 0; }
+.fault { margin-top: 6px; }
+.fault-body { display: grid; grid-template-columns: 40px 1fr; gap: 2px 8px; margin: 6px 0 0; font-size: 13px; }
+.fault-body dt { color: var(--gray); }
+.fault-body dd { margin: 0; }

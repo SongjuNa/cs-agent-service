@@ -1,6 +1,6 @@
 """처리 흐름 그래프 (기술 명세서 v1.4 §1-2 LangGraph, §2-1 하위 문의 그래프, §2-5 분기③④).
 
-understand(T1·T2·Q1) → rules(Q2~Q6) → info_request(분기③ 막는 정보가 있는 하위 문의: Q7, L3)
+understand(T1·T2·Q1) → rules(Q2~Q6) → diagnose(Q8a 고장 진단, 고장 계열만) → info_request(분기③ 막는 정보가 있는 하위 문의: Q7, L3)
   → evidence(나머지 하위 문의: Q8·Q9) → reply(분기④ 근거 있음? → Q10 L4 + Q11 대조)
   → compose(복합 문의면 T5 메일 구성, L5) → gloss(Q13, L7) → verify(Q14, L8) → 끝
 노드는 하위 문의를 순번 순으로 처리하고, 한 하위 문의의 오류는 그 문의에만 남긴다(FR-006 예외 3행, C-90).
@@ -21,6 +21,7 @@ from app.llm.drafts import Draft, Source, write_gloss, write_info_request, write
 from app.pipeline.compose import compose_mail
 from app.llm.embed import Embedder
 from app.llm.verify import verify_draft
+from app.pipeline.diagnose import add_diagnosis
 from app.pipeline.evidence import add_evidence
 from app.pipeline.rules_step import apply_rules
 from app.pipeline.runlog import RunLog, track
@@ -95,6 +96,11 @@ def build_graph(conn: Connection, transport: Transport, embedder: Embedder, unde
 
     def answering(gs: GraphState) -> list[SubTicketState]:
         return [s for s in gs["state"].sub_tickets if not s.missing_blocking_info]
+
+    def diagnose(gs: GraphState) -> GraphState:  # Q8a: 정보 요청 여부와 상관없이 규칙 단계 바로 뒤(§2)
+        state = gs["state"]
+        each(state.sub_tickets, lambda sub: add_diagnosis(conn, embedder, sub), "Q8a")
+        return {"state": state}
 
     def info_request(gs: GraphState) -> GraphState:
         state, drafts = gs["state"], list(gs.get("drafts", []))
@@ -194,16 +200,16 @@ def build_graph(conn: Connection, transport: Transport, embedder: Embedder, unde
         return "rules" if gs["run_status"] == "SUCCESS" else END
 
     def after_rules(gs: GraphState) -> str:
-        return "info_request" if gs.get("run_status") == "SUCCESS" else END
+        return "diagnose" if gs.get("run_status") == "SUCCESS" else END
 
     graph = StateGraph(GraphState)
-    order = [("understand", understand), ("rules", rules), ("info_request", info_request), ("evidence", evidence),
+    order = [("understand", understand), ("rules", rules), ("diagnose", diagnose), ("info_request", info_request), ("evidence", evidence),
              ("reply", reply), ("compose", compose), ("gloss", gloss), ("verify", verify)]
     for name, node in order:
         graph.add_node(name, runlog.timed(name, node) if runlog is not None else node)
     graph.add_edge(START, "understand")
     graph.add_conditional_edges("understand", after_understand, ["rules", END])
-    graph.add_conditional_edges("rules", after_rules, ["info_request", END])
+    graph.add_conditional_edges("rules", after_rules, ["diagnose", END])
     for (a, _), (b, _) in zip(order[2:], order[3:]):
         graph.add_edge(a, b)
     graph.add_edge("verify", END)

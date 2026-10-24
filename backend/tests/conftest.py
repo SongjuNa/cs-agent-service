@@ -14,3 +14,14 @@ def conn():
     load_gold.load(settings.database_url, settings.data_path)
     with psycopg.connect(settings.database_url) as connection:
         yield connection
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _fault_vector_cache(tmp_path_factory):
+    """시험은 개발자의 고장 사전 벡터 캐시(backend/.cache)를 건드리지 않는다(add-fault-diagnosis)."""
+    from app.retrieval import fault
+
+    saved = fault._default_vectors
+    fault._default_vectors = fault.SymptomVectors(tmp_path_factory.mktemp("fault-cache") / "fault_symptoms.json")
+    yield
+    fault._default_vectors = saved

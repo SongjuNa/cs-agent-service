@@ -10,6 +10,7 @@ from app.config import get_settings
 from app.db.runs import close_stale_runs
 from app.db.store import gloss_reminders
 from app.llm.client import default_transport
+from app.retrieval.fault import warm_cache
 from app.scheduler import start_scheduler
 
 
@@ -23,6 +24,10 @@ async def lifespan(app: FastAPI):
             logging.getLogger(__name__).warning("끝나지 않은 실행 %d건을 FAILED로 닫음: %s", len(closed), closed)
     except Exception:  # noqa: BLE001 — 닫기 실패로 서버를 멈추지 않는다
         logging.getLogger(__name__).exception("끝나지 않은 실행 닫기 실패")
+    try:  # 고장 사전 증상 벡터 캐시를 메모리에 올린다(FR-018, 조장 결정 2026-10-23). 언어 모델은 부르지 않는다
+        logging.getLogger(__name__).info("고장 사전 벡터 %d개를 캐시에서 읽음", warm_cache())
+    except Exception:  # noqa: BLE001
+        logging.getLogger(__name__).exception("고장 사전 벡터 캐시 읽기 실패")
     scheduler = start_scheduler(gloss_reminders(default_transport)) if get_settings().scheduler_enabled else None
     app.state.scheduler = scheduler
     yield

@@ -1,7 +1,7 @@
 // 상세 전체판 탭 3개: 고객이 보낸 것(L), 시스템이 판단한 것(C, 하위 문의마다 구역), 이력(B)
 // (화면 정의서 v1 SCR-03 L·C·B, 명세서 FR-030 처리 1·2·4·6, 변경 add-ticket-detail-full)
 import { useEffect, useState, type ReactNode } from "react";
-import { api, ApiError, type Detail, type EvidenceRow, type Field, type RunRow, type SubTicket, type TimelineItem } from "./api";
+import { api, ApiError, type Detail, type Diagnosis, type EvidenceRow, type FaultCandidate, type Field, type RunRow, type SubTicket, type TimelineItem } from "./api";
 import { EvidencePanel } from "./EvidencePanel";
 import type { SourceTarget } from "./Popups";
 
@@ -193,6 +193,42 @@ function RequiredChecklist({ sub, locked, onReceived }: {
   );
 }
 
+const METHOD: Record<string, string> = { EXACT: "정확 일치", SYMPTOM: "증상 검색" };
+
+function FaultLine({ c }: { c: FaultCandidate }) {
+  return (
+    <div className="fault">
+      <b>{c.fault_id}</b> <span className="chip">{METHOD[c.method ?? ""] ?? "—"} {c.score !== null ? c.score.toFixed(2) : ""}</span>
+      {c.onsite_required && <span className="chip bad">현장 출동 필요</span>}
+      {c.replace_required && <span className="chip bad">교체 필요</span>}
+      <dl className="fault-body">
+        <dt>원인</dt><dd>{c.cause ?? "—"}</dd>
+        <dt>점검</dt><dd>{c.check ?? "—"}</dd>
+        <dt>조치</dt><dd>{c.action ?? "—"}</dd>
+      </dl>
+    </div>
+  );
+}
+
+/** 고장 진단 후보(화면 정의서 v1 SCR-03 C-08): 1순위 크게, 2·3순위 접힘. 상담원 참고용(FR-018 처리 5). */
+function DiagnosisPanel({ diagnosis }: { diagnosis: Diagnosis }) {
+  const [first, ...rest] = diagnosis.fault_candidates;
+  return (
+    <div className="card diagnosis">
+      <header><h5>고장 진단 후보</h5><span className="muted small">참고용, 초안에는 쓰지 않음</span>
+        {diagnosis.notes.map((n) => <span key={n} className="chip gray">{n}</span>)}
+      </header>
+      {first ? <FaultLine c={first} /> : <p className="muted">진단 없음</p>}
+      {rest.length > 0 && (
+        <details>
+          <summary>다른 후보 {rest.length}개</summary>
+          {rest.map((c) => <FaultLine key={c.fault_id} c={c} />)}
+        </details>
+      )}
+    </div>
+  );
+}
+
 function RunList({ ticketId }: { ticketId: string }) {
   const [runs, setRuns] = useState<RunRow[] | null>(null);
   const [open, setOpen] = useState(false);
@@ -250,7 +286,8 @@ export function SystemTab({ detail, locked, focus, onWhy, onSource, onAdjust, on
                           onSave={(data) => onEdit(sub, data)} />
             <RequiredChecklist sub={sub} locked={locked || closed}
                                onReceived={(field, value) => onEdit(sub, { received_fields: [{ field, value: value || null }] })} />
-            <p className="muted small">고장 진단 후보·이관 후보·[이관]은 3순위 기능이라 아직 없습니다.</p>
+            {sub.diagnosis && <DiagnosisPanel diagnosis={sub.diagnosis} />}
+            <p className="muted small">이관 후보·[이관]은 다음 3순위 변경에서 붙습니다.</p>
             <EvidencePanel sub={sub} focus={focus} onWhy={onWhy} onSource={onSource} />
           </div>
         );

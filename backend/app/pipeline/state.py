@@ -30,7 +30,8 @@ class RuleCheck(BaseModel):
 
 class FaultCandidate(BaseModel):
     fault_id: str
-    cause: str | None = None
+    cause: str | None = None  # ref.fault.root_cause
+    check: str | None = None  # ref.fault.diagnosis(점검)
     action: str | None = None
     onsite_required: bool | None = None
     replace_required: bool | None = None
@@ -100,6 +101,7 @@ class SubTicketState(BaseModel):
     fr_target_h: int | None = None
     res_target_h: int | None = None
     fault_candidates: list[FaultCandidate] = Field(default_factory=list)
+    diagnosis: dict[str, Any] | None = None  # Q8a 결과(후보·찾은 방법·표시 문구). 진단 대상이 아니면 None. DB 열 아님
     escalation_candidates: list[EscalationHint] = Field(default_factory=list)
     doc_candidates: list[DocCandidate] = Field(default_factory=list)
     lookups: list[LookupValue] = Field(default_factory=list)
