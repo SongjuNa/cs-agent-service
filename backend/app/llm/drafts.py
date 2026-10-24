@@ -16,6 +16,7 @@ from app.retrieval.numbers import VERDICT_LATEST, VERDICT_UPDATE
 
 L3_PROMPT = "l3_info_request_v1.md"
 L4_PROMPT = "l4_draft_v2.md"
+L4_DEPT_PROMPT = "l4_draft_v3.md"  # 부서 회신이 있을 때만(<dept_reply> 칸, 변경 add-dept-reply C-162)
 L7_PROMPT = "l7_gloss_v1.md"
 SKELETONS_FILE = "l4_category_skeletons_v1.md"
 
@@ -177,10 +178,12 @@ def write_reply(
     sources: list[Source],
     optional_missing_labels: list[str],
     composite: bool = False,
+    dept_reply: str = "",
 ) -> tuple[Draft | None, list[str]]:
     """답변 초안을 만들고 대조한다. (초안 또는 None, 표시 목록).
 
     composite: 복합 문의면 이 요청의 단락 하나만 쓴다. 인사말·맺음말은 T5가 붙인다(에이전트 설계서 4-6 모드).
+    dept_reply: 이관 부서 회신(DEPT_REPLY 재처리 때만). L4 입력과 숫자 허용 목록에 넣는다(§2-4, §3-4 2번, 가-6).
     """
     if not sources:
         return None, [FLAG_NO_EVIDENCE_DRAFT]  # FR-021 처리 2
@@ -202,15 +205,17 @@ def write_reply(
         "lookups": "\n".join(lookup_lines) or "(none)",
         "sources": "\n\n".join(f"[{s.doc_id} §{s.section_no}] {s.title}\n{s.text}" for s in sources),
     }
+    if dept_reply:
+        fields["dept_reply"] = dept_reply
     sections = {(s.doc_id, s.section_no) for s in sources}
     allowed_texts = ([s.text for s in sources] + [str(v) for _, v, _, _ in lookups]
-                     + [v for name, v in provided if name in CHECK_PROVIDED_FIELDS])
+                     + [v for name, v in provided if name in CHECK_PROVIDED_FIELDS] + ([dept_reply] if dept_reply else []))
 
     flags: list[str] = []
     body, check, cites = "", CheckResult(False), []
     try:
         for attempt in range(2):  # 대조·길이가 어긋나면 1회 다시 만든다(§3-4 4번, FR-021 예외 4행)
-            result = generate_json(transport, "L4", L4_PROMPT, fields, REPLY_SCHEMA)
+            result = generate_json(transport, "L4", L4_DEPT_PROMPT if dept_reply else L4_PROMPT, fields, REPLY_SCHEMA)
             body = result.data["body"].strip()
             cites = result.data["citations"]
             check = check_draft(body, sections, allowed_texts)

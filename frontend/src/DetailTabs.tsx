@@ -256,6 +256,31 @@ function EscalationPanel({ escalation }: { escalation: Escalation }) {
   );
 }
 
+/** "부서 회신" 영역(FR-030 처리 2): C/S 상담원이 보는 내부 기록. 예외 부서가 보낸 고객 메일도 함께(C-164). */
+function DeptReplyPanel({ sub }: { sub: SubTicket }) {
+  const st = sub.sub_ticket;
+  const at = (t: string | null) => (t ?? "").replace("T", " ").slice(0, 16);
+  const sent = sub.dept_mails.filter((m) => m.message_status === "SENT");
+  return (
+    <div className="card dept-reply">
+      <header><h5>부서 회신</h5><span className="muted small">내부 기록 — 고객에게 가지 않음</span></header>
+      <p className="small">이관 부서 <b>{st.escalated_to}</b> · 사유 {st.escalation_reason} · 이관 {at(sub.escalated_at_utc)} UTC</p>
+      {sub.dept_replies.length === 0 && sent.length === 0 ? <p className="gray">부서 회신 대기 중</p> : (
+        <ul className="dept-lines">
+          {sub.dept_replies.map((r) => (
+            <li key={r.message_id}><span className="muted">{at(r.sent_at_utc)} · {r.sent_by_name}</span>
+              <pre className="draft-body">{r.body}</pre></li>
+          ))}
+          {sent.map((m) => (
+            <li key={m.message_id}><span className="muted">{at(m.sent_at_utc)} · {m.sent_by_name} · 고객에게 보낸 메일</span>
+              <pre className="draft-body">{m.body}</pre></li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function RunList({ ticketId }: { ticketId: string }) {
   const [runs, setRuns] = useState<RunRow[] | null>(null);
   const [open, setOpen] = useState(false);
@@ -315,6 +340,7 @@ export function SystemTab({ detail, locked, focus, onWhy, onSource, onAdjust, on
                                onReceived={(field, value) => onEdit(sub, { received_fields: [{ field, value: value || null }] })} />
             {sub.diagnosis && <DiagnosisPanel diagnosis={sub.diagnosis} />}
             {sub.escalation && <EscalationPanel escalation={sub.escalation} />}
+            {st.escalated && <DeptReplyPanel sub={sub} />}
             <EvidencePanel sub={sub} focus={focus} onWhy={onWhy} onSource={onSource} />
           </div>
         );
@@ -358,7 +384,6 @@ export function HistoryTab({ ticketId, reloadKey, locked, onReply }: {
     <section>
       <div className="intake-head">
         <button type="button" disabled={locked} onClick={onReply}>고객 회신 입력</button>
-        <span className="muted small">부서 회신 입력은 3순위(이관) 기능입니다.</span>
       </div>
       {error && <p className="bad">! {error}</p>}
       {items === null ? <p className="muted">읽는 중…</p> : (

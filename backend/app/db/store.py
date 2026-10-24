@@ -23,7 +23,7 @@ from app.db.assignees import assign
 from app.llm.drafts import CHECK_PROVIDED_FIELDS, Draft, Gloss, Source, write_gloss
 from app.masking import mask_fields, mask_text
 from app.pipeline.graph import RunOutcome
-from app.pipeline.reprocess import last_pipeline_step
+from app.pipeline.reprocess import dept_reply_text, last_pipeline_step
 from app.retrieval.fault import NOTE_FAILED
 from app.rules.escalation import NOTE_RULES_FAILED
 from app.status.transitions import ConcurrentChange, TransitionRefused, current, transition
@@ -326,8 +326,8 @@ def _save_failure(conn: Connection, run_id: int, ticket_id: str, outcome: RunOut
                   edit: dict | None = None) -> None:
     kind = outcome.error_type if outcome.error_type in ERROR_KINDS else "UNKNOWN"
     trigger, run_sub = conn.execute("SELECT trigger, sub_ticket_id FROM svc.agent_run WHERE run_id = %s", (run_id,)).fetchone()
-    # 첫 노드: 접수·다시 처리는 T2, 고객 회신 재처리는 Q1, 상담원 수정은 Q2부터(§2-4)
-    first = {"CUSTOMER_REPLY": "Q1", "AGENT_EDIT": "Q2"}.get(trigger, "T2")
+    # 첫 노드: 접수·다시 처리는 T2, 고객 회신 재처리는 Q1, 상담원 수정·부서 회신은 Q2부터(§2-4, C-160)
+    first = {"CUSTOMER_REPLY": "Q1", "AGENT_EDIT": "Q2", "DEPT_REPLY": "Q2"}.get(trigger, "T2")
     step = first if outcome.state is None else "Q2"
     edit = edit or (outcome.state.agent_edit if outcome.state is not None else None)  # 실패해도 "상담원 수정" 기록은 남긴다
     add_step(conn, run_id, step, input_=edit, result="FAILED", error_kind=kind, error=outcome.message,
@@ -355,7 +355,7 @@ def _save_sub(conn, run_id, state, sub, outcome: RunOutcome, inquiry_id: int, re
     evidence = [{"doc_id": c.doc_id, "section": c.section_no, "quote": _chunk_quote(conn, c.chunk_id, c.title),
                  "score": c.score, "chunk_id": c.chunk_id} for c in sub.doc_candidates]
     top = sub.doc_candidates[0] if sub.doc_candidates else None
-    blocking = bool(sub.missing_blocking_info)
+    blocking = bool(sub.missing_blocking_info) and not sub.dept_reply  # 부서 회신 재처리는 답변 경로(C-161)
     conn.execute(
         """UPDATE svc.sub_ticket SET category_code = %s, evidence_sentences = %s, urgency_flag = %s, product_code = %s,
                error_code_reported = %s, fw_version_reported = %s,
@@ -392,7 +392,7 @@ def _save_sub(conn, run_id, state, sub, outcome: RunOutcome, inquiry_id: int, re
 
     # 실행 기록: 단계마다 결과 한 행("왜?"가 읽는다). 확인 표시 전체는 마지막 단계 결과의 flags에 둔다
     names = outcome.llm_field_names
-    edited = trigger == "AGENT_EDIT"
+    edited = trigger in ("AGENT_EDIT", "DEPT_REPLY")  # 둘 다 저장값으로 Q2부터(C-160)
     steps: list[dict[str, Any]] = [] if split or edited else [
         {"name": "T2", "input_": {"field_names": names.get("L1", [])}, "output": {
             "language": state.language, "body_language": state.body_language,
@@ -406,7 +406,7 @@ def _save_sub(conn, run_id, state, sub, outcome: RunOutcome, inquiry_id: int, re
             **({} if reply_id is None else {"reply_message_id": reply_id, "added_fields": [pf.field for pf in added],
                                             **({} if added else {"note": MSG_NO_NEW_FIELDS})})}}]
     steps += [
-        {"name": "Q2", "input_": state.agent_edit if edited else None, "output": {"customer_id": state.customer_id, "customer_tier": sub.customer_tier,
+        {"name": "Q2", "input_": state.agent_edit if trigger == "AGENT_EDIT" else None, "output": {"customer_id": state.customer_id, "customer_tier": sub.customer_tier,
                                   "product_code": sub.product_code, "product_family": sub.product_family}},
         {"name": "Q3", "output": {"priority": sub.priority_final, "priority_rule_id": sub.priority_rule_id,
                                   "priority_trace": [c.model_dump() for c in sub.priority_trace]}},
@@ -546,14 +546,16 @@ def save_verify(conn: Connection, run_id: int, sub_ticket_id: str, message_id: i
 def load_draft(conn: Connection, message_id: int) -> dict[str, Any] | None:
     row = conn.execute(
         """SELECT m.message_id, m.ticket_id, m.sub_ticket_id, m.message_type, m.message_status, m.language, m.body,
-                  m.superseded_at
+                  m.superseded_at, m.sender
              FROM svc.ticket_message m
-            WHERE m.message_id = %s AND m.sender = 'SYSTEM' AND m.message_type IN ('INFO_REQUEST','FINAL_REPLY')""",
+            WHERE m.message_id = %s AND m.message_type IN ('INFO_REQUEST','FINAL_REPLY')
+              AND (m.sender = 'SYSTEM' OR (m.sender = 'DEPT' AND m.message_type = 'FINAL_REPLY'))""",
         (message_id,),
     ).fetchone()
     if row is None:
         return None
-    keys = ("message_id", "ticket_id", "sub_ticket_id", "message_type", "message_status", "language", "body", "superseded_at")
+    keys = ("message_id", "ticket_id", "sub_ticket_id", "message_type", "message_status", "language", "body", "superseded_at",
+            "sender")
     return dict(zip(keys, row))
 
 
@@ -593,6 +595,7 @@ def recheck(conn: Connection, sub_ticket_id: str, body: str) -> dict[str, Any]:
     sources, lookups, provided, _ = draft_sources(conn, sub_ticket_id)
     allowed = ([s.text for s in sources] + [str(v) for _, v, _, _ in lookups]
                + [v for name, v in provided if name in CHECK_PROVIDED_FIELDS and v])
+    allowed += [t for t in [dept_reply_text(conn, sub_ticket_id)] if t]  # 부서 회신 숫자(§3-4 2번, 가-6)
     # 복합 문의 메일은 상태 목록의 문의 번호도 허용한다(FR-022 처리 5, 에이전트 설계서 6-1 2번)
     allowed += [str(r[0]) for r in conn.execute(
         """SELECT s.seq FROM svc.sub_ticket s JOIN svc.ticket t ON t.ticket_id = s.ticket_id
@@ -631,6 +634,7 @@ SEND_TRANSITIONS = {  # 발송 뒤 전이 (FR-031 처리 4, FR-025 전이표)
     "INFO_REQUEST": ("WAITING_CUSTOMER", "INFO_REQUEST_SENT"),
     "FINAL_REPLY": ("RESOLVED", "FINAL_REPLY_SENT"),
 }
+DEPT_MAIL_TRANSITION = ("IN_PROGRESS", "DEPT_MAIL_SENT")  # 예외 부서 메일(FR-033 처리 9, D34)
 
 
 def send_draft(conn: Connection, draft: dict[str, Any], final_body: str, agent_id: str, override: bool,
@@ -645,7 +649,8 @@ def send_draft(conn: Connection, draft: dict[str, Any], final_body: str, agent_i
     _, mask_count = mask_text(final_body)
     refused: str | None = None
     with conn.transaction():
-        to_status, event = SEND_TRANSITIONS[draft["message_type"]]
+        dept = draft.get("sender") == "DEPT"  # 보낸 쪽 DEPT로 남긴다(FR-031 처리 9)
+        to_status, event = DEPT_MAIL_TRANSITION if dept else SEND_TRANSITIONS[draft["message_type"]]
         try:
             transition(conn, draft["sub_ticket_id"], to_status, event, now, agent_id, expected_version=expected_version)
         except TransitionRefused as exc:
@@ -653,8 +658,8 @@ def send_draft(conn: Connection, draft: dict[str, Any], final_body: str, agent_i
         (sent_id,) = conn.execute(
             """INSERT INTO svc.ticket_message (ticket_id, sub_ticket_id, sender, message_type, message_status, sent_at_utc,
                    language, body, source_draft_id, edited_yn, sent_by_name, override_check, mask_count)
-               VALUES (%s, %s, 'AGENT', %s, 'SENT', %s, %s, %s, %s, %s, %s, %s, %s) RETURNING message_id""",
-            (draft["ticket_id"], draft["sub_ticket_id"], draft["message_type"], now, draft["language"], final_body,
+               VALUES (%s, %s, %s, %s, 'SENT', %s, %s, %s, %s, %s, %s, %s, %s) RETURNING message_id""",
+            (draft["ticket_id"], draft["sub_ticket_id"], "DEPT" if dept else "AGENT", draft["message_type"], now, draft["language"], final_body,
              draft["message_id"], final_body != draft["body"], agent_id, override, mask_count),
         ).fetchone()
         conn.execute("UPDATE svc.ticket_message SET message_status = 'APPROVED' WHERE message_id = %s", (draft["message_id"],))

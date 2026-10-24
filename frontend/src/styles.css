@@ -175,3 +175,6 @@ mark.extract { background: transparent; text-decoration: underline 2px #e0b400; 
 .fault-body dt { color: var(--gray); }
 .fault-body dd { margin: 0; }
 .escalation-lines { margin: 6px 0 0; padding-left: 18px; font-size: 13px; }
+.dept-lines { margin: 6px 0 0; padding-left: 18px; font-size: 13px; }
+.dept-writer textarea { width: 100%; box-sizing: border-box; font: inherit; margin: 6px 0; }
+.dept-writer .actions { display: flex; gap: 8px; }

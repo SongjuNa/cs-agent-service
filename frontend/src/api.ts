@@ -173,6 +173,21 @@ export interface SubTicket {
   drafts: Draft[];
   diagnosis: Diagnosis | null; // 고장 진단(FR-018). 고장 계열이 아니면 null
   escalation: Escalation | null; // 이관 후보(FR-020). 표시만 하고 상태는 그대로
+  writer: "CS" | "DEPT_REPLY" | "DEPT_MAIL"; // 고른 부서의 작성 영역(§8-2, add-dept-reply C-164)
+  dept_replies: DeptReply[]; // 이관 부서 회신(FR-030 처리 2 "부서 회신" 영역)
+  dept_mails: DeptMail[]; // 예외 부서 고객 메일(FR-033 처리 9)
+}
+
+export interface DeptReply {
+  message_id: number;
+  body: string;
+  sent_by_name: string;
+  sent_at_utc: string;
+}
+
+export interface DeptMail extends DeptReply {
+  message_status: "DRAFT" | "SENT";
+  gloss: string | null;
 }
 
 export interface EscalationCandidate {
@@ -452,6 +467,10 @@ export const api = {
     call<{ processing: boolean }>("POST", `/tickets/${encodeURIComponent(id)}/replies`, data),
   escalate: (subId: string, data: { dept: string; reason_code: string; memo: string; expected_version: number }) =>
     call<unknown>("POST", `/sub-tickets/${encodeURIComponent(subId)}/escalate`, data),
+  deptReply: (subId: string, body: string) =>
+    call<{ processing: boolean }>("POST", `/sub-tickets/${encodeURIComponent(subId)}/dept-reply`, { body }),
+  deptMail: (subId: string, body: string) =>
+    call<{ message_id: number }>("POST", `/sub-tickets/${encodeURIComponent(subId)}/dept-mail`, { body }),
   departments: () => call<Department[]>("GET", "/ref/departments"),
   agents: () => call<Agent[]>("GET", "/ref/agents"),
   inbox: (query: URLSearchParams) => call<Inbox>("GET", `/tickets?${query.toString()}`),

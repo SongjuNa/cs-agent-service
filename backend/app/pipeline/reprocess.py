@@ -52,6 +52,13 @@ def reply_text(conn: Connection, ticket_id: str) -> str:
     return "\n\n".join([body, *replies])
 
 
+def dept_reply_text(conn: Connection, sub_ticket_id: str) -> str:
+    """그 하위 문의의 이관 부서 회신(ESCALATION_NOTE RECEIVED) 원문을 시각순으로 빈 줄로 이은 글(C-162). 없으면 빈 글."""
+    return "\n\n".join(r[0] for r in conn.execute(
+        """SELECT body FROM svc.ticket_message WHERE sub_ticket_id = %s AND message_type = 'ESCALATION_NOTE'
+              AND message_status = 'RECEIVED' ORDER BY sent_at_utc, message_no""", (sub_ticket_id,)).fetchall())
+
+
 def reextract(conn: Connection, transport: Transport, ticket_input: dict[str, Any]) -> UnderstandOutcome:
     """처리 흐름 첫 노드 자리에 들어간다. ticket_input은 {"ticket_id", "target_ids"}."""
     ticket_id = ticket_input["ticket_id"]
@@ -154,6 +161,21 @@ def reuse(conn: Connection, transport: Transport, ticket_input: dict[str, Any]) 
                         body_language_uncertain=t[4], body_masked=body_masked, received_at=t[5], sub_tickets=subs,
                         multi_yn=t[6], agent_edit=record or None)
     return UnderstandOutcome(state, "SUCCESS", llm_field_names={})
+
+
+def with_dept_reply(conn: Connection, transport: Transport, ticket_input: dict[str, Any]) -> UnderstandOutcome:
+    """이관 부서 회신(DEPT_REPLY)의 첫 노드: 언어 모델 없이 저장값을 읽는다. 언어 모델은 Q8부터(§2-4, C-160).
+
+    규칙 단계(Q2~Q6)는 다시 계산해도 같은 값이고, 고장 진단(Q8a)·이관 후보(Q9a)는 직전 결과를 옮겨 적는다(그래프가 건너뜀).
+    부서 회신 글을 dept_reply에 넣어 답변 경로(Q8~Q14)가 L4·Q11·L8에 쓰게 한다(§2-3 dept_reply).
+    """
+    outcome = reuse(conn, transport, {"ticket_id": ticket_input["ticket_id"], "target_ids": ticket_input["target_ids"]})
+    if outcome.state is not None:
+        for sub in outcome.state.sub_tickets:
+            sub.dept_reply = dept_reply_text(conn, sub.sub_ticket_id) or None
+            sub.diagnosis = last_pipeline_step(conn, sub.sub_ticket_id, "Q8a")
+            sub.escalation = last_pipeline_step(conn, sub.sub_ticket_id, "Q9a")
+    return outcome
 
 
 def _agent_chose_return(conn: Connection, sub_ticket_id: str) -> bool:

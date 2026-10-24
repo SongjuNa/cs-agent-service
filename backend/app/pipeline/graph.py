@@ -93,20 +93,21 @@ def build_graph(conn: Connection, transport: Transport, embedder: Embedder, unde
                 sub.pipeline_error = f"{getattr(exc, 'error_type', 'UNKNOWN')}: {MESSAGE_RETRY}"
                 sub.failed_step = step
 
-    def blocking(gs: GraphState) -> list[SubTicketState]:  # 분기③
-        return [s for s in gs["state"].sub_tickets if s.missing_blocking_info]
+    def blocking(gs: GraphState) -> list[SubTicketState]:  # 분기③. 부서 회신 재처리는 답변 경로로(§2-4, C-161)
+        return [s for s in gs["state"].sub_tickets if s.missing_blocking_info and not s.dept_reply]
 
     def answering(gs: GraphState) -> list[SubTicketState]:
-        return [s for s in gs["state"].sub_tickets if not s.missing_blocking_info]
+        return [s for s in gs["state"].sub_tickets if not s.missing_blocking_info or s.dept_reply]
 
     def diagnose(gs: GraphState) -> GraphState:  # Q8a: 정보 요청 여부와 상관없이 규칙 단계 바로 뒤(§2)
         state = gs["state"]
-        each(state.sub_tickets, lambda sub: add_diagnosis(conn, embedder, sub), "Q8a")
+        # 부서 회신 재처리는 직전 진단을 옮겨 적는다(C-160)
+        each([s for s in state.sub_tickets if not s.dept_reply], lambda sub: add_diagnosis(conn, embedder, sub), "Q8a")
         return {"state": state}
 
     def escalate(gs: GraphState) -> GraphState:  # Q9a: 진단 뒤, 모든 하위 문의. 표시만 하고 상태는 그대로(AC-020-4)
         state = gs["state"]
-        each(state.sub_tickets, lambda sub: add_escalation_candidates(conn, sub), "Q9a")
+        each([s for s in state.sub_tickets if not s.dept_reply], lambda sub: add_escalation_candidates(conn, sub), "Q9a")
         return {"state": state}
 
     def info_request(gs: GraphState) -> GraphState:
@@ -146,6 +147,7 @@ def build_graph(conn: Connection, transport: Transport, embedder: Embedder, unde
                 [(pf.field, pf.value_norm or pf.value_raw) for pf in sub.provided_fields],
                 [(lv.item, lv.value, lv.unit, f"{lv.source_table}:{lv.source_key}") for lv in sub.lookups],
                 sources, [labels.get(f, f) for f in sub.missing_info], composite=state.multi_yn,
+                dept_reply=sub.dept_reply or "",
             )
             sub.flags += [f for f in flags if f not in sub.flags]
             if draft is not None:
@@ -170,7 +172,7 @@ def build_graph(conn: Connection, transport: Transport, embedder: Embedder, unde
         replied = {d.sub_ticket_id for d in gs["drafts"] if d.message_type == "FINAL_REPLY"}
         # 처리 실패, 또는 답변으로 갔는데 초안이 없음(근거 없음·생성 실패) → "담당자 확인 중"(FR-022 처리 7, 예외 3행)
         checking = {s.sub_ticket_id for s in state.sub_tickets
-                    if s.pipeline_error or (not s.missing_blocking_info and s.sub_ticket_id not in replied)}
+                    if s.pipeline_error or ((not s.missing_blocking_info or s.dept_reply) and s.sub_ticket_id not in replied)}
         mails = [d for d in gs["drafts"] if d.message_type == "FINAL_REPLY"]
 
         def work(sub: SubTicketState) -> None:
@@ -199,7 +201,8 @@ def build_graph(conn: Connection, transport: Transport, embedder: Embedder, unde
             lookups = [(lv.item, lv.value, lv.unit, f"{lv.source_table}:{lv.source_key}") for lv in sub.lookups]
             with track(transport, sub.sub_ticket_id):
                 draft.verify = verify_draft(transport, draft, sub.evidence_sentences,
-                                            gs.get("sources", {}).get(sub.sub_ticket_id, []), lookups)
+                                            gs.get("sources", {}).get(sub.sub_ticket_id, []), lookups,
+                                            dept_reply=sub.dept_reply or "")
             sub.verify_findings = None if draft.verify.error else draft.verify.findings
         return {"drafts": gs["drafts"]}
 

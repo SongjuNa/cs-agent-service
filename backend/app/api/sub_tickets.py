@@ -1,5 +1,5 @@
-"""하위 문의 동작: 우선순위 조정과 미리 보기(FR-028, SCR-03-P3), 분류 직접 수정(FR-030 처리 6), 이관(FR-033, SCR-03-P4)
-(기술 명세서 v1.4 §8-1)."""
+"""하위 문의 동작: 우선순위 조정과 미리 보기(FR-028, SCR-03-P3), 분류 직접 수정(FR-030 처리 6), 이관(FR-033, SCR-03-P4),
+이관 부서 회신 등록과 예외 부서 메일 초안(FR-033 처리 8·9) (기술 명세서 v1.4 §8-1)."""
 
 from __future__ import annotations
 
@@ -14,9 +14,10 @@ from psycopg import Connection
 from pydantic import BaseModel
 
 from app.api.deps import Clients, get_clients, get_conn, get_connect
-from app.api.tickets import process_edit
+from app.api.tickets import process_dept_reply, process_edit
 from app.db.edits import Edit, EditError, apply_edit
 from app.sla.adjust import AdjustError, adjust, preview
+from app.status.dept_reply import DeptError, register_reply, save_mail_draft
 from app.status.escalation import EscalateError, escalate
 from app.status.transitions import ConcurrentChange
 
@@ -128,4 +129,50 @@ def post_escalate(sub_ticket_id: str, data: EscalateIn, conn: Connection = Depen
     except ConcurrentChange as exc:
         raise HTTPException(409, str(exc)) from exc
     except EscalateError as exc:
+        raise HTTPException(exc.status, str(exc)) from exc
+
+
+class DeptBodyIn(BaseModel):
+    """[회신 등록]·예외 부서 메일 본문(§8-1 body)."""
+
+    body: str | None = None
+    expected_version: int | None = None  # FR-025 예외 2행
+
+
+def _agent(x_agent_id: str | None) -> str:
+    if not x_agent_id or not x_agent_id.strip():
+        raise HTTPException(400, "상담원 ID를 입력하세요")
+    return x_agent_id.strip()
+
+
+@router.post("/sub-tickets/{sub_ticket_id}/dept-reply", status_code=202)
+def post_dept_reply(sub_ticket_id: str, data: DeptBodyIn, background: BackgroundTasks,
+                    conn: Connection = Depends(get_conn), connect: Callable = Depends(get_connect),
+                    clients: Clients = Depends(get_clients), x_agent_id: str | None = Header(default=None),
+                    x_agent_dept: str | None = Header(default=None)) -> dict:
+    """이관 부서 [회신 등록] → ESCALATION_NOTE RECEIVED, IN_PROGRESS, 그 하위 문의 다시 처리(FR-033 처리 8, §2-4)."""
+    agent = _agent(x_agent_id)
+    try:
+        out = register_reply(conn, sub_ticket_id, data.body, agent, x_agent_dept, datetime.now(timezone.utc),
+                             expected_version=data.expected_version)
+    except LookupError as exc:
+        raise HTTPException(404, MSG_NOT_FOUND) from exc
+    except ConcurrentChange as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except DeptError as exc:
+        raise HTTPException(exc.status, str(exc)) from exc
+    background.add_task(process_dept_reply, connect, clients, sub_ticket_id, out["run_id"])
+    return out
+
+
+@router.post("/sub-tickets/{sub_ticket_id}/dept-mail", status_code=201)
+def post_dept_mail(sub_ticket_id: str, data: DeptBodyIn, conn: Connection = Depends(get_conn),
+                   x_agent_id: str | None = Header(default=None), x_agent_dept: str | None = Header(default=None)) -> dict:
+    """예외 부서 고객 메일 초안(FINAL_REPLY DRAFT, sender DEPT). 승인은 `POST /messages/{id}/send`(FR-031 처리 9)."""
+    agent = _agent(x_agent_id)
+    try:
+        return save_mail_draft(conn, sub_ticket_id, data.body, agent, x_agent_dept, datetime.now(timezone.utc))
+    except LookupError as exc:
+        raise HTTPException(404, MSG_NOT_FOUND) from exc
+    except DeptError as exc:
         raise HTTPException(exc.status, str(exc)) from exc
