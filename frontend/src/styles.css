@@ -178,3 +178,13 @@ mark.extract { background: transparent; text-decoration: underline 2px #e0b400; 
 .dept-lines { margin: 6px 0 0; padding-left: 18px; font-size: 13px; }
 .dept-writer textarea { width: 100%; box-sizing: border-box; font: inherit; margin: 6px 0; }
 .dept-writer .actions { display: flex; gap: 8px; }
+
+/* 통화 녹음 칸 (FR-050) */
+.call-panel .call-upload { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.call-result { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 10px; }
+.call-result h4 { margin: 0 0 6px; }
+.call-transcript ol { list-style: none; padding: 0; margin: 0; max-height: 320px; overflow: auto; }
+.call-transcript li { padding: 3px 0; border-bottom: 1px solid var(--line); }
+.call-gap { color: var(--red); border-left: 3px solid var(--red); padding-left: 6px; margin: 2px 0; }
+.call-provided { padding-left: 18px; }
+@media (max-width: 800px) { .call-result { grid-template-columns: 1fr; } }

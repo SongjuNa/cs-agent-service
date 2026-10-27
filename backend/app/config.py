@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     database_url: str
     gemini_api_key: str = ""
     llm_model_small: str = "gemini-3.8-flash"
+    llm_model_transcribe: str = ""  # L9 통화 받아쓰기 모델. 비우면 llm_model_small (기술 명세서 §12-7 T46)
     embedding_model: str = "gemini-embedding-2"
     data_dir: str = "data/CS_AI_Agent_Training_Data_v1"
     log_full_llm_io: bool = False  # 실행 로그에 지시문·응답 전문(가린 글)을 남긴다(FR-036 처리 4, §1-5)

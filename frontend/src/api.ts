@@ -348,6 +348,32 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
   return data as T;
 }
 
+/** multipart 요청(통화 녹음 올리기). Content-Type은 브라우저가 경계값과 함께 붙인다. */
+async function callForm<T>(path: string, form: FormData): Promise<T> {
+  const res = await fetch(`/api${path}`, { method: "POST", headers: { "X-Agent-Id": agentId(), "X-Agent-Dept": agentDept() }, body: form });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new ApiError(res.status, data?.detail?.message ?? `요청 실패(${res.status})`, data);
+  return data as T;
+}
+
+// 통화 받아쓰기 (명세서 FR-050, 기술 명세서 v1.4.1 §12-5). 저장하지 않는다(D36)
+export interface Utterance { no: number; speaker: "AGENT" | "CUSTOMER"; start_sec: number; end_sec: number; text: string }
+export interface CallGap { start_sec: number; end_sec: number; reason: "NO_SPEECH" | "INAUDIBLE" }
+export interface CallProvided { field_code: string; label: string; value: string; utterance_no: number | null; found: boolean; message: string | null }
+export interface CallNote {
+  note_en: string | null;
+  note_error: string | null; // 받아쓴 내용 없음 / 메모 초안 실패
+  summary_en: string | null;
+  urgency: string | null;
+  provided: CallProvided[];
+  mask_count: number;
+}
+export interface CallResult extends CallNote {
+  duration_sec: number;
+  utterances: Utterance[];
+  gaps: CallGap[];
+}
+
 // 접수 시뮬레이터 (화면 정의서 v1 SCR-01, 기술 명세서 §8-1)
 export interface Customer { customer_id: string; company_masked: string; country: string; tier: string }
 export interface Product { product_code: string; product_name: string }
@@ -478,6 +504,16 @@ export const api = {
   customers: (q: string) => call<Customer[]>("GET", `/ref/customers?q=${encodeURIComponent(q)}`),
   products: () => call<Product[]>("GET", "/ref/products"),
   load: (id: string) => call<Loaded>("GET", `/gold/tickets/${encodeURIComponent(id)}`),
+  transcribe: (file: File, customerId: string, language: string, productCode: string) => {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("customer_id", customerId);
+    form.append("language", language);
+    form.append("product_code", productCode);
+    return callForm<CallResult>("/calls/transcribe", form);
+  },
+  noteDraft: (utterances: Utterance[], language: string, productCode: string | null) =>
+    call<CallNote>("POST", "/calls/note-draft", { utterances, language, product_code: productCode }),
   intake: (data: TicketInput) => call<{ ticket_id: string; processing: boolean }>("POST", "/tickets", data),
   reprocess: (id: string) => call<{ ticket_id: string; processing: boolean }>("POST", `/tickets/${encodeURIComponent(id)}/reprocess`),
   ticket: (id: string) => call<Detail>("GET", `/tickets/${encodeURIComponent(id)}`),

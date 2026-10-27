@@ -13,7 +13,7 @@ import psycopg
 from psycopg import Connection
 
 from app.config import get_settings
-from app.llm.client import Transport, default_transport
+from app.llm.client import AudioTransport, Transport, default_transport, transcribe_transport
 from app.llm.embed import Embedder, default_embedder
 
 
@@ -41,6 +41,10 @@ class Clients:
 
     def embedder(self) -> Embedder:
         return default_embedder()
+
+    def transcriber(self) -> AudioTransport:
+        """통화 받아쓰기 L9용(시간 상한 120초, 모델 LLM_MODEL_TRANSCRIBE, FR-050)."""
+        return transcribe_transport()
 
 
 def get_clients() -> Clients:

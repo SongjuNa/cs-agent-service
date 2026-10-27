@@ -22,6 +22,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       LLM_MODEL_SMALL: ${LLM_MODEL_SMALL:-gemini-3.8-flash}
+      LLM_MODEL_TRANSCRIBE: ${LLM_MODEL_TRANSCRIBE:-}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-gemini-embedding-2}
     ports:
       - "8000:8000"

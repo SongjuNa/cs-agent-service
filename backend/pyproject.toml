@@ -11,6 +11,8 @@ dependencies = [
     "google-genai",
     "langgraph",
     "apscheduler==3.10.4",
+    "python-multipart",  # 녹음 파일 올리기(POST /calls/transcribe)
+    "mutagen",  # 녹음 길이 읽기(FR-050 처리 2)
 ]
 
 [project.optional-dependencies]
