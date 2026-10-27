@@ -4,6 +4,7 @@
 - 지시문 파일(prompts/)의 {자리}를 채우기 전에 모든 값을 prepare_llm_input으로 가린다.
 - JSON 스키마를 지정해 받고(구조화 출력), 코드에서 스키마를 한 번 더 검사한다.
 - 1회 30초. 시간 초과(LLM_TIMEOUT)나 스키마 위반(LLM_INVALID_OUTPUT)이면 1회 다시 부른다.
+- 통화 받아쓰기(L9, FR-050)만 녹음을 함께 보낸다. 녹음은 가릴 수 없어 그대로 보내고(D35), 글 칸은 똑같이 가린다.
 - 서버 로그에는 호출 이름, 지시문 버전, 넣은 항목 이름, 결과 종류만 남긴다. 본문은 남기지 않는다.
 - 시도마다 Transport의 on_call(있을 때만)에 알린다. 실행 로그(FR-036)가 호출 수·토큰을 단계에 붙인다.
 
@@ -27,6 +28,7 @@ log = logging.getLogger(__name__)
 
 PROMPTS_DIR = REPO_ROOT / "prompts"
 TIMEOUT_SEC = 30  # 기술 명세서 §2-4
+TRANSCRIBE_TIMEOUT_SEC = 120  # L9 통화 받아쓰기 (기술 명세서 §12-3)
 MAX_ATTEMPTS = 2  # 처음 1회 + 다시 1회 (§3-2, 에이전트 설계서 4-2절 1·2번)
 # 모델이 답하기 전 생각하는 단계의 길이. 기본값이면 호출이 30초 상한에 자주 걸려 "low"로 둔다(구현 선택)
 THINKING_LEVEL = "low"
@@ -49,6 +51,11 @@ class Transport(Protocol):
         """지시문을 보내고 응답 글(JSON 문자열)을 돌려준다. 시간 초과면 LlmTimeout."""
 
 
+class AudioTransport(Transport, Protocol):
+    def send_audio(self, prompt: str, audio: bytes, mime_type: str, schema: dict) -> str:
+        """지시문과 녹음을 함께 보낸다(L9). 나머지는 send와 같다."""
+
+
 class GeminiTransport:
     """Gemini 호출 (기술 명세서 §1-2, §3-5). 모델 이름은 LLM_MODEL_SMALL."""
 
@@ -65,6 +72,13 @@ class GeminiTransport:
         self.last_usage: tuple[int | None, int | None] | None = None  # (입력, 출력) 토큰. 실행 로그용(§3-5)
 
     def send(self, prompt: str, schema: dict) -> str:
+        return self._generate(prompt, schema)
+
+    def send_audio(self, prompt: str, audio: bytes, mime_type: str, schema: dict) -> str:
+        part = self._types.Part.from_bytes(data=audio, mime_type=mime_type)
+        return self._generate([prompt, part], schema)
+
+    def _generate(self, contents: Any, schema: dict) -> str:
         import httpx
 
         from google.genai import errors
@@ -77,7 +91,7 @@ class GeminiTransport:
         self.last_usage = None
         try:
             response = self._client.models.generate_content(
-                model=self.model, contents=prompt, config=config
+                model=self.model, contents=contents, config=config
             )
         except httpx.TimeoutException as exc:
             raise LlmTimeout(str(exc)) from exc
@@ -153,11 +167,13 @@ def generate_json(
     fields: dict[str, Any],
     schema: dict,
     check_schema: dict | None = None,
+    audio: tuple[bytes, str] | None = None,
 ) -> LlmResult:
     """지시문을 채워 보내고 스키마에 맞는 JSON을 돌려준다. 두 번 실패하면 LlmError.
 
     check_schema: 코드에서 검사할 스키마가 보낸 스키마와 다를 때(예: L2는 코드북 밖 항목을
     응답 전체 실패로 보지 않고 그 항목만 버린다). 없으면 schema로 검사한다.
+    audio: (녹음, MIME 형식). L9만 쓴다. 가리지 않고 보내며 로그에는 크기만 남긴다(D35).
     """
     prepared = prepare_llm_input(fields)  # MaskingError는 그대로 올라간다(VALIDATION)
     prompt = fill_prompt(load_prompt(prompt_file), prepared.fields)
@@ -169,7 +185,7 @@ def generate_json(
         try:
             if notify:
                 notify(call_name, version, prompt)
-            raw = transport.send(prompt, schema)
+            raw = transport.send(prompt, schema) if audio is None else transport.send_audio(prompt, *audio, schema)
             data = json.loads(raw)
             problems = validate(data, check_schema or schema)
             if problems:
@@ -183,8 +199,8 @@ def generate_json(
             last_type = "UNKNOWN"
         else:
             log.info(
-                "llm call=%s version=%s fields=%s attempt=%d result=OK",
-                call_name, version, ",".join(prepared.field_names), attempt,
+                "llm call=%s version=%s fields=%s audio_bytes=%s attempt=%d result=OK",
+                call_name, version, ",".join(prepared.field_names), len(audio[0]) if audio else 0, attempt,
             )
             return LlmResult(data, version, prepared.field_names, prepared.mask_count, attempt)
         log.warning(
@@ -247,3 +263,14 @@ def default_transport() -> GeminiTransport:
     if not settings.gemini_api_key:
         raise LlmError("UNKNOWN", "GEMINI_API_KEY가 없다")
     return GeminiTransport(settings.gemini_api_key, settings.llm_model_small)
+
+
+def transcribe_transport() -> GeminiTransport:
+    """L9 통화 받아쓰기용 Transport. 모델은 LLM_MODEL_TRANSCRIBE(비우면 소형), 시간 상한 120초(§12-3, T46)."""
+    from app.config import get_settings
+
+    settings = get_settings()
+    if not settings.gemini_api_key:
+        raise LlmError("UNKNOWN", "GEMINI_API_KEY가 없다")
+    model = settings.llm_model_transcribe or settings.llm_model_small
+    return GeminiTransport(settings.gemini_api_key, model, timeout_sec=TRANSCRIBE_TIMEOUT_SEC)
