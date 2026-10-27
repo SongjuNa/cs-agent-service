@@ -1,5 +1,5 @@
 {
- "_설명": "가상 상담원 명단(실존 인물이 아닌 지어낸 이름, 2026-10-23 조장 결정). 담당 상담원 값(sub_ticket.assignee_masked)과 상단 막대 상담원 선택에 쓴다. source_id는 운영진 데이터(tickets.csv assignee_masked)의 상담원 ID와 짝이다. 운영진 데이터에 상담원이 없는 QA_CLAIM·RND_FW는 각 1명이고 demo(시연용)다(명세서 v1.5 FR-033 처리 10).",
+ "_설명": "가상 상담원 명단(실존 인물이 아닌 지어낸 영어 이름. 2026-10-23 조장 결정, 2026-10-27 한국 이름에서 영어 이름으로 바꿈). 담당 상담원 값(sub_ticket.assignee_masked)과 상단 막대 상담원 선택에 쓴다. source_id는 운영진 데이터(tickets.csv assignee_masked)의 상담원 ID와 짝이다. 운영진 데이터에 상담원이 없는 QA_CLAIM·RND_FW는 각 1명이고 demo(시연용)다(명세서 v1.5 FR-033 처리 10).",
  "agents": [
   {
    "name": "james",
@@ -20,6 +20,658 @@
    "name": "silvia",
    "dept": "CERT",
    "source_id": "CERT_AGENT_04"
+  },
+  {
+   "name": "liam",
+   "dept": "CERT",
+   "source_id": "CERT_AGENT_05"
+  },
+  {
+   "name": "emma",
+   "dept": "CERT",
+   "source_id": "CERT_AGENT_06"
+  },
+  {
+   "name": "noah",
+   "dept": "CERT",
+   "source_id": "CERT_AGENT_07"
+  },
+  {
+   "name": "ava",
+   "dept": "CERT",
+   "source_id": "CERT_AGENT_08"
+  },
+  {
+   "name": "ethan",
+   "dept": "CERT",
+   "source_id": "CERT_AGENT_09"
+  },
+  {
+   "name": "mia",
+   "dept": "CERT",
+   "source_id": "CERT_AGENT_10"
+  },
+  {
+   "name": "lucas",
+   "dept": "CERT",
+   "source_id": "CERT_AGENT_11"
+  },
+  {
+   "name": "amelia",
+   "dept": "CERT",
+   "source_id": "CERT_AGENT_12"
+  },
+  {
+   "name": "mason",
+   "dept": "FIELD_SVC",
+   "source_id": "FIELD_SVC_AGENT_01"
+  },
+  {
+   "name": "harper",
+   "dept": "FIELD_SVC",
+   "source_id": "FIELD_SVC_AGENT_02"
+  },
+  {
+   "name": "logan",
+   "dept": "FIELD_SVC",
+   "source_id": "FIELD_SVC_AGENT_03"
+  },
+  {
+   "name": "evelyn",
+   "dept": "FIELD_SVC",
+   "source_id": "FIELD_SVC_AGENT_04"
+  },
+  {
+   "name": "oliver",
+   "dept": "FIELD_SVC",
+   "source_id": "FIELD_SVC_AGENT_05"
+  },
+  {
+   "name": "sophia",
+   "dept": "FIELD_SVC",
+   "source_id": "FIELD_SVC_AGENT_06"
+  },
+  {
+   "name": "elijah",
+   "dept": "FIELD_SVC",
+   "source_id": "FIELD_SVC_AGENT_07"
+  },
+  {
+   "name": "isabella",
+   "dept": "FIELD_SVC",
+   "source_id": "FIELD_SVC_AGENT_08"
+  },
+  {
+   "name": "henry",
+   "dept": "FIELD_SVC",
+   "source_id": "FIELD_SVC_AGENT_09"
+  },
+  {
+   "name": "charlotte",
+   "dept": "FIELD_SVC",
+   "source_id": "FIELD_SVC_AGENT_10"
+  },
+  {
+   "name": "jack",
+   "dept": "FIELD_SVC",
+   "source_id": "FIELD_SVC_AGENT_11"
+  },
+  {
+   "name": "abigail",
+   "dept": "FIELD_SVC",
+   "source_id": "FIELD_SVC_AGENT_12"
+  },
+  {
+   "name": "owen",
+   "dept": "GCS_L1",
+   "source_id": "GCS_L1_AGENT_01"
+  },
+  {
+   "name": "emily",
+   "dept": "GCS_L1",
+   "source_id": "GCS_L1_AGENT_02"
+  },
+  {
+   "name": "ryan",
+   "dept": "GCS_L1",
+   "source_id": "GCS_L1_AGENT_03"
+  },
+  {
+   "name": "ella",
+   "dept": "GCS_L1",
+   "source_id": "GCS_L1_AGENT_04"
+  },
+  {
+   "name": "nathan",
+   "dept": "GCS_L1",
+   "source_id": "GCS_L1_AGENT_05"
+  },
+  {
+   "name": "grace",
+   "dept": "GCS_L1",
+   "source_id": "GCS_L1_AGENT_06"
+  },
+  {
+   "name": "caleb",
+   "dept": "GCS_L1",
+   "source_id": "GCS_L1_AGENT_07"
+  },
+  {
+   "name": "chloe",
+   "dept": "GCS_L1",
+   "source_id": "GCS_L1_AGENT_08"
+  },
+  {
+   "name": "dylan",
+   "dept": "GCS_L1",
+   "source_id": "GCS_L1_AGENT_09"
+  },
+  {
+   "name": "lily",
+   "dept": "GCS_L1",
+   "source_id": "GCS_L1_AGENT_10"
+  },
+  {
+   "name": "isaac",
+   "dept": "GCS_L1",
+   "source_id": "GCS_L1_AGENT_11"
+  },
+  {
+   "name": "zoe",
+   "dept": "GCS_L1",
+   "source_id": "GCS_L1_AGENT_12"
+  },
+  {
+   "name": "leo",
+   "dept": "QA_CLAIM",
+   "source_id": "QA_CLAIM_AGENT_01",
+   "demo": true
+  },
+  {
+   "name": "nora",
+   "dept": "RND_FW",
+   "source_id": "RND_FW_AGENT_01",
+   "demo": true
+  },
+  {
+   "name": "aaron",
+   "dept": "SALES_OPS",
+   "source_id": "SALES_OPS_AGENT_01"
+  },
+  {
+   "name": "hannah",
+   "dept": "SALES_OPS",
+   "source_id": "SALES_OPS_AGENT_02"
+  },
+  {
+   "name": "adam",
+   "dept": "SALES_OPS",
+   "source_id": "SALES_OPS_AGENT_03"
+  },
+  {
+   "name": "leah",
+   "dept": "SALES_OPS",
+   "source_id": "SALES_OPS_AGENT_04"
+  },
+  {
+   "name": "brandon",
+   "dept": "SALES_OPS",
+   "source_id": "SALES_OPS_AGENT_05"
+  },
+  {
+   "name": "claire",
+   "dept": "SALES_OPS",
+   "source_id": "SALES_OPS_AGENT_06"
+  },
+  {
+   "name": "carter",
+   "dept": "SALES_OPS",
+   "source_id": "SALES_OPS_AGENT_07"
+  },
+  {
+   "name": "julia",
+   "dept": "SALES_OPS",
+   "source_id": "SALES_OPS_AGENT_08"
+  },
+  {
+   "name": "connor",
+   "dept": "SALES_OPS",
+   "source_id": "SALES_OPS_AGENT_09"
+  },
+  {
+   "name": "sarah",
+   "dept": "SALES_OPS",
+   "source_id": "SALES_OPS_AGENT_10"
+  },
+  {
+   "name": "daniel",
+   "dept": "SALES_OPS",
+   "source_id": "SALES_OPS_AGENT_11"
+  },
+  {
+   "name": "anna",
+   "dept": "SALES_OPS",
+   "source_id": "SALES_OPS_AGENT_12"
+  },
+  {
+   "name": "david",
+   "dept": "SCM",
+   "source_id": "SCM_AGENT_01"
+  },
+  {
+   "name": "ruby",
+   "dept": "SCM",
+   "source_id": "SCM_AGENT_02"
+  },
+  {
+   "name": "eric",
+   "dept": "SCM",
+   "source_id": "SCM_AGENT_03"
+  },
+  {
+   "name": "alice",
+   "dept": "SCM",
+   "source_id": "SCM_AGENT_04"
+  },
+  {
+   "name": "gavin",
+   "dept": "SCM",
+   "source_id": "SCM_AGENT_05"
+  },
+  {
+   "name": "bella",
+   "dept": "SCM",
+   "source_id": "SCM_AGENT_06"
+  },
+  {
+   "name": "hugo",
+   "dept": "SCM",
+   "source_id": "SCM_AGENT_07"
+  },
+  {
+   "name": "clara",
+   "dept": "SCM",
+   "source_id": "SCM_AGENT_08"
+  },
+  {
+   "name": "ian",
+   "dept": "SCM",
+   "source_id": "SCM_AGENT_09"
+  },
+  {
+   "name": "diana",
+   "dept": "SCM",
+   "source_id": "SCM_AGENT_10"
+  },
+  {
+   "name": "jason",
+   "dept": "SCM",
+   "source_id": "SCM_AGENT_11"
+  },
+  {
+   "name": "elena",
+   "dept": "SCM",
+   "source_id": "SCM_AGENT_12"
+  },
+  {
+   "name": "kevin",
+   "dept": "TS_AUTO",
+   "source_id": "TS_AUTO_AGENT_01"
+  },
+  {
+   "name": "fiona",
+   "dept": "TS_AUTO",
+   "source_id": "TS_AUTO_AGENT_02"
+  },
+  {
+   "name": "luke",
+   "dept": "TS_AUTO",
+   "source_id": "TS_AUTO_AGENT_03"
+  },
+  {
+   "name": "gemma",
+   "dept": "TS_AUTO",
+   "source_id": "TS_AUTO_AGENT_04"
+  },
+  {
+   "name": "mark",
+   "dept": "TS_AUTO",
+   "source_id": "TS_AUTO_AGENT_05"
+  },
+  {
+   "name": "helen",
+   "dept": "TS_AUTO",
+   "source_id": "TS_AUTO_AGENT_06"
+  },
+  {
+   "name": "neil",
+   "dept": "TS_AUTO",
+   "source_id": "TS_AUTO_AGENT_07"
+  },
+  {
+   "name": "iris",
+   "dept": "TS_AUTO",
+   "source_id": "TS_AUTO_AGENT_08"
+  },
+  {
+   "name": "oscar",
+   "dept": "TS_AUTO",
+   "source_id": "TS_AUTO_AGENT_09"
+  },
+  {
+   "name": "jane",
+   "dept": "TS_AUTO",
+   "source_id": "TS_AUTO_AGENT_10"
+  },
+  {
+   "name": "peter",
+   "dept": "TS_AUTO",
+   "source_id": "TS_AUTO_AGENT_11"
+  },
+  {
+   "name": "kate",
+   "dept": "TS_AUTO",
+   "source_id": "TS_AUTO_AGENT_12"
+  },
+  {
+   "name": "quinn",
+   "dept": "TS_ENERGY",
+   "source_id": "TS_ENERGY_AGENT_01"
+  },
+  {
+   "name": "laura",
+   "dept": "TS_ENERGY",
+   "source_id": "TS_ENERGY_AGENT_02"
+  },
+  {
+   "name": "ray",
+   "dept": "TS_ENERGY",
+   "source_id": "TS_ENERGY_AGENT_03"
+  },
+  {
+   "name": "maya",
+   "dept": "TS_ENERGY",
+   "source_id": "TS_ENERGY_AGENT_04"
+  },
+  {
+   "name": "sam",
+   "dept": "TS_ENERGY",
+   "source_id": "TS_ENERGY_AGENT_05"
+  },
+  {
+   "name": "nina",
+   "dept": "TS_ENERGY",
+   "source_id": "TS_ENERGY_AGENT_06"
+  },
+  {
+   "name": "toby",
+   "dept": "TS_ENERGY",
+   "source_id": "TS_ENERGY_AGENT_07"
+  },
+  {
+   "name": "paula",
+   "dept": "TS_ENERGY",
+   "source_id": "TS_ENERGY_AGENT_08"
+  },
+  {
+   "name": "victor",
+   "dept": "TS_ENERGY",
+   "source_id": "TS_ENERGY_AGENT_09"
+  },
+  {
+   "name": "rose",
+   "dept": "TS_ENERGY",
+   "source_id": "TS_ENERGY_AGENT_10"
+  },
+  {
+   "name": "wesley",
+   "dept": "TS_ENERGY",
+   "source_id": "TS_ENERGY_AGENT_11"
+  },
+  {
+   "name": "stella",
+   "dept": "TS_ENERGY",
+   "source_id": "TS_ENERGY_AGENT_12"
+  },
+  {
+   "name": "xavier",
+   "dept": "TS_LV",
+   "source_id": "TS_LV_AGENT_01"
+  },
+  {
+   "name": "tina",
+   "dept": "TS_LV",
+   "source_id": "TS_LV_AGENT_02"
+  },
+  {
+   "name": "felix",
+   "dept": "TS_LV",
+   "source_id": "TS_LV_AGENT_03"
+  },
+  {
+   "name": "una",
+   "dept": "TS_LV",
+   "source_id": "TS_LV_AGENT_04"
+  },
+  {
+   "name": "george",
+   "dept": "TS_LV",
+   "source_id": "TS_LV_AGENT_05"
+  },
+  {
+   "name": "vera",
+   "dept": "TS_LV",
+   "source_id": "TS_LV_AGENT_06"
+  },
+  {
+   "name": "harry",
+   "dept": "TS_LV",
+   "source_id": "TS_LV_AGENT_07"
+  },
+  {
+   "name": "wendy",
+   "dept": "TS_LV",
+   "source_id": "TS_LV_AGENT_08"
+  },
+  {
+   "name": "ivan",
+   "dept": "TS_LV",
+   "source_id": "TS_LV_AGENT_09"
+  },
+  {
+   "name": "yvonne",
+   "dept": "TS_LV",
+   "source_id": "TS_LV_AGENT_10"
+  },
+  {
+   "name": "jonah",
+   "dept": "TS_LV",
+   "source_id": "TS_LV_AGENT_11"
+  },
+  {
+   "name": "zara",
+   "dept": "TS_LV",
+   "source_id": "TS_LV_AGENT_12"
+  },
+  {
+   "name": "kyle",
+   "dept": "TS_MV",
+   "source_id": "TS_MV_AGENT_01"
+  },
+  {
+   "name": "alma",
+   "dept": "TS_MV",
+   "source_id": "TS_MV_AGENT_02"
+  },
+  {
+   "name": "louis",
+   "dept": "TS_MV",
+   "source_id": "TS_MV_AGENT_03"
+  },
+  {
+   "name": "beth",
+   "dept": "TS_MV",
+   "source_id": "TS_MV_AGENT_04"
+  },
+  {
+   "name": "miles",
+   "dept": "TS_MV",
+   "source_id": "TS_MV_AGENT_05"
+  },
+  {
+   "name": "cora",
+   "dept": "TS_MV",
+   "source_id": "TS_MV_AGENT_06"
+  },
+  {
+   "name": "nolan",
+   "dept": "TS_MV",
+   "source_id": "TS_MV_AGENT_07"
+  },
+  {
+   "name": "daisy",
+   "dept": "TS_MV",
+   "source_id": "TS_MV_AGENT_08"
+  },
+  {
+   "name": "patrick",
+   "dept": "TS_MV",
+   "source_id": "TS_MV_AGENT_09"
+  },
+  {
+   "name": "eva",
+   "dept": "TS_MV",
+   "source_id": "TS_MV_AGENT_10"
+  },
+  {
+   "name": "reid",
+   "dept": "TS_MV",
+   "source_id": "TS_MV_AGENT_11"
+  },
+  {
+   "name": "flora",
+   "dept": "TS_MV",
+   "source_id": "TS_MV_AGENT_12"
+  },
+  {
+   "name": "simon",
+   "dept": "TS_TRF",
+   "source_id": "TS_TRF_AGENT_01"
+  },
+  {
+   "name": "gloria",
+   "dept": "TS_TRF",
+   "source_id": "TS_TRF_AGENT_02"
+  },
+  {
+   "name": "tyler",
+   "dept": "TS_TRF",
+   "source_id": "TS_TRF_AGENT_03"
+  },
+  {
+   "name": "hazel",
+   "dept": "TS_TRF",
+   "source_id": "TS_TRF_AGENT_04"
+  },
+  {
+   "name": "vincent",
+   "dept": "TS_TRF",
+   "source_id": "TS_TRF_AGENT_05"
+  },
+  {
+   "name": "ingrid",
+   "dept": "TS_TRF",
+   "source_id": "TS_TRF_AGENT_06"
+  },
+  {
+   "name": "walter",
+   "dept": "TS_TRF",
+   "source_id": "TS_TRF_AGENT_07"
+  },
+  {
+   "name": "jade",
+   "dept": "TS_TRF",
+   "source_id": "TS_TRF_AGENT_08"
+  },
+  {
+   "name": "blake",
+   "dept": "TS_TRF",
+   "source_id": "TS_TRF_AGENT_09"
+  },
+  {
+   "name": "karen",
+   "dept": "TS_TRF",
+   "source_id": "TS_TRF_AGENT_10"
+  },
+  {
+   "name": "colin",
+   "dept": "TS_TRF",
+   "source_id": "TS_TRF_AGENT_11"
+  },
+  {
+   "name": "lucy",
+   "dept": "TS_TRF",
+   "source_id": "TS_TRF_AGENT_12"
+  },
+  {
+   "name": "dean",
+   "dept": "WARRANTY_DESK",
+   "source_id": "WARRANTY_DESK_AGENT_01"
+  },
+  {
+   "name": "molly",
+   "dept": "WARRANTY_DESK",
+   "source_id": "WARRANTY_DESK_AGENT_02"
+  },
+  {
+   "name": "evan",
+   "dept": "WARRANTY_DESK",
+   "source_id": "WARRANTY_DESK_AGENT_03"
+  },
+  {
+   "name": "naomi",
+   "dept": "WARRANTY_DESK",
+   "source_id": "WARRANTY_DESK_AGENT_04"
+  },
+  {
+   "name": "frank",
+   "dept": "WARRANTY_DESK",
+   "source_id": "WARRANTY_DESK_AGENT_05"
+  },
+  {
+   "name": "opal",
+   "dept": "WARRANTY_DESK",
+   "source_id": "WARRANTY_DESK_AGENT_06"
+  },
+  {
+   "name": "grant",
+   "dept": "WARRANTY_DESK",
+   "source_id": "WARRANTY_DESK_AGENT_07"
+  },
+  {
+   "name": "penny",
+   "dept": "WARRANTY_DESK",
+   "source_id": "WARRANTY_DESK_AGENT_08"
+  },
+  {
+   "name": "quentin",
+   "dept": "WARRANTY_DESK",
+   "source_id": "WARRANTY_DESK_AGENT_09"
+  },
+  {
+   "name": "rachel",
+   "dept": "WARRANTY_DESK",
+   "source_id": "WARRANTY_DESK_AGENT_10"
+  },
+  {
+   "name": "stuart",
+   "dept": "WARRANTY_DESK",
+   "source_id": "WARRANTY_DESK_AGENT_11"
+  },
+  {
+   "name": "theo",
+   "dept": "WARRANTY_DESK",
+   "source_id": "WARRANTY_DESK_AGENT_12"
   }
  ]
 }
