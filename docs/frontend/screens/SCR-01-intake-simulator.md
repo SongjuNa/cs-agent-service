@@ -59,7 +59,7 @@ API 오류 문구(backend/app/db/store.py)를 칸 아래에 그대로 쓴다.
 
 ## 수용 기준 (Given / When / Then)
 
-- SCR-01-AC-1 (AC-003-1): Given 빈 폼, When CSV1-000017을 불러오면, Then channel=PHONE, customer_id=CUST-0350, product_code=ACB-AS-2000, language=en, 본문, 접수 시각 2025-10-02 09:45:43이 채워진다.
+- SCR-01-AC-1 (AC-003-1): Given 빈 폼, When CSV1-000017을 불러오면, Then channel=PHONE, customer_id=CUST-0350, product_code=ACB-AS-2000, language=en, 본문이 채워지고, 접수 시각은 원본(2025-10-02 09:45:43)이 아닌 지금이다(FR-003 v1.5.2).
 - SCR-01-AC-2 (AC-001-2): Given 고객 ID에 CUST-9999, When [접수하고 처리 시작]을 누르면, Then 고객 ID 칸 아래 "고객 ID를 찾을 수 없음"이 보이고 ② 단계로 넘어가지 않는다.
 - SCR-01-AC-3 (AC-001-1): Given 유효한 입력, When 접수하면, Then ② 단계 진행 표시가 보이고 처리가 끝나면 ③ 단계에 티켓 번호와 담당 부서가 보인다.
 - SCR-01-AC-4 (AC-001-4): Given 언어 모델 호출이 실패하는 상태, When 접수하면, Then ② 단계에 "자동 처리 실패"와 [티켓 상세에서 다시 처리]가 보인다.

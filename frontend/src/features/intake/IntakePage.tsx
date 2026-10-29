@@ -38,11 +38,6 @@ type Form = { channel: string; customer_id: string; product_code: string; langua
 const nowInput = () => new Date().toISOString().slice(0, 16);
 const empty = (): Form => ({ channel: "EMAIL", customer_id: "", product_code: "", language: "en", inquiry_body: "", received_at: nowInput() });
 
-/** "2025-10-02T09:45:43+00:00" → 입력 칸 값 "2025-10-02T09:45:43" (UTC 그대로) */
-function toInput(utc: string | null): string {
-  return utc ? utc.replace(/(\.\d+)?(Z|[+-]\d\d:\d\d)$/, "").slice(0, 19) : "";
-}
-
 type Run = { ticketId: string; runId: number | null };
 
 export function IntakePage({ onOpen, navigate }: { onOpen: (ticketId: string) => void; navigate: (path: string) => void }) {
@@ -110,9 +105,10 @@ function InputStep({ form, setForm, origin, setOrigin, onClear, onAccepted }: {
     setLoading(true);
     try {
       const l = await api.load(value);
-      // 입력 6칸만 채운다(FR-003 처리 3, AC-003-1). 제목·정답 칸은 없다
+      // 입력 칸만 채운다(FR-003 처리 3, AC-003-1). 제목·정답 칸은 없다.
+      // 접수 시각은 원본 대신 지금으로 채운다(2026-10-29 조장 결정, v1.5.2): 원본 시각(2025-10)이면 SLA가 수천 시간 지난 것으로 보인다
       setForm({ channel: l.channel, customer_id: l.customer_id, product_code: l.product_code ?? "", language: l.language,
-                inquiry_body: l.inquiry_body, received_at: toInput(l.received_at_utc) });
+                inquiry_body: l.inquiry_body, received_at: nowInput() });
       setOrigin(l);
       setErrors({}); setFailure(null);
     } catch (e) {
