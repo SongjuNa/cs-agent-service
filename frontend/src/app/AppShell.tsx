@@ -70,8 +70,9 @@ export function AppShell({ active, crumbs, navigate, children }: {
       <div className="shell-frame">
         <nav className="shell-nav" aria-label="주 메뉴">
           <Profile />
-          {MENU.map((g) => (
-            <div key={g.key} className={g.key === group ? "shell-grp is-on" : "shell-grp"}>
+          {/* 목업 MENU처럼 위 탭(대메뉴)의 묶음 하나만 보인다(2026-10-29 조장 "목업처럼 맞춥니다") */}
+          {MENU.filter((g) => g.key === (group ?? "recv")).map((g) => (
+            <div key={g.key} className="shell-grp is-on">
               <div className="shell-grp__h">{g.label}</div>
               {g.items.map((i) => (
                 <a key={i.key} href={i.path} className={i.key === active ? "is-on" : undefined} title={i.label}
