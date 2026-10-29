@@ -1,0 +1,169 @@
+/* 디자인 토큰 (docs/frontend/principles.md §3).
+   크기·간격·모양·중립색은 목업 v1.42의 :root 변수와 목업 CSS에서 여러 번 나오는 값을 옮겼다.
+   상태 색(통과·임박·위반·정보·중립)은 화면 정의서 v2 0-5절과 부록 B-3(조장 결정 2026-10-22)의 CI 색을 따른다.
+   목업의 상태 색(#D0021B, #B54708, #067647)과 다르다. 어느 쪽으로 할지 조장 확인 중이며, 바꿀 때는 아래 2층 값만 고친다.
+   화면 코드는 이 파일의 변수만 쓰고 색 값(#…)이나 px 크기를 직접 쓰지 않는다.
+   1층 원색(--c-*)은 이 파일 안에서만 쓰고, 화면·컴포넌트는 2층 뜻 이름(--color-*)을 쓴다. 테마를 바꿀 때는 2층만 바꾼다. */
+:root {
+  /* 1층 원색: LS CI 색(디자인 가이드 §2, 화면 정의서 v2 0-5)과 목업 중립색 */
+  --c-ls-blue: #0a1e5a;
+  --c-ls-blue-hover: #13296f;
+  --c-sub-blue: #0569a0;
+  --c-ls-red: #fa002d;
+  --c-ls-green: #009bb4;
+  --c-gold: #7d710d;
+  --c-gray: #7d8282;
+  --c-silver: #87827d;
+  --c-shell: #0b2c46;
+
+  /* 2층 뜻 이름: 바탕·글자·선 */
+  --color-bg: #eef1f6;
+  --color-surface: #ffffff;
+  --color-fg: #111827;
+  --color-fg-sub: #667085;
+  --color-fg-faint: #98a2b3;
+  --color-line: #e4e8ef;
+  --color-hover: #f6f8fb;
+  --color-selected: #e7edf7;
+  --color-mark: #fff1c2; /* 원문에서 뽑은 값 강조 */
+  --color-overlay: rgba(10, 30, 90, 0.28);
+
+  /* 2층: 브랜드 */
+  --color-brand: var(--c-ls-blue);
+  --color-brand-fg: #ffffff;
+  --color-brand-hover: var(--c-ls-blue-hover);
+  --color-accent: var(--c-sub-blue);
+
+  /* 2층: 왼쪽 메뉴 */
+  --color-side: var(--c-ls-blue);
+  --color-side-fg: #ffffff;
+  --color-side-sub: rgba(255, 255, 255, 0.78);
+  --color-side-hover: rgba(255, 255, 255, 0.12);
+  --color-side-on: rgba(255, 255, 255, 0.22);
+
+  /* 2층: 상태 색(글자 / 옅은 바탕). 색만으로 뜻을 나누지 않고 늘 글자·기호를 함께 쓴다(화면 정의서 v2 0-5).
+     빨강은 글자·테두리에만 쓰고 빨강 바탕에 흰 글씨는 쓰지 않는다(같은 절). 그래서 neg-bg는 흰 바탕이다 */
+  --color-neg: var(--c-ls-red);   /* 위반·걸림 (B-3 BREACHED) */
+  --color-neg-bg: var(--color-surface);
+  --color-crit: var(--c-gold);    /* 임박·확인 필요 (B-3 AT_RISK) */
+  --color-crit-bg: #f7f4e1;
+  --color-pos: var(--c-ls-green); /* 통과·해결 (B-3 ON_TRACK·MET·RESOLVED) */
+  --color-pos-bg: #e3f5f8;
+  --color-info: var(--c-sub-blue); /* 처리 중·AI 제안 (B-3 IN_PROGRESS, CP-8) */
+  --color-info-bg: #e7f0f7;
+  --color-neu: var(--c-gray);     /* 대기·새 문의 (B-3 WAITING_CUSTOMER·NEW) */
+  --color-neu-bg: #f2f4f4;
+  --color-muted: var(--c-silver); /* 끝난 것 (B-3 CLOSED) */
+
+  /* 글꼴 */
+  --font-body: "Malgun Gothic", "맑은 고딕", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  --font-code: Consolas, "D2Coding", Menlo, monospace;
+  --font-ar: "Noto Sans Arabic", "Geeza Pro", "Segoe UI", sans-serif;
+  --fs-xl: 24px; /* 화면 제목 */
+  --fs-l: 18px;  /* 숫자 칸 값 */
+  --fs-m: 16px;  /* 카드 제목, 대화 창 제목 */
+  --fs-b: 14px;  /* 본문 */
+  --fs-s: 13px;  /* 표·안내 띠 */
+  --fs-xs: 12px; /* 칩·표 머리·보조 글 */
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --lh-body: 1.55;
+
+  /* 간격: 목업에 많이 나오는 값(2·4·6·8·10·12·14·16·20·24px) */
+  --sp-2: 2px;
+  --sp-4: 4px;
+  --sp-6: 6px;
+  --sp-8: 8px;
+  --sp-10: 10px;
+  --sp-12: 12px;
+  --sp-14: 14px;
+  --sp-16: 16px;
+  --sp-20: 20px;
+  --sp-24: 24px;
+
+  /* 모서리 */
+  --r-xs: 4px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-input: 12px;
+  --r-pill: 999px;
+
+  /* 높이 */
+  --h-control: 36px;    /* 버튼·입력 칸 */
+  --h-control-sm: 30px; /* 작은 버튼 */
+  --h-chip: 22px;
+
+  /* 그림자 */
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-dialog: 0 24px 60px rgba(16, 24, 40, 0.25);
+  --shadow-toast: 0 12px 32px rgba(16, 24, 40, 0.18);
+  --focus-ring: 0 0 0 3px rgba(5, 105, 160, 0.12);
+
+  color-scheme: light;
+}
+
+/* 어두운 테마: 바탕·글자·선은 목업 v1.42의 어두운 값. 상태 색은 CI 색을 어두운 바탕에서 읽히게 밝힌 값(제안, 기준 문서에 없음).
+   배치는 그대로 두고 2층만 바꾼다 */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-bg: #11161d;
+    --color-surface: #19202a;
+    --color-fg: #e6eaf0;
+    --color-fg-sub: #9aa4b2;
+    --color-line: #2c3542;
+    --color-hover: #212a36;
+    --color-selected: #1b2c42;
+    --color-mark: #4a3b12;
+    --color-overlay: rgba(0, 0, 0, 0.6);
+    --color-brand: #3d9ad1;
+    --color-brand-fg: #06131f;
+    --color-brand-hover: #5aaedd;
+    --color-accent: #53b1fd;
+    --color-neg: #ff5c77;
+    --color-neg-bg: var(--color-surface);
+    --color-crit: #d6c65a;
+    --color-crit-bg: #2f2b12;
+    --color-pos: #3cc6dc;
+    --color-pos-bg: #0e3138;
+    --color-info: #53b1fd;
+    --color-info-bg: #142a40;
+    --color-neu: #a0aaaa;
+    --color-neu-bg: #252c36;
+    --color-muted: #8f8a85;
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-dialog: 0 8px 28px rgba(0, 0, 0, 0.5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --color-bg: #11161d;
+  --color-surface: #19202a;
+  --color-fg: #e6eaf0;
+  --color-fg-sub: #9aa4b2;
+  --color-line: #2c3542;
+  --color-hover: #212a36;
+  --color-selected: #1b2c42;
+  --color-mark: #4a3b12;
+  --color-overlay: rgba(0, 0, 0, 0.6);
+  --color-brand: #3d9ad1;
+  --color-brand-fg: #06131f;
+  --color-brand-hover: #5aaedd;
+  --color-accent: #53b1fd;
+  --color-neg: #ff5c77;
+  --color-neg-bg: var(--color-surface);
+  --color-crit: #d6c65a;
+  --color-crit-bg: #2f2b12;
+  --color-pos: #3cc6dc;
+  --color-pos-bg: #0e3138;
+  --color-info: #53b1fd;
+  --color-info-bg: #142a40;
+  --color-neu: #a0aaaa;
+  --color-neu-bg: #252c36;
+  --color-muted: #8f8a85;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-dialog: 0 8px 28px rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
+}
