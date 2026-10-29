@@ -16,6 +16,7 @@
 
   /* 2층 뜻 이름: 바탕·글자·선 */
   --color-bg: #eef1f6;
+  --color-page: var(--color-surface); /* 화면 바탕 (목업 최종: body 바탕 = 카드색) */
   --color-surface: #ffffff;
   --color-fg: #111827;
   --color-fg-sub: #667085;
@@ -82,12 +83,12 @@
   --sp-20: 20px;
   --sp-24: 24px;
 
-  /* 모서리 */
+  /* 모서리: 목업 CSS 맨 끝의 최종 값(:root --r-lg 8px, --r-md 6px, --r-sm 4px)과 입력 칸 8px */
   --r-xs: 4px;
-  --r-sm: 10px;
-  --r-md: 14px;
-  --r-lg: 20px;
-  --r-input: 12px;
+  --r-sm: 4px;
+  --r-md: 6px;
+  --r-lg: 8px;
+  --r-input: 8px;
   --r-pill: 999px;
 
   /* 높이 */
