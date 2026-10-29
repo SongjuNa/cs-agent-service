@@ -25,7 +25,7 @@ function tabFromUrl(): Tab {
   return TABS.some((x) => x.key === t) ? (t as Tab) : "send"; // 처음 열면 "보낼 것"(화면 명세 "목업과 다른 곳", Q11)
 }
 
-export function TicketPage({ ticketId, agent, onBack }: { ticketId: string; agent: string; onBack: (message?: string) => void }) {
+export function TicketPage({ ticketId, agent, onBack, navigate }: { ticketId: string; agent: string; onBack: (message?: string) => void; navigate?: (path: string) => void }) {
   const { mode } = useSession();
   const asOf = mode === "snapshot" ? SNAPSHOT : null;
   const query = useTicket(ticketId, asOf);
@@ -120,7 +120,8 @@ export function TicketPage({ ticketId, agent, onBack }: { ticketId: string; agen
           )}
       </div>
 
-      {why && <WhyPopup label={why.label} why={{ 결과: why.result, 근거: why.evidence, ...why.why }} onClose={() => setWhy(null)} />}
+      {why && <WhyPopup label={why.label} why={{ 결과: why.result, 근거: why.evidence, ...why.why }} onClose={() => setWhy(null)}
+        onRule={navigate && ruleLink(why.why) ? () => navigate(ruleLink(why.why)!) : undefined} />}
       {source && <SourcePopup target={source} onClose={() => setSource(null)} />}
       {fail && <FailPopup message={fail} onRefresh={() => void refresh()} onClose={() => setFail(null)} />}
       {adjusting && <AdjustPopup sub={adjusting} onClose={() => setAdjusting(null)} onDone={done(() => setAdjusting(null))} />}
@@ -131,4 +132,13 @@ export function TicketPage({ ticketId, agent, onBack }: { ticketId: string; agen
       )}
     </div>
   );
+}
+
+/** 「왜?」의 규칙 행이 규칙 관리 화면 어느 탭·행인지(SCR-08 "규칙표에서 보기", 변경 add-reference-views 결정 4) */
+function ruleLink(why: unknown): string | null {
+  const rule = (why as { rule?: Record<string, unknown> } | null)?.rule;
+  if (!rule || typeof rule.rule_id !== "string") return null;
+  const tab = "rule_order" in rule ? null : "primary_dept" in rule ? "route" : undefined;
+  if (tab === undefined) return null;
+  return `/rules?${tab ? `tab=${tab}&` : ""}rule=${encodeURIComponent(rule.rule_id)}`;
 }

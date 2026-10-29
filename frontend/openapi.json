@@ -1256,6 +1256,28 @@
           "dept_name_ko": {
             "title": "Dept Name Ko",
             "type": "string"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope"
           }
         },
         "required": [
@@ -1504,6 +1526,188 @@
           "messages"
         ],
         "title": "Detail",
+        "type": "object"
+      },
+      "DocumentDetail": {
+        "properties": {
+          "chars": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chars"
+          },
+          "doc_id": {
+            "title": "Doc Id",
+            "type": "string"
+          },
+          "doc_type": {
+            "title": "Doc Type",
+            "type": "string"
+          },
+          "family": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Family"
+          },
+          "product_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Code"
+          },
+          "revision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentSection"
+            },
+            "title": "Sections",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "doc_id",
+          "title",
+          "doc_type",
+          "sections"
+        ],
+        "title": "DocumentDetail",
+        "type": "object"
+      },
+      "DocumentRow": {
+        "properties": {
+          "chars": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chars"
+          },
+          "chunk_count": {
+            "title": "Chunk Count",
+            "type": "integer"
+          },
+          "doc_id": {
+            "title": "Doc Id",
+            "type": "string"
+          },
+          "doc_type": {
+            "title": "Doc Type",
+            "type": "string"
+          },
+          "family": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Family"
+          },
+          "product_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Code"
+          },
+          "revision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "doc_id",
+          "title",
+          "doc_type",
+          "chunk_count"
+        ],
+        "title": "DocumentRow",
+        "type": "object"
+      },
+      "DocumentSection": {
+        "properties": {
+          "chunk_id": {
+            "title": "Chunk Id",
+            "type": "string"
+          },
+          "section_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section No"
+          },
+          "section_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section Title"
+          }
+        },
+        "required": [
+          "chunk_id"
+        ],
+        "title": "DocumentSection",
         "type": "object"
       },
       "Draft": {
@@ -2087,6 +2291,64 @@
           "field"
         ],
         "title": "FieldIn",
+        "type": "object"
+      },
+      "FirmwareRow": {
+        "properties": {
+          "changes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Changes"
+          },
+          "doc_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Id"
+          },
+          "fw_version": {
+            "title": "Fw Version",
+            "type": "string"
+          },
+          "is_latest": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Latest"
+          },
+          "release_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Release Date"
+          }
+        },
+        "required": [
+          "fw_version"
+        ],
+        "title": "FirmwareRow",
         "type": "object"
       },
       "Gloss": {
@@ -2841,6 +3103,45 @@
       },
       "Product": {
         "properties": {
+          "family": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Family"
+          },
+          "lifecycle_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lifecycle Status"
+          },
+          "list_price_usd": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "List Price Usd"
+          },
           "product_code": {
             "title": "Product Code",
             "type": "string"
@@ -2848,6 +3149,28 @@
           "product_name": {
             "title": "Product Name",
             "type": "string"
+          },
+          "std_lead_time_weeks": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Std Lead Time Weeks"
+          },
+          "warranty_months": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Warranty Months"
           }
         },
         "required": [
@@ -2855,6 +3178,163 @@
           "product_name"
         ],
         "title": "Product",
+        "type": "object"
+      },
+      "ProductDetail": {
+        "properties": {
+          "certifications": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Certifications",
+            "type": "array"
+          },
+          "family": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Family"
+          },
+          "firmware": {
+            "items": {
+              "$ref": "#/components/schemas/FirmwareRow"
+            },
+            "title": "Firmware",
+            "type": "array"
+          },
+          "lifecycle_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lifecycle Status"
+          },
+          "list_price_usd": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "List Price Usd"
+          },
+          "product_code": {
+            "title": "Product Code",
+            "type": "string"
+          },
+          "product_name": {
+            "title": "Product Name",
+            "type": "string"
+          },
+          "specs": {
+            "items": {
+              "$ref": "#/components/schemas/ProductSpec"
+            },
+            "title": "Specs",
+            "type": "array"
+          },
+          "standards": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Standards",
+            "type": "array"
+          },
+          "std_lead_time_weeks": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Std Lead Time Weeks"
+          },
+          "warranty_months": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Warranty Months"
+          }
+        },
+        "required": [
+          "product_code",
+          "product_name",
+          "specs",
+          "standards",
+          "certifications",
+          "firmware"
+        ],
+        "title": "ProductDetail",
+        "type": "object"
+      },
+      "ProductSpec": {
+        "properties": {
+          "attribute": {
+            "title": "Attribute",
+            "type": "string"
+          },
+          "doc_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Id"
+          },
+          "section": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "attribute"
+        ],
+        "title": "ProductSpec",
         "type": "object"
       },
       "ReplyAccepted": {
@@ -3116,6 +3596,34 @@
           "remaining_h"
         ],
         "title": "RiskRow",
+        "type": "object"
+      },
+      "RuleRows": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "priority",
+              "routing",
+              "required-info",
+              "sla"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "kind",
+          "rows"
+        ],
+        "title": "RuleRows",
         "type": "object"
       },
       "Run": {
@@ -6351,6 +6859,7 @@
     },
     "/ref/departments": {
       "get": {
+        "description": "level·scope는 부서 관리 화면용(SCR-08 N-08-09, 2026-10-29 검토 자료 ②).",
         "operationId": "departments_ref_departments_get",
         "responses": {
           "200": {
@@ -6371,8 +6880,110 @@
         "summary": "Departments"
       }
     },
+    "/ref/documents": {
+      "get": {
+        "description": "q는 문서 ID·제목 부분 일치. chunk_count = 0이면 화면이 \"색인 없음\"을 보인다.",
+        "operationId": "documents_ref_documents_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "doc_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Doc Type"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentRow"
+                  },
+                  "title": "Response Documents Ref Documents Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Documents"
+      }
+    },
+    "/ref/documents/{doc_id}": {
+      "get": {
+        "description": "문서 정보와 절 목록(절 번호 순). 절 본문은 GET /chunks/{chunk_id}.",
+        "operationId": "document_ref_documents__doc_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "doc_id",
+            "required": true,
+            "schema": {
+              "title": "Doc Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Document"
+      }
+    },
     "/ref/products": {
       "get": {
+        "description": "선택 목록은 앞 두 열만 쓴다. 나머지 열은 제품 관리 화면용(변경 add-reference-views 결정 2).",
         "operationId": "products_ref_products_get",
         "responses": {
           "200": {
@@ -6391,6 +7002,85 @@
           }
         },
         "summary": "Products"
+      }
+    },
+    "/ref/products/{product_code}": {
+      "get": {
+        "operationId": "product_ref_products__product_code__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_code",
+            "required": true,
+            "schema": {
+              "title": "Product Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Product"
+      }
+    },
+    "/ref/rules/{kind}": {
+      "get": {
+        "description": "kind = priority, routing, required-info, sla. 그 밖은 404.",
+        "operationId": "rules_ref_rules__kind__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "title": "Kind",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleRows"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rules"
       }
     },
     "/runs/{run_id}/steps": {

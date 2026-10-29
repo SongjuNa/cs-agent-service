@@ -46,6 +46,12 @@ export type Customer = S["Customer"];
 export type CustomerRows = S["CustomerRows"];
 export type CustomerDetail = S["CustomerDetail"];
 export type CountryRow = S["CountryRow"];
+// 기준정보 보기 (변경 add-reference-views, 화면 명세 SCR-08). 규칙 행은 종류마다 칸이 달라 계약에 없다(design 결정 3)
+export type DocumentRow = S["DocumentRow"];
+export type DocumentDetail = S["DocumentDetail"];
+export type ProductDetail = S["ProductDetail"];
+export type RuleKind = S["RuleRows"]["kind"];
+export type RuleRows = Omit<S["RuleRows"], "rows"> & { rows: Record<string, unknown>[] };
 export type Product = S["Product"];
 export type Loaded = S["Loaded"];
 export type Department = S["Department"];
@@ -277,6 +283,11 @@ export const api = {
     call<CustomerDetail>("GET", `/customers/${encodeURIComponent(id)}${asOf ? `?as_of=${encodeURIComponent(asOf)}` : ""}`),
   countries: () => call<CountryRow[]>("GET", "/customers/countries"),
   products: () => call<Product[]>("GET", "/ref/products"),
+  // 기준정보 보기 (변경 add-reference-views, 화면 명세 SCR-08). 읽기만
+  documents: () => call<DocumentRow[]>("GET", "/ref/documents"),
+  document: (docId: string) => call<DocumentDetail>("GET", `/ref/documents/${encodeURIComponent(docId)}`),
+  product: (code: string) => call<ProductDetail>("GET", `/ref/products/${encodeURIComponent(code)}`),
+  rules: (kind: RuleKind) => call<RuleRows>("GET", `/ref/rules/${kind}`),
   load: (id: string) => call<Loaded>("GET", `/gold/tickets/${encodeURIComponent(id)}`),
   transcribe: (file: File, customerId: string, language: string, productCode: string) => {
     const form = new FormData();

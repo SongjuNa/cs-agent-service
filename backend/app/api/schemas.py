@@ -563,12 +563,19 @@ class Customer(Out):
 class Product(Out):
     product_code: str
     product_name: str
+    family: str | None = None
+    list_price_usd: Num | None = None
+    std_lead_time_weeks: int | None = None
+    lifecycle_status: str | None = None
+    warranty_months: int | None = None
 
 
 class Department(Out):
     dept_code: str
     dept_name_ko: str
     dept_name_en: str
+    level: str | None = None
+    scope: str | None = None
 
 
 class Agent(Out):
@@ -764,3 +771,60 @@ class CountryRow(Out):
     customer_count: int
     ticket_count: int
     open_count: int
+
+
+# ---- 기준정보 보기 (변경 add-reference-views) ----
+
+class DocumentRow(Out):
+    doc_id: str
+    title: str
+    doc_type: str
+    product_code: str | None = None
+    family: str | None = None
+    revision: str | None = None
+    chars: int | None = None
+    chunk_count: int
+
+
+class DocumentSection(Out):
+    chunk_id: str
+    section_no: str | None = None
+    section_title: str | None = None
+
+
+class DocumentDetail(Out):
+    doc_id: str
+    title: str
+    doc_type: str
+    product_code: str | None = None
+    family: str | None = None
+    revision: str | None = None
+    chars: int | None = None
+    sections: list[DocumentSection]
+
+
+class ProductSpec(Out):
+    attribute: str
+    value: str | None = None
+    doc_id: str | None = None
+    section: str | None = None
+
+
+class FirmwareRow(Out):
+    fw_version: str
+    release_date: date | None = None
+    is_latest: bool | None = None
+    changes: str | None = None
+    doc_id: str | None = None
+
+
+class ProductDetail(Product):
+    specs: list[ProductSpec]
+    standards: list[str]
+    certifications: list[str]
+    firmware: list[FirmwareRow]
+
+
+class RuleRows(Out):
+    kind: Literal["priority", "routing", "required-info", "sla"]
+    rows: list[Json]  # 칸이 종류마다 다르다(design 결정 3 표, 변경 add-api-response-models 결정 3)

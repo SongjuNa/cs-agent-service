@@ -25,6 +25,8 @@ export interface DataTableProps<Row> {
   stale?: boolean;
   empty?: ReactNode;
   faded?: (row: Row) => boolean;
+  /** 강조할 행(예: 「왜?」에서 연 규칙 행) */
+  marked?: (row: Row) => boolean;
   caption?: string;
 }
 
@@ -36,7 +38,7 @@ export function nextSort(current: string | undefined, key: string): string | und
 }
 
 export function DataTable<Row>({
-  columns, rows, rowKey, onRowClick, sort, onSortChange, loading = false, stale = false, empty, faded, caption,
+  columns, rows, rowKey, onRowClick, sort, onSortChange, loading = false, stale = false, empty, faded, marked, caption,
 }: DataTableProps<Row>) {
   const arrow = (key?: string) => (key && sort === key ? " ▲" : key && sort === `-${key}` ? " ▼" : "");
   const ariaSort = (key?: string) => (key && sort === key ? "ascending" : key && sort === `-${key}` ? "descending" : undefined);
@@ -71,7 +73,8 @@ export function DataTable<Row>({
             : (rows ?? []).map((row) => (
                 <tr
                   key={rowKey(row)}
-                  className={[onRowClick && "is-link", faded?.(row) && "is-faded"].filter(Boolean).join(" ") || undefined}
+                  className={[onRowClick && "is-link", faded?.(row) && "is-faded", marked?.(row) && "is-marked"].filter(Boolean).join(" ") || undefined}
+                  aria-current={marked?.(row) ? "true" : undefined}
                   onClick={onRowClick ? () => onRowClick(row) : undefined}
                   tabIndex={onRowClick ? 0 : undefined}
                   onKeyDown={onRowClick ? (e) => { if (e.key === "Enter") onRowClick(row); } : undefined}

@@ -7,11 +7,12 @@ import { lastInboxUrl } from "./features/inbox/inboxQuery";
 import { IntakePage } from "./features/intake/IntakePage";
 import { CustomerPage, CustomersPage } from "./features/customers/CustomersPage";
 import { PhonePage } from "./features/phone/PhonePage";
+import { DocsPage, KnowledgePage } from "./features/reference/ReferencePages";
 import { MyWorkPage } from "./features/mywork/MyWorkPage";
 import { TicketPage } from "./features/ticket/TicketPage";
 import { EmptyState, PageHeader } from "./ui";
 
-type Page = { kind: "inbox" } | { kind: "intake" } | { kind: "my" } | { kind: "phone" } | { kind: "customers" } | { kind: "customer"; id: string } | { kind: "ticket"; id: string } | { kind: "menu"; key: string };
+type Page = { kind: "inbox" } | { kind: "intake" } | { kind: "my" } | { kind: "phone" } | { kind: "customers" } | { kind: "customer"; id: string } | { kind: "ref"; key: "docs" | "rules" | "products" | "depts" | "etc" } | { kind: "ticket"; id: string } | { kind: "menu"; key: string };
 
 // 목업 메뉴 중 목업 화면으로만 두는 것 (docs/frontend/screens/README "명세를 쓰지 않은 목업 화면").
 // 운영 대시보드는 보여 줄 화면을 정하기 전이라 목업 화면으로 둔다(2026-10-29 조장 결정)
@@ -19,6 +20,11 @@ const MOCK_ONLY = new Set(["notice", "sysnote", "chatbot", "portal", "ops"]);
 const MOCK_REASON: Record<string, string> = {
   ops: "보여 줄 화면을 정하기 전이라 목업 화면으로 둡니다(2026-10-29 조장 결정).",
 };
+// 지식 관리 메뉴 (SCR-08)
+const REF_PATHS: Record<string, "docs" | "rules" | "products" | "depts" | "etc"> = {
+  "/docs": "docs", "/rules": "rules", "/products": "products", "/depts": "depts", "/etc": "etc",
+};
+const REF_LABEL = { docs: "문서 관리", rules: "규칙 관리", products: "제품 관리", depts: "부서 관리", etc: "기타 관리" };
 
 function pageFromPath(): Page {
   const path = window.location.pathname;
@@ -30,6 +36,8 @@ function pageFromPath(): Page {
   const c = path.match(/^\/customers\/([^/]+)$/);
   if (c) return { kind: "customer", id: decodeURIComponent(c[1]) };
   if (path === "/customers") return { kind: "customers" };
+  const ref = REF_PATHS[path];
+  if (ref) return { kind: "ref", key: ref };
   if (path === "/" || path === "/inbox") return { kind: "inbox" }; // 접수함이 기본 화면(SCR-00-05)
   const item = MENU.flatMap((g) => g.items).find((i) => i.path === path);
   return item ? { kind: "menu", key: item.key } : { kind: "inbox" };
@@ -39,6 +47,7 @@ function activeKey(page: Page): string {
   if (page.kind === "my") return "home";
   if (page.kind === "phone") return "phone";
   if (page.kind === "customers" || page.kind === "customer") return "customers";
+  if (page.kind === "ref") return page.key;
   if (page.kind === "intake" || page.kind === "ticket" || page.kind === "inbox") return "inbox";
   return page.key;
 }
@@ -49,6 +58,7 @@ function crumbsOf(page: Page): Crumb[] {
   if (page.kind === "my") return [{ label: "접수", path: "/my" }, { label: "나의 업무 현황" }];
   if (page.kind === "phone") return [{ label: "접수", path: "/my" }, { label: "전화 상담" }];
   if (page.kind === "customers") return [{ label: "접수", path: "/my" }, { label: "고객 관리" }];
+  if (page.kind === "ref") return [{ label: "지식 관리" }, { label: REF_LABEL[page.key] }];
   if (page.kind === "customer") return [{ label: "접수", path: "/my" }, { label: "고객 관리", path: "/customers" }, { label: page.id }];
   if (page.kind === "inbox") return [{ label: "접수", path: "/my" }, { label: "접수함" }];
   const group = MENU.find((g) => g.items.some((i) => i.key === page.key));
@@ -87,10 +97,11 @@ export function App() {
     <AppShell active={activeKey(page)} crumbs={crumbsOf(page)} navigate={navigate}>
       {page.kind === "intake" ? <IntakePage onOpen={open} navigate={navigate} />
         : page.kind === "phone" ? <PhonePage onOpen={open} />
+        : page.kind === "ref" ? (page.key === "docs" ? <DocsPage key={window.location.search} /> : <KnowledgePage key={`${page.key}${window.location.search}`} menu={page.key} />)
         : page.kind === "customers" ? <CustomersPage key={window.location.search} navigate={navigate} />
         : page.kind === "customer" ? <CustomerPage key={page.id} customerId={page.id} onOpen={open} navigate={navigate} />
         : page.kind === "my" ? <MyWorkPage key={`${dept}|${mode}|${agent}`} onOpen={open} navigate={navigate} />
-        : page.kind === "ticket" ? <TicketPage key={`${page.id}|${dept}`} ticketId={page.id} agent={agent} onBack={back} />
+        : page.kind === "ticket" ? <TicketPage key={`${page.id}|${dept}`} ticketId={page.id} agent={agent} onBack={back} navigate={navigate} />
         : page.kind === "inbox" ? <InboxPage key={`${dept}|${mode}`} flash={flash} navigate={navigate} onOpen={(id) => open(id)} />
         : <MenuPlaceholder pageKey={page.key} />}
     </AppShell>

@@ -30,12 +30,15 @@ def customers(q: str = "", conn: Connection = Depends(get_conn)) -> list[dict]:
 
 @router.get("/ref/products", response_model=list[schemas.Product], response_model_exclude_unset=True)
 def products(conn: Connection = Depends(get_conn)) -> list[dict]:
-    return _rows(conn, "SELECT product_code, product_name FROM ref.product ORDER BY product_code")
+    """선택 목록은 앞 두 열만 쓴다. 나머지 열은 제품 관리 화면용(변경 add-reference-views 결정 2)."""
+    return _rows(conn, """SELECT product_code, product_name, family, list_price_usd, std_lead_time_weeks, lifecycle_status,
+                                 warranty_months FROM ref.product ORDER BY product_code""")
 
 
 @router.get("/ref/departments", response_model=list[schemas.Department], response_model_exclude_unset=True)
 def departments(conn: Connection = Depends(get_conn)) -> list[dict]:
-    return _rows(conn, "SELECT dept_code, dept_name_ko, dept_name_en FROM ref.department ORDER BY dept_code")
+    """level·scope는 부서 관리 화면용(SCR-08 N-08-09, 2026-10-29 검토 자료 ②)."""
+    return _rows(conn, "SELECT dept_code, dept_name_ko, dept_name_en, level, scope FROM ref.department ORDER BY dept_code")
 
 
 @router.get("/ref/agents", response_model=list[schemas.Agent], response_model_exclude_unset=True)

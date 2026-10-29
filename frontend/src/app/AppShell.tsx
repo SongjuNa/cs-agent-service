@@ -27,11 +27,11 @@ export const MENU: MenuGroup[] = [
     { key: "portal", label: "고객포털 바로가기", path: "/portal", external: true },
   ] },
   { key: "docs", label: "지식 관리", items: [
-    { key: "docs", label: "문서 관리", path: "/docs" },
-    { key: "rules", label: "규칙 관리", path: "/rules" },
-    { key: "products", label: "제품 관리", path: "/products" },
-    { key: "depts", label: "부서 관리", path: "/depts" },
-    { key: "etc", label: "기타 관리", path: "/etc" },
+    { key: "docs", label: "문서 관리", path: "/docs", ready: true },
+    { key: "rules", label: "규칙 관리", path: "/rules", ready: true },
+    { key: "products", label: "제품 관리", path: "/products", ready: true },
+    { key: "depts", label: "부서 관리", path: "/depts", ready: true },
+    { key: "etc", label: "기타 관리", path: "/etc", ready: true },
   ] },
   { key: "ops", label: "대시보드", items: [{ key: "ops", label: "운영 대시보드", path: "/dashboard" }] },
 ];

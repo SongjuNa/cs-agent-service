@@ -287,8 +287,51 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Departments */
+        /**
+         * Departments
+         * @description level·scope는 부서 관리 화면용(SCR-08 N-08-09, 2026-10-29 검토 자료 ②).
+         */
         get: operations["departments_ref_departments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ref/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Documents
+         * @description q는 문서 ID·제목 부분 일치. chunk_count = 0이면 화면이 "색인 없음"을 보인다.
+         */
+        get: operations["documents_ref_documents_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ref/documents/{doc_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Document
+         * @description 문서 정보와 절 목록(절 번호 순). 절 본문은 GET /chunks/{chunk_id}.
+         */
+        get: operations["document_ref_documents__doc_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -304,8 +347,48 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Products */
+        /**
+         * Products
+         * @description 선택 목록은 앞 두 열만 쓴다. 나머지 열은 제품 관리 화면용(변경 add-reference-views 결정 2).
+         */
         get: operations["products_ref_products_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ref/products/{product_code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Product */
+        get: operations["product_ref_products__product_code__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ref/rules/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Rules
+         * @description kind = priority, routing, required-info, sla. 그 밖은 404.
+         */
+        get: operations["rules_ref_rules__kind__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -906,6 +989,10 @@ export interface components {
             dept_name_en: string;
             /** Dept Name Ko */
             dept_name_ko: string;
+            /** Level */
+            level?: string | null;
+            /** Scope */
+            scope?: string | null;
         };
         /**
          * DeptBodyIn
@@ -986,6 +1073,53 @@ export interface components {
             sub_tickets: components["schemas"]["SubTicket"][];
             summary: components["schemas"]["Summary"] | null;
             ticket: components["schemas"]["Ticket"];
+        };
+        /** DocumentDetail */
+        DocumentDetail: {
+            /** Chars */
+            chars?: number | null;
+            /** Doc Id */
+            doc_id: string;
+            /** Doc Type */
+            doc_type: string;
+            /** Family */
+            family?: string | null;
+            /** Product Code */
+            product_code?: string | null;
+            /** Revision */
+            revision?: string | null;
+            /** Sections */
+            sections: components["schemas"]["DocumentSection"][];
+            /** Title */
+            title: string;
+        };
+        /** DocumentRow */
+        DocumentRow: {
+            /** Chars */
+            chars?: number | null;
+            /** Chunk Count */
+            chunk_count: number;
+            /** Doc Id */
+            doc_id: string;
+            /** Doc Type */
+            doc_type: string;
+            /** Family */
+            family?: string | null;
+            /** Product Code */
+            product_code?: string | null;
+            /** Revision */
+            revision?: string | null;
+            /** Title */
+            title: string;
+        };
+        /** DocumentSection */
+        DocumentSection: {
+            /** Chunk Id */
+            chunk_id: string;
+            /** Section No */
+            section_no?: string | null;
+            /** Section Title */
+            section_title?: string | null;
         };
         /** Draft */
         Draft: {
@@ -1163,6 +1297,19 @@ export interface components {
             field: string;
             /** Value */
             value?: string | null;
+        };
+        /** FirmwareRow */
+        FirmwareRow: {
+            /** Changes */
+            changes?: string | null;
+            /** Doc Id */
+            doc_id?: string | null;
+            /** Fw Version */
+            fw_version: string;
+            /** Is Latest */
+            is_latest?: boolean | null;
+            /** Release Date */
+            release_date?: string | null;
         };
         /** Gloss */
         Gloss: {
@@ -1375,10 +1522,56 @@ export interface components {
         };
         /** Product */
         Product: {
+            /** Family */
+            family?: string | null;
+            /** Lifecycle Status */
+            lifecycle_status?: string | null;
+            /** List Price Usd */
+            list_price_usd?: number | string | null;
             /** Product Code */
             product_code: string;
             /** Product Name */
             product_name: string;
+            /** Std Lead Time Weeks */
+            std_lead_time_weeks?: number | null;
+            /** Warranty Months */
+            warranty_months?: number | null;
+        };
+        /** ProductDetail */
+        ProductDetail: {
+            /** Certifications */
+            certifications: string[];
+            /** Family */
+            family?: string | null;
+            /** Firmware */
+            firmware: components["schemas"]["FirmwareRow"][];
+            /** Lifecycle Status */
+            lifecycle_status?: string | null;
+            /** List Price Usd */
+            list_price_usd?: number | string | null;
+            /** Product Code */
+            product_code: string;
+            /** Product Name */
+            product_name: string;
+            /** Specs */
+            specs: components["schemas"]["ProductSpec"][];
+            /** Standards */
+            standards: string[];
+            /** Std Lead Time Weeks */
+            std_lead_time_weeks?: number | null;
+            /** Warranty Months */
+            warranty_months?: number | null;
+        };
+        /** ProductSpec */
+        ProductSpec: {
+            /** Attribute */
+            attribute: string;
+            /** Doc Id */
+            doc_id?: string | null;
+            /** Section */
+            section?: string | null;
+            /** Value */
+            value?: string | null;
         };
         /** ReplyAccepted */
         ReplyAccepted: {
@@ -1459,6 +1652,18 @@ export interface components {
             sub_ticket_id: string;
             /** Ticket Id */
             ticket_id: string;
+        };
+        /** RuleRows */
+        RuleRows: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "priority" | "routing" | "required-info" | "sla";
+            /** Rows */
+            rows: {
+                [key: string]: unknown;
+            }[];
         };
         /** Run */
         Run: {
@@ -2576,6 +2781,69 @@ export interface operations {
             };
         };
     };
+    documents_ref_documents_get: {
+        parameters: {
+            query?: {
+                q?: string;
+                doc_type?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentRow"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    document_ref_documents__doc_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                doc_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     products_ref_products_get: {
         parameters: {
             query?: never;
@@ -2592,6 +2860,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Product"][];
+                };
+            };
+        };
+    };
+    product_ref_products__product_code__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rules_ref_rules__kind__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleRows"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
