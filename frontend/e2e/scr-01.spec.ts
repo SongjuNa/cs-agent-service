@@ -17,7 +17,10 @@ test("SCR-01-AC-1: CSV1-000017을 불러오면 입력 6칸이 정답지 입력�
   await expect(input(page, "제품 코드")).toHaveValue("ACB-AS-2000");
   await expect(input(page, "고객 언어")).toHaveValue("en");
   await expect(input(page, "본문")).toHaveValue(/Terminal overheating/);
-  await expect(input(page, "접수 시각")).toHaveValue("2025-10-02T09:45:43");
+  // 접수 시각은 원본(2025-10-02T09:45:43)이 아니라 지금(FR-003 v1.5.2)
+  const received = await input(page, "접수 시각").inputValue();
+  expect(received.startsWith("2025-10-02")).toBe(false);
+  expect(Math.abs(Date.parse(`${received}Z`) - Date.now())).toBeLessThan(5 * 60_000);
   await expect(field(page, "본문").getByText("불러옴")).toBeVisible();
   await expect(page.getByText("제목", { exact: true })).toHaveCount(0); // 제목·정답 칸은 없다(AC-003-1)
 });
