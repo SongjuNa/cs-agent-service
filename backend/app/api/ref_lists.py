@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 from psycopg import Connection
 
+from app.api import schemas
 from app.api.deps import get_conn
 from app.db.assignees import agents
 
@@ -18,7 +19,7 @@ def _rows(conn: Connection, sql: str, params: tuple = ()) -> list[dict]:
     return [dict(zip(names, r)) for r in cur.fetchall()]
 
 
-@router.get("/ref/customers")
+@router.get("/ref/customers", response_model=list[schemas.Customer], response_model_exclude_unset=True)
 def customers(q: str = "", conn: Connection = Depends(get_conn)) -> list[dict]:
     """ID·회사명·국가·등급. q는 ID·회사명 부분 일치(대소문자 무시)."""
     like = f"%{q.strip()}%"
@@ -27,17 +28,20 @@ def customers(q: str = "", conn: Connection = Depends(get_conn)) -> list[dict]:
                            ORDER BY customer_id LIMIT %s""", (like, like, CUSTOMER_LIMIT))
 
 
-@router.get("/ref/products")
+@router.get("/ref/products", response_model=list[schemas.Product], response_model_exclude_unset=True)
 def products(conn: Connection = Depends(get_conn)) -> list[dict]:
-    return _rows(conn, "SELECT product_code, product_name FROM ref.product ORDER BY product_code")
+    """선택 목록은 앞 두 열만 쓴다. 나머지 열은 제품 관리 화면용(변경 add-reference-views 결정 2)."""
+    return _rows(conn, """SELECT product_code, product_name, family, list_price_usd, std_lead_time_weeks, lifecycle_status,
+                                 warranty_months FROM ref.product ORDER BY product_code""")
 
 
-@router.get("/ref/departments")
+@router.get("/ref/departments", response_model=list[schemas.Department], response_model_exclude_unset=True)
 def departments(conn: Connection = Depends(get_conn)) -> list[dict]:
-    return _rows(conn, "SELECT dept_code, dept_name_ko, dept_name_en FROM ref.department ORDER BY dept_code")
+    """level·scope는 부서 관리 화면용(SCR-08 N-08-09, 2026-10-29 검토 자료 ②)."""
+    return _rows(conn, "SELECT dept_code, dept_name_ko, dept_name_en, level, scope FROM ref.department ORDER BY dept_code")
 
 
-@router.get("/ref/agents")
+@router.get("/ref/agents", response_model=list[schemas.Agent], response_model_exclude_unset=True)
 def agent_list(dept: str | None = None) -> list[dict]:
     """가상 상담원 명단(조장 결정 2026-10-23). 상단 막대 상담원 선택이 쓴다."""
     return agents((dept or "").strip() or None)

@@ -15,7 +15,7 @@ from typing import Any, Callable, Iterator
 # 호출 → 그 호출을 쓰는 단계 (기술 명세서 §2-2 단계 표)
 STEP_OF_CALL = {"L1": "T2", "L2": "Q1", "L3": "Q7", "L4": "Q10", "L5": "T5", "L7": "Q13", "L8": "Q14"}
 # 처리 흐름 노드 → 그 노드가 내는 단계 (graph.py, C-81: 한 노드의 단계들은 같은 시간을 쓴다)
-NODE_STEPS = {"understand": ("T2", "Q1"), "rules": ("Q2", "Q3", "Q4", "Q5", "Q6"), "diagnose": ("Q8a",),
+NODE_STEPS = {"understand": ("T2", "Q1"), "rules": ("Q2", "Q3", "Q4", "Q5", "Q6"), "diagnose": ("Q8a",), "similar": ("Q8b",),
               "escalate": ("Q9a",),
               "info_request": ("Q7",),
               "evidence": ("Q8", "Q9"), "reply": ("Q10", "Q11"), "compose": ("T5",), "gloss": ("Q13",),

@@ -12,6 +12,7 @@ import psycopg
 from psycopg import Connection, errors
 from pydantic import BaseModel
 
+from app.api import schemas
 from app.api.deps import Clients, get_clients, get_conn
 from app.db.detail import verify_state
 from app.db.store import (add_self_check, add_step, body_sha, check_body, draft_object, draft_sources, finish_run,
@@ -77,7 +78,7 @@ def _make_gloss(conn: Connection, clients: Clients, draft: dict, run_id: int) ->
     return obj.gloss is not None
 
 
-@router.put("/messages/{message_id}")
+@router.put("/messages/{message_id}", response_model=schemas.Saved, response_model_exclude_unset=True)
 def put_message(message_id: int, data: BodyIn, conn: Connection = Depends(get_conn),
                 clients: Clients = Depends(get_clients), x_agent_dept: str | None = Header(default=None)) -> dict:
     """임시 저장: DRAFT 본문만 바꾸고 대역을 다시 만든다. 검증은 다시 부르지 않는다(추가 결정 가3).
@@ -110,7 +111,7 @@ def put_message(message_id: int, data: BodyIn, conn: Connection = Depends(get_co
     return {"message_id": message_id, "gloss": gloss_ok}
 
 
-@router.post("/messages/{message_id}/gloss")
+@router.post("/messages/{message_id}/gloss", response_model=schemas.Saved, response_model_exclude_unset=True)
 def post_gloss(message_id: int, conn: Connection = Depends(get_conn), clients: Clients = Depends(get_clients)) -> dict:
     """대역 다시 만들기(FR-039 예외 1행)."""
     draft = _draft(conn, message_id)
@@ -123,7 +124,7 @@ def post_gloss(message_id: int, conn: Connection = Depends(get_conn), clients: C
     return {"message_id": message_id, "gloss": True}
 
 
-@router.post("/messages/{message_id}/verify")
+@router.post("/messages/{message_id}/verify", response_model=schemas.Verified, response_model_exclude_unset=True)
 def post_verify(message_id: int, conn: Connection = Depends(get_conn), clients: Clients = Depends(get_clients)) -> dict:
     """다시 검증(FR-049): L8 1회, 결과는 VERIFY 새 행."""
     draft = _draft(conn, message_id)
@@ -150,7 +151,7 @@ def post_verify(message_id: int, conn: Connection = Depends(get_conn), clients: 
     return {"message_id": message_id, "state": result.state, "mark": result.mark()}
 
 
-@router.post("/messages/{message_id}/send")
+@router.post("/messages/{message_id}/send", response_model=schemas.Sent, response_model_exclude_unset=True)
 def post_send(message_id: int, data: SendIn, conn: Connection = Depends(get_conn),
               x_agent_id: str | None = Header(default=None), x_agent_dept: str | None = Header(default=None)):
     """승인·발송(FR-031 처리 1·2·3·5). 확인이 필요한 것이 있으면 409 + 목록, override_check로 다시 보내면 발송."""

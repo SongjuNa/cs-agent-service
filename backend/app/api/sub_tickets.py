@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 from psycopg import Connection
 from pydantic import BaseModel
 
+from app.api import schemas
 from app.api.deps import Clients, get_clients, get_conn, get_connect
 from app.api.tickets import process_dept_reply, process_edit
 from app.db.edits import Edit, EditError, apply_edit
@@ -41,7 +42,7 @@ def _error(exc: AdjustError) -> JSONResponse:
     return JSONResponse(status_code=exc.status, content=jsonable_encoder(content))
 
 
-@router.get("/sub-tickets/{sub_ticket_id}/priority")
+@router.get("/sub-tickets/{sub_ticket_id}/priority", response_model=schemas.AdjustPreview, response_model_exclude_unset=True)
 def get_preview(sub_ticket_id: str, new_priority: str, conn: Connection = Depends(get_conn)):
     """저장 없이 이전·새 목표와 즉시 위반 여부(구현 선택, P3 미리 보기)."""
     try:
@@ -52,7 +53,7 @@ def get_preview(sub_ticket_id: str, new_priority: str, conn: Connection = Depend
         return _error(exc)
 
 
-@router.post("/sub-tickets/{sub_ticket_id}/priority")
+@router.post("/sub-tickets/{sub_ticket_id}/priority", response_model=schemas.Adjusted, response_model_exclude_unset=True)
 def post_priority(sub_ticket_id: str, data: PriorityIn, conn: Connection = Depends(get_conn),
                   x_agent_id: str | None = Header(default=None)):
     if not x_agent_id or not x_agent_id.strip():
@@ -85,7 +86,7 @@ class EditIn(BaseModel):
     expected_version: int | None = None  # FR-025 예외 2행, FR-030 예외 4행
 
 
-@router.patch("/sub-tickets/{sub_ticket_id}", status_code=202)
+@router.patch("/sub-tickets/{sub_ticket_id}", status_code=202, response_model=schemas.EditAccepted, response_model_exclude_unset=True)
 def patch_sub_ticket(sub_ticket_id: str, data: EditIn, background: BackgroundTasks,
                      conn: Connection = Depends(get_conn), connect: Callable = Depends(get_connect),
                      clients: Clients = Depends(get_clients), x_agent_id: str | None = Header(default=None)) -> dict:
@@ -115,7 +116,7 @@ class EscalateIn(BaseModel):
     expected_version: int | None = None  # FR-025 예외 2행
 
 
-@router.post("/sub-tickets/{sub_ticket_id}/escalate")
+@router.post("/sub-tickets/{sub_ticket_id}/escalate", response_model=schemas.Escalated, response_model_exclude_unset=True)
 def post_escalate(sub_ticket_id: str, data: EscalateIn, conn: Connection = Depends(get_conn),
                   x_agent_id: str | None = Header(default=None)) -> dict:
     """이관 확정 → ESCALATED, ESCALATION_NOTE SENT(FR-033 처리 1~4). 이관 안내 초안은 만들지 않는다(처리 5)."""
@@ -145,7 +146,7 @@ def _agent(x_agent_id: str | None) -> str:
     return x_agent_id.strip()
 
 
-@router.post("/sub-tickets/{sub_ticket_id}/dept-reply", status_code=202)
+@router.post("/sub-tickets/{sub_ticket_id}/dept-reply", status_code=202, response_model=schemas.DeptReplyAccepted, response_model_exclude_unset=True)
 def post_dept_reply(sub_ticket_id: str, data: DeptBodyIn, background: BackgroundTasks,
                     conn: Connection = Depends(get_conn), connect: Callable = Depends(get_connect),
                     clients: Clients = Depends(get_clients), x_agent_id: str | None = Header(default=None),
@@ -165,7 +166,7 @@ def post_dept_reply(sub_ticket_id: str, data: DeptBodyIn, background: Background
     return out
 
 
-@router.post("/sub-tickets/{sub_ticket_id}/dept-mail", status_code=201)
+@router.post("/sub-tickets/{sub_ticket_id}/dept-mail", status_code=201, response_model=schemas.DeptMailSaved, response_model_exclude_unset=True)
 def post_dept_mail(sub_ticket_id: str, data: DeptBodyIn, conn: Connection = Depends(get_conn),
                    x_agent_id: str | None = Header(default=None), x_agent_dept: str | None = Header(default=None)) -> dict:
     """예외 부서 고객 메일 초안(FINAL_REPLY DRAFT, sender DEPT). 승인은 `POST /messages/{id}/send`(FR-031 처리 9)."""

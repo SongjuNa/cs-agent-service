@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from psycopg import Connection
 from pydantic import BaseModel
 
+from app.api import schemas
 from app.api.deps import Clients, get_clients, get_conn
 from app.checks.call_check import NOT_FOUND, check_provided, find_gaps
 from app.db.store import LANGUAGES, MSG_CUSTOMER, MSG_LANGUAGE, MSG_PRODUCT
@@ -120,7 +121,7 @@ def _note(conn: Connection, clients: Clients, utterances: list[Utterance], langu
     }
 
 
-@router.post("/transcribe")
+@router.post("/transcribe", response_model=schemas.CallResult, response_model_exclude_unset=True)
 def transcribe_call(
     file: UploadFile = File(...),
     customer_id: str = Form(""),
@@ -165,7 +166,7 @@ class NoteDraftIn(BaseModel):
     product_code: str | None = None
 
 
-@router.post("/note-draft")
+@router.post("/note-draft", response_model=schemas.CallNote, response_model_exclude_unset=True)
 def note_draft(body: NoteDraftIn, conn: Connection = Depends(get_conn),
                clients: Clients = Depends(get_clients)) -> dict[str, Any]:
     """[메모 다시 만들기]: 앞 응답의 받아쓴 글로 L10 → 값 대조만 다시 한다(§12-5)."""

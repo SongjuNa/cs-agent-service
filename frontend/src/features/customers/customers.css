@@ -1,0 +1,36 @@
+/* SCR-07 고객 관리. 값은 목업 v1.42 `viewCustomers`(.ag-head 등급 요약, 연한 파랑 거르기 상자, 표), `viewCustomer`(머리 카드 + 숫자 칸 5개).
+   색은 tokens.css 변수만 쓴다(principles §3). */
+
+.cu { display: flex; flex-direction: column; gap: var(--sp-16); }
+.cu-sub { font-size: var(--fs-xs); color: var(--color-fg-sub); }
+.cu-id { font-family: var(--font-code); color: var(--color-accent); }
+.cu-mono { font-family: var(--font-code); font-size: var(--fs-xs); color: var(--color-fg-sub); }
+.cu-chips { display: inline-flex; flex-wrap: wrap; gap: var(--sp-4); }
+.cu-skeleton { height: 320px; margin: var(--sp-16); border-radius: var(--r-lg); background: var(--color-hover); }
+.cu .ui-card > .ui-tabs { padding: 0 var(--sp-12); }
+
+.cu-tiers { display: flex; flex-wrap: wrap; gap: var(--sp-4) var(--sp-24); padding: var(--sp-12) var(--sp-16); border-bottom: 1px solid var(--color-line); }
+.cu-tier { padding: var(--sp-4) 0; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--color-fg-sub); font: inherit; font-size: var(--fs-s); cursor: pointer; }
+.cu-tier b { margin-left: var(--sp-4); color: var(--color-fg); font-variant-numeric: tabular-nums; }
+.cu-tier.is-on { border-bottom-color: var(--color-brand); color: var(--color-brand); font-weight: var(--fw-semibold); }
+.cu-tier:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+.cu-filter { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-10); margin: var(--sp-12) var(--sp-16); padding: var(--sp-16); border: 1px solid var(--color-info-line, var(--color-line)); border-radius: var(--r-md); background: var(--color-info-bg); }
+.cu-filter label { font-size: var(--fs-s); font-weight: var(--fw-semibold); }
+.cu-filter input { flex: 1 1 260px; height: 36px; padding: 0 var(--sp-10); border: 1px solid var(--color-line); border-radius: var(--r-md); background: var(--color-surface); color: var(--color-fg); font: inherit; }
+.cu-x { margin-left: var(--sp-4); border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
+.cu-pager { padding: 0 var(--sp-16); }
+
+.cu-head { padding: var(--sp-16) var(--sp-20); }
+.cu-head__top { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-10); padding-bottom: var(--sp-12); border-bottom: 1px solid var(--color-line); }
+.cu-head__id { margin: 0; font-size: 24px; font-weight: var(--fw-bold); }
+.cu-head__name { font-size: var(--fs-m); color: var(--color-fg-sub); }
+.cu-head__back { margin-left: auto; }
+.cu-stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin: var(--sp-12) 0 0; }
+.cu-stats > div { padding: 0 var(--sp-16); border-left: 1px solid var(--color-line); }
+.cu-stats > div:first-child { padding-left: 0; border-left: 0; }
+.cu-stats dt { font-size: var(--fs-xs); color: var(--color-fg-sub); }
+.cu-stats dd { margin: var(--sp-4) 0 0; font-weight: var(--fw-semibold); overflow-wrap: anywhere; }
+.cu-stats dd.is-bad { color: var(--color-neg); }
+
+@media (max-width: 900px) { .cu-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-12); } .cu-stats > div { border-left: 0; padding: 0; } }

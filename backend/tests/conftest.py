@@ -25,3 +25,15 @@ def _fault_vector_cache(tmp_path_factory):
     fault._default_vectors = fault.SymptomVectors(tmp_path_factory.mktemp("fault-cache") / "fault_symptoms.json")
     yield
     fault._default_vectors = saved
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _case_index_cache(tmp_path_factory):
+    """시험은 개발자의 해결사례 색인·벡터 캐시(backend/.cache)를 건드리지 않는다(add-similar-cases)."""
+    from app.retrieval import cases, fault
+
+    saved = cases._default_index
+    tmp = tmp_path_factory.mktemp("case-cache")
+    cases._default_index = cases.CaseIndex(tmp / "resolution_cases.json", fault.SymptomVectors(tmp / "vectors.json", step="Q8b"))
+    yield
+    cases._default_index = saved

@@ -24,6 +24,7 @@ from app.llm.drafts import CHECK_PROVIDED_FIELDS, Draft, Gloss, Source, write_gl
 from app.masking import mask_fields, mask_text
 from app.pipeline.graph import RunOutcome
 from app.pipeline.reprocess import dept_reply_text, last_pipeline_step
+from app.retrieval.cases import NOTE_FAILED as NOTE_CASES_FAILED
 from app.retrieval.fault import NOTE_FAILED
 from app.rules.escalation import NOTE_RULES_FAILED
 from app.status.transitions import ConcurrentChange, TransitionRefused, current, transition
@@ -422,6 +423,10 @@ def _save_sub(conn, run_id, state, sub, outcome: RunOutcome, inquiry_id: int, re
         failed = NOTE_FAILED in sub.diagnosis.get("notes", [])  # 진단 실패도 흐름은 계속, 기록만(FR-018 예외 4행, C-141)
         steps.append({"name": "Q8a", "output": sub.diagnosis, "result": "FAILED" if failed else "SUCCESS",
                       "error_kind": "UNKNOWN" if failed else None, "error": NOTE_FAILED if failed else None})
+    if sub.similar_cases is not None:  # 유사 해결사례(FR-019). 찾는 유형이 아니면 단계가 없다(AC-019-2)
+        failed = NOTE_CASES_FAILED in sub.similar_cases.get("notes", [])  # 실패도 흐름은 계속, 기록만(예외 2행)
+        steps.append({"name": "Q8b", "output": sub.similar_cases, "result": "FAILED" if failed else "SUCCESS",
+                      "error_kind": "UNKNOWN" if failed else None, "error": NOTE_CASES_FAILED if failed else None})
     if sub.escalation is not None:  # 이관 후보(FR-020). 조회 실패도 흐름은 계속, 기록만(예외 2행)
         failed = NOTE_RULES_FAILED in sub.escalation.get("notes", [])
         steps.append({"name": "Q9a", "output": sub.escalation, "result": "FAILED" if failed else "SUCCESS",

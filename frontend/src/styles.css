@@ -19,19 +19,6 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 button.primary { background: var(--ls-blue); color: #fff; border-color: var(--ls-blue); }
 input { font: inherit; padding: 4px 8px; border: 1px solid var(--line); border-radius: 4px; }
 
-.shell { display: flex; min-height: 100vh; }
-.sidebar { width: 200px; background: var(--ls-blue); color: #fff; padding: 12px; flex-shrink: 0; }
-.shell.collapsed .sidebar { width: 44px; padding: 12px 6px; }
-.sidebar .collapse { background: transparent; color: #fff; border-color: rgba(255, 255, 255, 0.4); }
-.sidebar nav { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
-.sidebar .brand { font-weight: 700; margin-bottom: 8px; }
-.sidebar a { color: #fff; text-decoration: none; }
-.sidebar a.active { font-weight: 700; border-left: 3px solid #fff; padding-left: 6px; }
-.sidebar .disabled { opacity: 0.45; }
-.main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.topbar { display: flex; gap: 16px; justify-content: space-between; align-items: center; padding: 8px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-.topbar form { display: flex; gap: 6px; align-items: center; }
-main { padding: 16px; }
 .page-msg { padding: 16px; }
 
 .ok { color: var(--green); }
@@ -94,22 +81,10 @@ main { padding: 16px; }
 
 /* SCR-01 접수 시뮬레이터 */
 .banner { background: var(--surface-blue); color: var(--ls-blue); padding: 6px 10px; border-radius: 4px; margin: 0 0 12px; }
-.intake-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
-.intake-head h2 { margin: 0 8px 0 0; font-size: 18px; color: var(--ls-blue); }
-.intake-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; max-width: 900px; }
-.intake-form label, .intake-form fieldset { display: flex; flex-direction: column; gap: 4px; }
-.intake-form .wide { grid-column: 1 / -1; }
-.intake-form select, .intake-form textarea { font: inherit; padding: 4px 8px; border: 1px solid var(--line); border-radius: 4px; }
-.intake-form .contact { flex-direction: row; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 4px; }
-.intake-form .contact input { flex: 1; min-width: 160px; }
-.intake-buttons { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
 .req { color: var(--red); }
-@media (max-width: 700px) { .intake-form { grid-template-columns: 1fr; } }
 .h04 .retry { margin-left: 8px; }
 
 /* SCR-02 접수함. 상태 배지 색은 화면 정의서 v2 부록 B-3 */
-.topbar select { font: inherit; padding: 4px 8px; border: 1px solid var(--line); border-radius: 4px; }
-.sidebar a.brand { font-weight: 700; margin-bottom: 8px; }
 .counts { display: flex; gap: 16px; flex-wrap: wrap; background: var(--surface-blue); padding: 8px 12px; border-radius: 4px; margin-bottom: 8px; }
 .filters { display: grid; gap: 6px; margin-bottom: 10px; }
 .filter-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
@@ -157,18 +132,7 @@ mark.extract { background: transparent; text-decoration: underline 2px #e0b400; 
 .subtabs .escalate { margin-left: auto; }
 @media (max-width: 700px) { .form-grid { grid-template-columns: 1fr; } }
 
-/* SCR-04 나의 업무 현황 */
-.my-work section { margin-top: 18px; }
-.scope-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--gray); }
-.scope-switch button[aria-pressed="true"] { background: var(--ls-blue); color: #fff; border-color: var(--ls-blue); }
-.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
-.tile { display: flex; flex-direction: column; align-items: flex-start; padding: 12px; border: 1px solid var(--line); border-radius: 6px; background: #fff; cursor: pointer; }
-.tile strong { font-size: 26px; color: var(--ls-blue); }
-.today { margin: 4px 0; }
 .stale { opacity: 0.45; }
-.waitbar { position: relative; display: inline-block; width: 120px; height: 8px; background: #f1f2f2; border-radius: 4px; vertical-align: middle; }
-.waitbar .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--gold); border-radius: 4px; }
-.waitbar .tick { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--red); }
 .diagnosis h5 { margin: 0; }
 .fault { margin-top: 6px; }
 .fault-body { display: grid; grid-template-columns: 40px 1fr; gap: 2px 8px; margin: 6px 0 0; font-size: 13px; }
@@ -179,12 +143,3 @@ mark.extract { background: transparent; text-decoration: underline 2px #e0b400; 
 .dept-writer textarea { width: 100%; box-sizing: border-box; font: inherit; margin: 6px 0; }
 .dept-writer .actions { display: flex; gap: 8px; }
 
-/* 통화 녹음 칸 (FR-050) */
-.call-panel .call-upload { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.call-result { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 10px; }
-.call-result h4 { margin: 0 0 6px; }
-.call-transcript ol { list-style: none; padding: 0; margin: 0; max-height: 320px; overflow: auto; }
-.call-transcript li { padding: 3px 0; border-bottom: 1px solid var(--line); }
-.call-gap { color: var(--red); border-left: 3px solid var(--red); padding-left: 6px; margin: 2px 0; }
-.call-provided { padding-left: 18px; }
-@media (max-width: 800px) { .call-result { grid-template-columns: 1fr; } }

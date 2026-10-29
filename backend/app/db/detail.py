@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 from psycopg import Connection
@@ -40,7 +41,8 @@ def _row(conn: Connection, sql: str, params: tuple) -> dict[str, Any] | None:
     return rows[0] if rows else None
 
 
-def ticket_detail(conn: Connection, ticket_id: str, agent_dept: str | None = None) -> dict[str, Any] | None:
+def ticket_detail(conn: Connection, ticket_id: str, agent_dept: str | None = None,
+                  as_of: datetime | None = None) -> dict[str, Any] | None:
     ticket = _row(conn, """
         SELECT t.ticket_id, t.received_at_utc, t.channel, t.language, t.body_language, t.body_language_uncertain,
                t.customer_id, t.customer_tier, c.company_masked, c.country, t.source, t.source_ticket_id, t.multi_yn,
@@ -63,7 +65,7 @@ def ticket_detail(conn: Connection, ticket_id: str, agent_dept: str | None = Non
     # [다시 처리]: 처리 중이 아니고 끝나지 않은(CLOSED가 아닌) 하위 문의가 있으면(FR-030 처리 5, SCR-03 ⑥ 종료)
     can_reprocess = (retry is not None and not retry["busy"] and not processing
                      and any(r["status"] != "CLOSED" for r in rows))
-    sla = clocks(conn, [r["sub_ticket_id"] for r in rows])
+    sla = clocks(conn, [r["sub_ticket_id"] for r in rows], as_of)
     # 하위 문의마다 자기 run(복합 문의는 하위 문의별 run, AC-036-4)
     subs = [_sub_detail(conn, s, run_for_sub(conn, s["sub_ticket_id"])) | _state(conn, s, sla.get(s["sub_ticket_id"]))
             | _dept(conn, s, agent_dept) for s in rows]
@@ -124,6 +126,7 @@ def _sub_detail(conn: Connection, sub: dict[str, Any], run: dict[str, Any] | Non
         "checks": [{"check_type": r["check_type"], "flag": (r["detail"] or {}).get("flag")} for r in failed],
         "other_flags": [f for f in flags if check_type_of(f) is None and f not in DRAFT_FLAGS],
         "diagnosis": out.get("Q8a"),  # 고장 진단 후보(FR-018). 고장 계열이 아니면 None
+        "similar_cases": out.get("Q8b"),  # 유사 해결사례(FR-019). 찾는 유형이 아니면 None. 초안에는 쓰지 않음
         "escalation": out.get("Q9a"),  # 이관 후보(FR-020). 버튼 없이 표시만
         "evidence_rows": _with_steps(_evidence_rows(conn, sub, out, flags, labels, status, edits), run_id, steps),
         "drafts": drafts,

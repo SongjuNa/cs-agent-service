@@ -104,6 +104,7 @@ class SubTicketState(BaseModel):
     res_target_h: int | None = None
     fault_candidates: list[FaultCandidate] = Field(default_factory=list)
     diagnosis: dict[str, Any] | None = None  # Q8a 결과(후보·찾은 방법·표시 문구). 진단 대상이 아니면 None. DB 열 아님
+    similar_cases: dict[str, Any] | None = None  # Q8b 결과(사례 3건까지·표시 문구, FR-019). 찾는 유형이 아니면 None. DB 열 아님
     escalation_candidates: list[EscalationHint] = Field(default_factory=list)
     escalation: dict[str, Any] | None = None  # Q9a 결과(후보·이관 조건 문구·표시·실패 여부). DB 열 아님
     doc_candidates: list[DocCandidate] = Field(default_factory=list)

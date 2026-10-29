@@ -1,0 +1,37 @@
+/* SCR-08 기준정보 보기. 값은 목업 v1.42 `viewDocs`(.summary 종류 요약, .filters 연한 파랑 상자)와 `viewKnow`(탭 → 검색 → 표 10행).
+   색은 tokens.css 변수만 쓴다(principles §3). */
+
+.rf { display: flex; flex-direction: column; gap: var(--sp-16); }
+.rf-sub { font-size: var(--fs-xs); color: var(--color-fg-sub); }
+.rf-mono { font-family: var(--font-code); }
+.rf-skeleton { height: 320px; margin: var(--sp-16); border-radius: var(--r-lg); background: var(--color-hover); }
+.rf .ui-card > .ui-tabs { padding: 0 var(--sp-12); }
+
+.rf-summary { display: flex; flex-wrap: wrap; gap: var(--sp-4) var(--sp-24); padding: var(--sp-12) var(--sp-16); border-bottom: 1px solid var(--color-line); }
+.rf-sum { padding: var(--sp-4) 0; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--color-fg-sub); font: inherit; font-size: var(--fs-s); cursor: pointer; }
+.rf-sum b { margin-left: var(--sp-4); color: var(--color-fg); font-variant-numeric: tabular-nums; }
+.rf-sum.is-on { border-bottom-color: var(--color-brand); color: var(--color-brand); font-weight: var(--fw-semibold); }
+.rf-sum:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+.rf-filter { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-10); margin: var(--sp-12) var(--sp-16); padding: var(--sp-16); border: 1px solid var(--color-info-line, var(--color-line)); border-radius: var(--r-md); background: var(--color-info-bg); }
+.rf-filter label { font-size: var(--fs-s); font-weight: var(--fw-semibold); }
+.rf-filter input, .rf-filter select { height: 36px; padding: 0 var(--sp-10); border: 1px solid var(--color-line); border-radius: var(--r-md); background: var(--color-surface); color: var(--color-fg); font: inherit; }
+.rf-filter input { flex: 1 1 260px; }
+.rf-src { flex-basis: 100%; text-align: right; font-size: var(--fs-xs); color: var(--color-fg-sub); }
+.rf-pager { display: flex; justify-content: flex-end; }
+.rf-pager > .ui-pager { flex: 1; }
+.rf-pager > span { padding: var(--sp-10) var(--sp-16); font-size: var(--fs-s); color: var(--color-fg-sub); }
+.rf-note { margin: 0; padding: 0 var(--sp-16) var(--sp-16); font-size: var(--fs-xs); color: var(--color-fg-sub); }
+.rf-fields { display: inline-flex; flex-wrap: wrap; gap: var(--sp-4) var(--sp-10); font-family: var(--font-code); font-size: var(--fs-xs); }
+
+.rf-sections { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--sp-4); }
+.rf-link { width: 100%; padding: var(--sp-8) var(--sp-10); border: 0; border-radius: var(--r-md); background: none; color: var(--color-accent); font: inherit; text-align: left; cursor: pointer; }
+.rf-link:hover { background: var(--color-hover); }
+.rf-link:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+.rf-product { display: flex; flex-direction: column; gap: var(--sp-12); }
+.rf-kvs { display: grid; grid-template-columns: 120px 1fr; gap: var(--sp-6) var(--sp-16); margin: 0; }
+.rf-kvs dt { font-size: var(--fs-xs); color: var(--color-fg-sub); }
+.rf-kvs dd { margin: 0; }
+.rf-chips { display: flex; flex-wrap: wrap; gap: var(--sp-4); }
+.rf-h3 { margin: var(--sp-8) 0 0; font-size: var(--fs-m); }

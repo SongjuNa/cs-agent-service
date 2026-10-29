@@ -9,6 +9,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, 
 from psycopg import Connection
 from pydantic import BaseModel
 
+from app.api import schemas
 from app.api.deps import Clients, get_clients, get_conn, get_connect
 from app.db.detail import ticket_detail
 from app.db.inbox import InboxQuery, inbox
@@ -93,7 +94,7 @@ def reprocess_reply(connect: Callable, clients: Clients, ticket_id: str, reply_i
         save_outcome(conn, run_id, ticket_id, outcome, reply_id=reply_id)
 
 
-@router.post("/tickets", status_code=201)
+@router.post("/tickets", status_code=201, response_model=schemas.Accepted, response_model_exclude_unset=True)
 def post_ticket(data: TicketIn, background: BackgroundTasks, conn: Connection = Depends(get_conn),
                 connect: Callable = Depends(get_connect), clients: Clients = Depends(get_clients)) -> dict:
     try:
@@ -143,7 +144,7 @@ MSG_NOTHING_TO_RETRY = "다시 처리할 실행이 없음"
 MSG_CLOSED = "종료된 문의입니다"  # 화면 정의서 v1 SCR-03-P8
 
 
-@router.post("/tickets/{ticket_id}/reprocess", status_code=202)
+@router.post("/tickets/{ticket_id}/reprocess", status_code=202, response_model=schemas.Accepted, response_model_exclude_unset=True)
 def reprocess(ticket_id: str, background: BackgroundTasks, conn: Connection = Depends(get_conn),
               connect: Callable = Depends(get_connect), clients: Clients = Depends(get_clients)) -> dict:
     """다시 시도·다시 처리: 같은 티켓을 새 run(RETRY)에서 처음부터 다시 돌린다(AC-001-4, FR-030 처리 5, §2-4).
@@ -174,7 +175,7 @@ def _list(value: str | None) -> list[str]:
     return [v.strip() for v in (value or "").split(",") if v.strip()]
 
 
-@router.get("/tickets")
+@router.get("/tickets", response_model=schemas.Inbox, response_model_exclude_unset=True)
 def list_tickets(dept: str | None = None, status: str | None = None, priority: str | None = None,
                  alert: str | None = None, channel: str | None = None, needs_info: bool = False,
                  has_draft: bool = False, composite: bool = False, q: str | None = None,
@@ -188,16 +189,18 @@ def list_tickets(dept: str | None = None, status: str | None = None, priority: s
                                   page=page, size=size, sort=sort, as_of=as_of))
 
 
-@router.get("/tickets/{ticket_id}")
-def get_ticket(ticket_id: str, conn: Connection = Depends(get_conn),
+@router.get("/tickets/{ticket_id}", response_model=schemas.Detail, response_model_exclude_unset=True)
+def get_ticket(ticket_id: str, conn: Connection = Depends(get_conn), as_of: datetime | None = None,
                x_agent_dept: str | None = Header(default=None)) -> dict:
-    detail = ticket_detail(conn, ticket_id, agent_dept=(x_agent_dept or "").strip() or None)  # 부서별 작성 영역(C-164)
+    # as_of: SLA 두 시계의 기준 시각(접수함·나의 업무 현황과 같은 뜻, 비우면 지금). 화면의 "스냅샷" 기준 시각용(구현 선택)
+    detail = ticket_detail(conn, ticket_id, agent_dept=(x_agent_dept or "").strip() or None,  # 부서별 작성 영역(C-164)
+                           as_of=as_of)
     if detail is None:
         raise HTTPException(404, MSG_NO_TICKET)
     return detail
 
 
-@router.get("/tickets/{ticket_id}/timeline")
+@router.get("/tickets/{ticket_id}/timeline", response_model=list[schemas.TimelineItem], response_model_exclude_unset=True)
 def get_timeline(ticket_id: str, conn: Connection = Depends(get_conn)) -> list[dict]:
     """메시지·상태 변경·경고·조정을 시각순으로(FR-030 처리 4, §8-1)."""
     rows = timeline(conn, ticket_id)
@@ -206,7 +209,7 @@ def get_timeline(ticket_id: str, conn: Connection = Depends(get_conn)) -> list[d
     return rows
 
 
-@router.post("/tickets/{ticket_id}/replies", status_code=201)
+@router.post("/tickets/{ticket_id}/replies", status_code=201, response_model=schemas.ReplyAccepted, response_model_exclude_unset=True)
 def post_reply(ticket_id: str, data: ReplyIn, background: BackgroundTasks,
                x_agent_id: str | None = Header(default=None), conn: Connection = Depends(get_conn),
                connect: Callable = Depends(get_connect), clients: Clients = Depends(get_clients)) -> dict:

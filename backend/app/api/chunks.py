@@ -5,12 +5,13 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from psycopg import Connection
 
+from app.api import schemas
 from app.api.deps import get_conn
 
 router = APIRouter()
 
 
-@router.get("/chunks/{chunk_id}")
+@router.get("/chunks/{chunk_id}", response_model=schemas.Chunk, response_model_exclude_unset=True)
 def get_chunk(chunk_id: str, conn: Connection = Depends(get_conn)) -> dict:
     row = conn.execute(
         """SELECT c.chunk_id, c.doc_id, d.title, c.section_no, c.section_title, c.text

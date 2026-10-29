@@ -1,34 +1,78 @@
-// A안 사이드바형 틀 (화면 정의서 v2 0-7절): 왼쪽 사이드바 + 위 머리 막대(M-H-01, M-H-02, SCR-00-03·04) + 작업 영역.
+// 주소 나누기와 공통 틀(SCR-00). 화면은 AppShell 안에 그린다. 주소는 화면 정의서 v2 0-2절과 기존 경로를 그대로 쓴다.
 import { useCallback, useEffect, useState } from "react";
-import {
-  agentDept, agentId, api, asOfMode, saveAgentDept, saveAgentId, saveAsOfMode, SNAPSHOT,
-  type Agent, type AsOfMode, type Department,
-} from "./api";
-import { InboxPage, lastInboxUrl } from "./InboxPage";
-import { IntakePage } from "./IntakePage";
-import { MyWorkPage } from "./MyWorkPage";
-import { TicketDetailPage } from "./TicketDetailPage";
+import { AppShell, MENU, type Crumb } from "./app/AppShell";
+import { useSession } from "./app/session";
+import { InboxPage } from "./features/inbox/InboxPage";
+import { lastInboxUrl } from "./features/inbox/inboxQuery";
+import { IntakePage } from "./features/intake/IntakePage";
+import { CaseSearchPage } from "./features/cases/CaseSearchPage";
+import { CustomerPage, CustomersPage } from "./features/customers/CustomersPage";
+import { PhonePage } from "./features/phone/PhonePage";
+import { DocsPage, KnowledgePage } from "./features/reference/ReferencePages";
+import { MyWorkPage } from "./features/mywork/MyWorkPage";
+import { TicketPage } from "./features/ticket/TicketPage";
+import { EmptyState, PageHeader } from "./ui";
 
-type Page = { kind: "inbox" } | { kind: "intake" } | { kind: "my" } | { kind: "ticket"; id: string };
+type Page = { kind: "inbox" } | { kind: "intake" } | { kind: "my" } | { kind: "phone" } | { kind: "customers" } | { kind: "history" } | { kind: "customer"; id: string } | { kind: "ref"; key: "docs" | "rules" | "products" | "depts" | "etc" } | { kind: "ticket"; id: string } | { kind: "menu"; key: string };
+
+// 목업 메뉴 중 목업 화면으로만 두는 것 (docs/frontend/screens/README "명세를 쓰지 않은 목업 화면").
+// 운영 대시보드는 보여 줄 화면을 정하기 전이라 목업 화면으로 둔다(2026-10-29 조장 결정)
+const MOCK_ONLY = new Set(["notice", "sysnote", "chatbot", "portal", "ops"]);
+const MOCK_REASON: Record<string, string> = {
+  ops: "보여 줄 화면을 정하기 전이라 목업 화면으로 둡니다(2026-10-29 조장 결정).",
+};
+// 지식 관리 메뉴 (SCR-08)
+const REF_PATHS: Record<string, "docs" | "rules" | "products" | "depts" | "etc"> = {
+  "/docs": "docs", "/rules": "rules", "/products": "products", "/depts": "depts", "/etc": "etc",
+};
+const REF_LABEL = { docs: "문서 관리", rules: "규칙 관리", products: "제품 관리", depts: "부서 관리", etc: "기타 관리" };
 
 function pageFromPath(): Page {
   const path = window.location.pathname;
   const m = path.match(/^\/tickets\/([^/]+)$/);
   if (m) return { kind: "ticket", id: decodeURIComponent(m[1]) };
   if (path === "/intake") return { kind: "intake" };
-  if (path === "/my") return { kind: "my" }; // SCR-04 (§8-2)
-  return { kind: "inbox" }; // "/"와 "/inbox": 접수함이 기본 화면(SCR-00-05)
+  if (path === "/my") return { kind: "my" };
+  if (path === "/phone") return { kind: "phone" };
+  const c = path.match(/^\/customers\/([^/]+)$/);
+  if (c) return { kind: "customer", id: decodeURIComponent(c[1]) };
+  if (path === "/customers") return { kind: "customers" };
+  if (path === "/history") return { kind: "history" };
+  const ref = REF_PATHS[path];
+  if (ref) return { kind: "ref", key: ref };
+  if (path === "/" || path === "/inbox") return { kind: "inbox" }; // 접수함이 기본 화면(SCR-00-05)
+  const item = MENU.flatMap((g) => g.items).find((i) => i.path === path);
+  return item ? { kind: "menu", key: item.key } : { kind: "inbox" };
+}
+
+function activeKey(page: Page): string {
+  if (page.kind === "my") return "home";
+  if (page.kind === "phone") return "phone";
+  if (page.kind === "customers" || page.kind === "customer") return "customers";
+  if (page.kind === "ref") return page.key;
+  if (page.kind === "history") return "similar";
+  if (page.kind === "intake" || page.kind === "ticket" || page.kind === "inbox") return "inbox";
+  return page.key;
+}
+
+function crumbsOf(page: Page): Crumb[] {
+  if (page.kind === "ticket") return [{ label: "접수", path: "/my" }, { label: "접수함", path: lastInboxUrl() }, { label: page.id }];
+  if (page.kind === "intake") return [{ label: "접수", path: "/my" }, { label: "접수함", path: "/inbox" }, { label: "접수 시뮬레이터" }];
+  if (page.kind === "my") return [{ label: "접수", path: "/my" }, { label: "나의 업무 현황" }];
+  if (page.kind === "phone") return [{ label: "접수", path: "/my" }, { label: "전화 상담" }];
+  if (page.kind === "customers") return [{ label: "접수", path: "/my" }, { label: "고객 관리" }];
+  if (page.kind === "history") return [{ label: "접수", path: "/my" }, { label: "접수 이력" }];
+  if (page.kind === "ref") return [{ label: "지식 관리" }, { label: REF_LABEL[page.key] }];
+  if (page.kind === "customer") return [{ label: "접수", path: "/my" }, { label: "고객 관리", path: "/customers" }, { label: page.id }];
+  if (page.kind === "inbox") return [{ label: "접수", path: "/my" }, { label: "접수함" }];
+  const group = MENU.find((g) => g.items.some((i) => i.key === page.key));
+  const item = group?.items.find((i) => i.key === page.key);
+  return [{ label: group?.label ?? "" }, { label: item?.label ?? "" }];
 }
 
 export function App() {
+  const { agent, dept, mode } = useSession();
   const [page, setPage] = useState<Page>(pageFromPath());
-  const [input, setInput] = useState(page.kind === "ticket" ? page.id : "");
-  const [agent, setAgent] = useState(agentId());
-  const [dept, setDept] = useState(agentDept());
-  const [mode, setMode] = useState<AsOfMode>(asOfMode());
-  const [depts, setDepts] = useState<Department[]>([]);
-  const [roster, setRoster] = useState<Agent[]>([]);
-  const [collapsed, setCollapsed] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
 
   useEffect(() => {
@@ -36,104 +80,47 @@ export function App() {
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
-  useEffect(() => {
-    api.departments().then(setDepts).catch(() => setDepts([]));
-    api.agents().then((list) => {
-      setRoster(list);
-      // 명단 전의 상담원 ID(예: TS_LV_AGENT_09)가 브라우저에 남아 있으면 비운다(담당 값이 이름이라 거를 수 없음)
-      setAgent((cur) => { if (cur && !list.some((a) => a.name === cur)) { saveAgentId(""); return ""; } return cur; });
-    }).catch(() => setRoster([]));
+
+  const navigate = useCallback((path: string) => {
+    window.history.pushState(null, "", path);
+    setFlash(null);
+    setPage(pageFromPath());
+    window.scrollTo(0, 0);
   }, []);
 
-  function navigate(path: string, next: Page) {
-    window.history.pushState(null, "", path);
-    setPage(next);
-  }
-
-  // [목록으로]: 마지막 접수함 주소(필터·정렬·쪽)로(화면 정의서 v1 SCR-02 ③). 없는 번호면 안내를 띄운다(FR-030 예외 1행)
+  // [접수함으로]: 마지막 접수함 주소(필터·정렬·쪽)로 (SCR-02-AC-8). 없는 번호면 안내를 띄운다(FR-030 예외 1행)
   const back = useCallback((message?: string) => {
     window.history.pushState(null, "", lastInboxUrl());
     setPage({ kind: "inbox" });
     setFlash(message ?? null);
   }, []);
 
-  function go(id: string) {
-    setFlash(null);
-    navigate(`/tickets/${encodeURIComponent(id)}`, { kind: "ticket", id });
-    setInput(id);
-  }
-
-  function open(e: React.FormEvent) {
-    e.preventDefault();
-    const id = input.trim();
-    if (id) go(id);
-  }
-
-  function menu(path: string, next: Page) {
-    return (e: React.MouseEvent) => { e.preventDefault(); navigate(path, next); };
-  }
+  const open = (id: string) => navigate(`/tickets/${encodeURIComponent(id)}`);
 
   return (
-    <div className={`shell ${collapsed ? "collapsed" : ""}`}>
-      <aside className="sidebar">
-        <button type="button" className="collapse" onClick={() => setCollapsed(!collapsed)} aria-label="사이드바 접기">
-          {collapsed ? "»" : "«"}
-        </button>
-        {!collapsed && (
-          <nav>
-            <a className="brand" href="/inbox" onClick={menu("/inbox", { kind: "inbox" })}>C/S Agent</a>
-            <a className={page.kind === "inbox" ? "active" : ""} href="/inbox" onClick={menu("/inbox", { kind: "inbox" })}>접수함</a>
-            <a className={page.kind === "my" ? "active" : ""} href="/my" onClick={menu("/my", { kind: "my" })}>나의 업무 현황</a>
-            <a className={page.kind === "intake" ? "active" : ""} href="/intake" onClick={menu("/intake", { kind: "intake" })}>접수 시뮬레이터</a>
-            {page.kind === "ticket" && <a className="active" href={`/tickets/${page.id}`}>문의 상세</a>}
-          </nav>
-        )}
-      </aside>
-      <div className="main">
-        <header className="topbar">
-          <form onSubmit={open}>
-            <label>문의 번호 <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="CSV1-004001" /></label>
-            <button type="submit">열기</button>
-          </form>
-          <label className={dept ? "" : "bad"}>
-            부서{" "}
-            <select value={dept} onChange={(e) => {
-              const next = e.target.value;
-              setDept(next);
-              saveAgentDept(next);
-              if (next && roster.some((a) => a.name === agent && a.dept !== next)) { setAgent(""); saveAgentId(""); } // 다른 부서 사람은 비운다
-            }}>
-              <option value="">부서를 선택하세요</option>
-              {depts.map((d) => <option key={d.dept_code} value={d.dept_code}>{d.dept_code} {d.dept_name_ko}</option>)}
-            </select>
-          </label>
-          <label>
-            기준 시각{" "}
-            <select value={mode} onChange={(e) => { const m = e.target.value as AsOfMode; setMode(m); saveAsOfMode(m); }}>
-              <option value="now">실제 시각</option>
-              <option value="snapshot">스냅샷 2026-09-30 23:59 UTC</option>
-            </select>
-          </label>
-          <label className={agent ? "" : "bad"}>
-            상담원{" "}
-            {/* 가상 상담원 명단에서 고른다(조장 결정 2026-10-23, add-agent-roster). 고른 부서의 사람만 */}
-            <select value={agent} onChange={(e) => { setAgent(e.target.value); saveAgentId(e.target.value); }}>
-              <option value="">상담원을 고르세요</option>
-              {agent && !roster.some((a) => a.name === agent) && <option value={agent}>{agent}</option>}
-              {roster.filter((a) => !dept || a.dept === dept).map((a) => (
-                <option key={a.name} value={a.name}>{a.name}{dept ? "" : ` (${a.dept})`}{a.demo ? " · 시연용" : ""}</option>
-              ))}
-            </select>
-          </label>
-        </header>
-        <main>
-          {page.kind === "intake" ? <IntakePage onCreated={go} />
-            : page.kind === "my" ? <MyWorkPage key={`${dept}|${mode}|${agent.trim()}`} dept={dept} agent={agent.trim()}
-                                               asOf={mode === "snapshot" ? SNAPSHOT : null} onOpen={go} />
-            : page.kind === "ticket" ? <TicketDetailPage key={`${page.id}|${dept}`} ticketId={page.id} agent={agent.trim()} onBack={back} />
-            : <InboxPage key={`${dept}|${mode}`} flash={flash} dept={dept} asOf={mode === "snapshot" ? SNAPSHOT : null} onOpen={go} />}
-        </main>
-      </div>
-    </div>
+    <AppShell active={activeKey(page)} crumbs={crumbsOf(page)} navigate={navigate}>
+      {page.kind === "intake" ? <IntakePage onOpen={open} navigate={navigate} />
+        : page.kind === "phone" ? <PhonePage onOpen={open} />
+        : page.kind === "history" ? <CaseSearchPage key={window.location.search} />
+        : page.kind === "ref" ? (page.key === "docs" ? <DocsPage key={window.location.search} /> : <KnowledgePage key={`${page.key}${window.location.search}`} menu={page.key} />)
+        : page.kind === "customers" ? <CustomersPage key={window.location.search} navigate={navigate} />
+        : page.kind === "customer" ? <CustomerPage key={page.id} customerId={page.id} onOpen={open} navigate={navigate} />
+        : page.kind === "my" ? <MyWorkPage key={`${dept}|${mode}|${agent}`} onOpen={open} navigate={navigate} />
+        : page.kind === "ticket" ? <TicketPage key={`${page.id}|${dept}`} ticketId={page.id} agent={agent} onBack={back} navigate={navigate} />
+        : page.kind === "inbox" ? <InboxPage key={`${dept}|${mode}`} flash={flash} navigate={navigate} onOpen={(id) => open(id)} />
+        : <MenuPlaceholder pageKey={page.key} />}
+    </AppShell>
+  );
+}
+
+function MenuPlaceholder({ pageKey }: { pageKey: string }) {
+  const item = MENU.flatMap((g) => g.items).find((i) => i.key === pageKey);
+  return (
+    <>
+      <PageHeader title={item?.label ?? ""} />
+      <EmptyState title={MOCK_ONLY.has(pageKey) ? "목업 화면으로만 두는 메뉴입니다" : "다음 슬라이스에서 만듭니다"}>
+        {MOCK_ONLY.has(pageKey) ? MOCK_REASON[pageKey] ?? "우리 시스템 밖의 기능이라 만들지 않습니다(화면 명세 README)." : "화면 명세는 docs/frontend/screens/에 있습니다."}
+      </EmptyState>
+    </>
   );
 }
