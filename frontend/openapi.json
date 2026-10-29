@@ -898,6 +898,34 @@
         "title": "Chunk",
         "type": "object"
       },
+      "CountryRow": {
+        "properties": {
+          "country": {
+            "title": "Country",
+            "type": "string"
+          },
+          "customer_count": {
+            "title": "Customer Count",
+            "type": "integer"
+          },
+          "open_count": {
+            "title": "Open Count",
+            "type": "integer"
+          },
+          "ticket_count": {
+            "title": "Ticket Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "country",
+          "customer_count",
+          "ticket_count",
+          "open_count"
+        ],
+        "title": "CountryRow",
+        "type": "object"
+      },
       "Customer": {
         "properties": {
           "company_masked": {
@@ -924,6 +952,295 @@
           "tier"
         ],
         "title": "Customer",
+        "type": "object"
+      },
+      "CustomerDetail": {
+        "properties": {
+          "account_since": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Since"
+          },
+          "alert_count": {
+            "title": "Alert Count",
+            "type": "integer"
+          },
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "company_masked": {
+            "title": "Company Masked",
+            "type": "string"
+          },
+          "country": {
+            "title": "Country",
+            "type": "string"
+          },
+          "customer_id": {
+            "title": "Customer Id",
+            "type": "string"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/CustomerHistoryRow"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "last_contact_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Contact Email"
+          },
+          "last_language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Language"
+          },
+          "open_count": {
+            "title": "Open Count",
+            "type": "integer"
+          },
+          "segment": {
+            "title": "Segment",
+            "type": "string"
+          },
+          "ticket_count": {
+            "title": "Ticket Count",
+            "type": "integer"
+          },
+          "tier": {
+            "title": "Tier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "company_masked",
+          "country",
+          "tier",
+          "segment",
+          "account_since",
+          "last_contact_email",
+          "last_language",
+          "ticket_count",
+          "open_count",
+          "alert_count",
+          "as_of",
+          "history"
+        ],
+        "title": "CustomerDetail",
+        "type": "object"
+      },
+      "CustomerHistoryRow": {
+        "properties": {
+          "alerts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Alerts",
+            "type": "array"
+          },
+          "category_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Code"
+          },
+          "inquiry_count": {
+            "title": "Inquiry Count",
+            "type": "integer"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority"
+          },
+          "product_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Code"
+          },
+          "received_at_utc": {
+            "format": "date-time",
+            "title": "Received At Utc",
+            "type": "string"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "source_ticket_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Ticket Id"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "sub_ticket_id": {
+            "title": "Sub Ticket Id",
+            "type": "string"
+          },
+          "ticket_id": {
+            "title": "Ticket Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sub_ticket_id",
+          "ticket_id",
+          "seq",
+          "inquiry_count",
+          "source_ticket_id",
+          "received_at_utc",
+          "category_code",
+          "product_code",
+          "priority",
+          "status",
+          "alerts"
+        ],
+        "title": "CustomerHistoryRow",
+        "type": "object"
+      },
+      "CustomerRow": {
+        "properties": {
+          "company_masked": {
+            "title": "Company Masked",
+            "type": "string"
+          },
+          "country": {
+            "title": "Country",
+            "type": "string"
+          },
+          "customer_id": {
+            "title": "Customer Id",
+            "type": "string"
+          },
+          "last_received_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Received At"
+          },
+          "open_count": {
+            "title": "Open Count",
+            "type": "integer"
+          },
+          "segment": {
+            "title": "Segment",
+            "type": "string"
+          },
+          "ticket_count": {
+            "title": "Ticket Count",
+            "type": "integer"
+          },
+          "tier": {
+            "title": "Tier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "company_masked",
+          "country",
+          "tier",
+          "segment",
+          "ticket_count",
+          "open_count",
+          "last_received_at"
+        ],
+        "title": "CustomerRow",
+        "type": "object"
+      },
+      "CustomerRows": {
+        "properties": {
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/CustomerRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          },
+          "tier_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Tier Counts",
+            "type": "object"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "page",
+          "size",
+          "tier_counts",
+          "rows"
+        ],
+        "title": "CustomerRows",
         "type": "object"
       },
       "Department": {
@@ -5392,6 +5709,185 @@
           }
         },
         "summary": "Get Chunk"
+      }
+    },
+    "/customers": {
+      "get": {
+        "description": "목록(design 결정 1). q는 고객 ID·고객사 부분 일치.",
+        "operationId": "get_customers_customers_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tier",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tier"
+            }
+          },
+          {
+            "in": "query",
+            "name": "country",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Country"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerRows"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Customers"
+      }
+    },
+    "/customers/countries": {
+      "get": {
+        "description": "나라별 집계(design 결정 3). /customers/{id}보다 먼저 둔다.",
+        "operationId": "get_countries_customers_countries_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CountryRow"
+                  },
+                  "title": "Response Get Countries Customers Countries Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Countries"
+      }
+    },
+    "/customers/{customer_id}": {
+      "get": {
+        "description": "상세와 문의 이력(design 결정 2). as_of는 경고를 보는 기준 시각(나의 업무 현황과 같음).",
+        "operationId": "get_customer_customers__customer_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "customer_id",
+            "required": true,
+            "schema": {
+              "title": "Customer Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "as_of",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "As Of"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Customer"
       }
     },
     "/gold/tickets/{source_ticket_id}": {

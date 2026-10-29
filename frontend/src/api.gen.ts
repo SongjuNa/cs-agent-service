@@ -61,6 +61,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/customers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Customers
+         * @description 목록(design 결정 1). q는 고객 ID·고객사 부분 일치.
+         */
+        get: operations["get_customers_customers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/countries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Countries
+         * @description 나라별 집계(design 결정 3). /customers/{id}보다 먼저 둔다.
+         */
+        get: operations["get_countries_customers_countries_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customer_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Customer
+         * @description 상세와 문의 이력(design 결정 2). as_of는 경고를 보는 기준 시각(나의 업무 현황과 같음).
+         */
+        get: operations["get_customer_customers__customer_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/gold/tickets/{source_ticket_id}": {
         parameters: {
             query?: never;
@@ -722,6 +782,17 @@ export interface components {
             /** Text */
             text: string;
         };
+        /** CountryRow */
+        CountryRow: {
+            /** Country */
+            country: string;
+            /** Customer Count */
+            customer_count: number;
+            /** Open Count */
+            open_count: number;
+            /** Ticket Count */
+            ticket_count: number;
+        };
         /** Customer */
         Customer: {
             /** Company Masked */
@@ -732,6 +803,100 @@ export interface components {
             customer_id: string;
             /** Tier */
             tier: string;
+        };
+        /** CustomerDetail */
+        CustomerDetail: {
+            /** Account Since */
+            account_since: string | null;
+            /** Alert Count */
+            alert_count: number;
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Company Masked */
+            company_masked: string;
+            /** Country */
+            country: string;
+            /** Customer Id */
+            customer_id: string;
+            /** History */
+            history: components["schemas"]["CustomerHistoryRow"][];
+            /** Last Contact Email */
+            last_contact_email: string | null;
+            /** Last Language */
+            last_language: string | null;
+            /** Open Count */
+            open_count: number;
+            /** Segment */
+            segment: string;
+            /** Ticket Count */
+            ticket_count: number;
+            /** Tier */
+            tier: string;
+        };
+        /** CustomerHistoryRow */
+        CustomerHistoryRow: {
+            /** Alerts */
+            alerts: string[];
+            /** Category Code */
+            category_code: string | null;
+            /** Inquiry Count */
+            inquiry_count: number;
+            /** Priority */
+            priority: string | null;
+            /** Product Code */
+            product_code: string | null;
+            /**
+             * Received At Utc
+             * Format: date-time
+             */
+            received_at_utc: string;
+            /** Seq */
+            seq: number;
+            /** Source Ticket Id */
+            source_ticket_id: string | null;
+            /** Status */
+            status: string;
+            /** Sub Ticket Id */
+            sub_ticket_id: string;
+            /** Ticket Id */
+            ticket_id: string;
+        };
+        /** CustomerRow */
+        CustomerRow: {
+            /** Company Masked */
+            company_masked: string;
+            /** Country */
+            country: string;
+            /** Customer Id */
+            customer_id: string;
+            /** Last Received At */
+            last_received_at: string | null;
+            /** Open Count */
+            open_count: number;
+            /** Segment */
+            segment: string;
+            /** Ticket Count */
+            ticket_count: number;
+            /** Tier */
+            tier: string;
+        };
+        /** CustomerRows */
+        CustomerRows: {
+            /** Page */
+            page: number;
+            /** Rows */
+            rows: components["schemas"]["CustomerRow"][];
+            /** Size */
+            size: number;
+            /** Tier Counts */
+            tier_counts: {
+                [key: string]: number;
+            };
+            /** Total */
+            total: number;
         };
         /** Department */
         Department: {
@@ -2025,6 +2190,94 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Chunk"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_customers_customers_get: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                tier?: string | null;
+                country?: string | null;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerRows"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_countries_customers_countries_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryRow"][];
+                };
+            };
+        };
+    };
+    get_customer_customers__customer_id__get: {
+        parameters: {
+            query?: {
+                as_of?: string | null;
+            };
+            header?: never;
+            path: {
+                customer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerDetail"];
                 };
             };
             /** @description Validation Error */

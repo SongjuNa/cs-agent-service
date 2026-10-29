@@ -26,7 +26,8 @@ def test_ac_contract_1_every_api_has_named_response():
             if not ref or ref.rsplit("/", 1)[-1] not in spec["components"]["schemas"]:
                 missing.append(f"{method.upper()} {path}")
     assert missing == []
-    assert sum(len(ops) for ops in spec["paths"].values()) == 27
+    # 27(add-api-response-models) + 고객 관리 3(add-customer-views: /customers, /customers/countries, /customers/{id})
+    assert sum(len(ops) for ops in spec["paths"].values()) == 30
 
 
 def test_ac_contract_2_frontend_copy_is_current():

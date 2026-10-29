@@ -43,6 +43,9 @@ export type CallProvided = S["CallProvided"];
 export type CallNote = S["CallNote"];
 export type CallResult = S["CallResult"];
 export type Customer = S["Customer"];
+export type CustomerRows = S["CustomerRows"];
+export type CustomerDetail = S["CustomerDetail"];
+export type CountryRow = S["CountryRow"];
 export type Product = S["Product"];
 export type Loaded = S["Loaded"];
 export type Department = S["Department"];
@@ -268,6 +271,11 @@ export const api = {
   inbox: (query: URLSearchParams) => call<Inbox>("GET", `/tickets?${query.toString()}`),
   workload: (query: URLSearchParams) => call<Workload>("GET", `/me/workload?${query.toString()}`),
   customers: (q: string) => call<Customer[]>("GET", `/ref/customers?q=${encodeURIComponent(q)}`),
+  // 고객 관리 (변경 add-customer-views, 화면 명세 SCR-07). 읽기만
+  customerList: (query: URLSearchParams) => call<CustomerRows>("GET", `/customers?${query.toString()}`),
+  customer: (id: string, asOf: string | null) =>
+    call<CustomerDetail>("GET", `/customers/${encodeURIComponent(id)}${asOf ? `?as_of=${encodeURIComponent(asOf)}` : ""}`),
+  countries: () => call<CountryRow[]>("GET", "/customers/countries"),
   products: () => call<Product[]>("GET", "/ref/products"),
   load: (id: string) => call<Loaded>("GET", `/gold/tickets/${encodeURIComponent(id)}`),
   transcribe: (file: File, customerId: string, language: string, productCode: string) => {

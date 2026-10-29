@@ -3,7 +3,7 @@
 - 연결 요구사항: FR-초안-01(고객 관리), FR-030(연락처 표시)
 - 기준 목업: cs-agent-mockup_v1.42.html `viewCustomers`, `viewCustomer`, `viewCustMap`, `viewCountry` (레이아웃 기준선: 탭 "고객 목록 / 나라별 지도" → 등급 요약 → 필터 → 표)
 - 화면 정의서: 없음
-- 사용 API (아직 없음, 변경 add-customer-views): `GET /customers?q=&tier=&country=&page=&size=50`, `GET /customers/{customer_id}`, `GET /customers/countries`
+- 사용 API (변경 add-customer-views, 로컬 브랜치 feat/customer-views-api): `GET /customers?q=&tier=&country=&page=&size=50`, `GET /customers/{customer_id}`, `GET /customers/countries`
 
 ## 영역
 
@@ -13,7 +13,7 @@
 | N-07-02 | 목록 | 필터: 검색(고객 ID·고객사), 나라 | q, country |
 | N-07-03 | 목록 | 표: 고객 ID, 고객사, 등급, 나라, 미해결, 전체 문의, 최근 문의 | customer_id, company_masked, tier, country, open_count, ticket_count, last_received_at |
 | N-07-04 | 상세 | 머리: 고객 ID, 고객사, 등급, 미해결 문의, 기한 위험·위반, 나라, 최근 답장 언어, 최근 연락처 이메일 | CustomerDetail |
-| N-07-05 | 상세 | 문의 이력 표: 티켓(#k), 접수 시각, 유형, 제품(없으면 "미확인"), 우선순위, 상태, 경고. 접수 시각 내림차순 | 이력 행 |
+| N-07-05 | 상세 | 문의 이력 표: 티켓(#k), 원본 번호, 접수 시각, 유형, 제품(없으면 "미확인"), 우선순위, 상태, 경고. 접수 시각 내림차순 | 이력 행 (source_ticket_id 포함) |
 | N-07-06 | 나라별 | 나라별 표(지도는 목업 그림): 나라, 고객 수, 전체 문의, 미해결. 누르면 그 나라 고객 목록 | countries |
 
 ## 화면 상태
@@ -39,7 +39,7 @@
 
 ## 수용 기준 (Given / When / Then)
 
-- SCR-07-AC-1 (FR-초안-01 AC 초안): Given 고객 CUST-0350, When 상세를 열면, Then 그 고객의 티켓이 접수 시각 내림차순으로 모두 보이고 CSV1-000017이 있다.
+- SCR-07-AC-1 (FR-초안-01 AC 초안): Given 고객 CUST-0350, When 상세를 열면, Then 그 고객의 티켓이 접수 시각 내림차순으로 모두 보이고 원본 번호 CSV1-000017로 접수한 티켓이 있다(2026-10-29 조장 결정).
 - SCR-07-AC-2 (FR-초안-01 AC 초안): Given 나라별 탭, When TH를 고르면, Then 고객 33명이 보인다.
 - SCR-07-AC-3: Given 나라별 탭, When 표를 보면, Then 나라가 20개다.
 - SCR-07-AC-4: Given 없는 고객 CUST-9999, When 상세 주소를 열면, Then "고객을 찾을 수 없습니다"가 보인다.

@@ -10,7 +10,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Literal, Union
 
@@ -705,3 +705,62 @@ class CallResult(CallNote):
     duration_sec: float
     utterances: list[Utterance]
     gaps: list[CallGap]
+
+
+# ---- 고객 관리 (변경 add-customer-views, FR 초안 01) ----
+
+
+class CustomerRow(Out):
+    customer_id: str
+    company_masked: str
+    country: str
+    tier: str
+    segment: str
+    ticket_count: int
+    open_count: int
+    last_received_at: datetime | None
+
+
+class CustomerRows(Out):
+    total: int
+    page: int
+    size: int
+    tier_counts: dict[str, int]
+    rows: list[CustomerRow]
+
+
+class CustomerHistoryRow(Out):
+    sub_ticket_id: str
+    ticket_id: str
+    seq: int
+    inquiry_count: int
+    source_ticket_id: str | None
+    received_at_utc: datetime
+    category_code: str | None
+    product_code: str | None
+    priority: str | None
+    status: str
+    alerts: list[str]
+
+
+class CustomerDetail(Out):
+    customer_id: str
+    company_masked: str
+    country: str
+    tier: str
+    segment: str
+    account_since: date | None
+    last_contact_email: str | None
+    last_language: str | None
+    ticket_count: int
+    open_count: int
+    alert_count: int
+    as_of: datetime
+    history: list[CustomerHistoryRow]
+
+
+class CountryRow(Out):
+    country: str
+    customer_count: int
+    ticket_count: int
+    open_count: int
