@@ -2673,7 +2673,9 @@ export interface operations {
     };
     get_ticket_tickets__ticket_id__get: {
         parameters: {
-            query?: never;
+            query?: {
+                as_of?: string | null;
+            };
             header?: {
                 "x-agent-dept"?: string | null;
             };

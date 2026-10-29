@@ -7,7 +7,7 @@ import { InboxPage } from "./features/inbox/InboxPage";
 import { lastInboxUrl } from "./features/inbox/inboxQuery";
 import { IntakePage } from "./IntakePage";
 import { MyWorkPage } from "./MyWorkPage";
-import { TicketDetailPage } from "./TicketDetailPage";
+import { TicketPage } from "./features/ticket/TicketPage";
 import { EmptyState, PageHeader } from "./ui";
 
 type Page = { kind: "inbox" } | { kind: "intake" } | { kind: "my" } | { kind: "ticket"; id: string } | { kind: "menu"; key: string };
@@ -74,7 +74,7 @@ export function App() {
     <AppShell active={activeKey(page)} crumbs={crumbsOf(page)} navigate={navigate}>
       {page.kind === "intake" ? <IntakePage onCreated={open} />
         : page.kind === "my" ? <MyWorkPage key={`${dept}|${mode}|${agent}`} dept={dept} agent={agent} asOf={asOf} onOpen={open} />
-        : page.kind === "ticket" ? <TicketDetailPage key={`${page.id}|${dept}`} ticketId={page.id} agent={agent} onBack={back} />
+        : page.kind === "ticket" ? <TicketPage key={`${page.id}|${dept}`} ticketId={page.id} agent={agent} onBack={back} />
         : page.kind === "inbox" ? <InboxPage key={`${dept}|${mode}`} flash={flash} navigate={navigate} onOpen={(id) => open(id)} />
         : <MenuPlaceholder pageKey={page.key} />}
     </AppShell>

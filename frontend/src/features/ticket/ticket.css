@@ -1,0 +1,144 @@
+/* SCR-03 티켓 상세. 값은 목업 v1.42 `viewTicket`을 브라우저에서 잰 값(머리 카드 16/18 안쪽, 제목 24px/600, 숫자 칸 18px/600,
+   띠 13px 10/14 안쪽, 탭 14px 안쪽 14 + 아래 2px 줄). 색은 tokens.css 변수만 쓴다(principles §3). */
+
+.tk { display: flex; flex-direction: column; gap: 14px; }
+.tk.is-stale > .tk-head, .tk.is-stale > .tk-tabs { opacity: 0.45; }
+.tk-muted { color: var(--color-fg-sub); }
+.tk-neg { color: var(--color-neg); }
+.tk-mono { font-family: var(--font-code); font-size: var(--fs-xs); color: var(--color-fg-sub); }
+
+/* 머리 카드 */
+.tk-head { display: flex; flex-direction: column; gap: var(--sp-12); padding: var(--sp-16) 18px; background: var(--color-surface); border: 1px solid var(--color-line); border-radius: var(--r-lg); }
+.tk-head__top { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-8) var(--sp-12); padding-bottom: var(--sp-12); border-bottom: 1px solid var(--color-line); }
+.tk-head__id { margin: 0; font-size: 24px; font-weight: var(--fw-semibold); line-height: 1.5; }
+.tk-head__ttl { font-size: var(--fs-m); color: var(--color-fg-sub); }
+.tk-head__chips { display: inline-flex; flex-wrap: wrap; gap: var(--sp-6); }
+.tk-head__actions { display: inline-flex; gap: var(--sp-8); margin-left: auto; }
+.tk-head__actions .ui-btn { border-radius: var(--r-pill); }
+.tk-back { color: var(--color-accent); text-decoration: underline; }
+.tk-stats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.tk-stat { display: flex; flex-direction: column; gap: 2px; padding: 0 var(--sp-16); border-left: 1px solid var(--color-line); min-width: 0; }
+.tk-stat:first-child { padding-left: 0; border-left: 0; }
+.tk-stat__k { font-size: var(--fs-xs); color: var(--color-fg-sub); }
+.tk-stat__v { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-6); font-size: 18px; font-weight: var(--fw-semibold); }
+.tk-stat__v .ui-chip { font-size: var(--fs-xs); }
+.tk-stat--small .tk-stat__v { font-size: var(--fs-m); padding-top: 3px; }
+.tk-stat__s { font-size: var(--fs-xs); color: var(--color-fg-sub); }
+
+/* 경고 띠 (목업 .strip) */
+.tk-strip { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-10); padding: var(--sp-10) var(--sp-14); border: 1px solid; border-radius: var(--r-md); font-size: var(--fs-s); }
+.tk-strip b { font-weight: var(--fw-bold); }
+.tk-strip .ui-btn { margin-left: auto; }
+.tk-strip--neg { color: var(--color-neg); background: var(--color-neg-bg); border-color: color-mix(in srgb, var(--color-neg) 30%, transparent); }
+.tk-strip--crit { color: var(--color-crit); background: var(--color-crit-bg); border-color: color-mix(in srgb, var(--color-crit) 30%, transparent); }
+.tk-strip--neu { color: var(--color-neu); background: var(--color-neu-bg); border-color: var(--color-line); }
+
+/* 탭 카드 (목업 .card.dtabs) */
+.tk-tabs { background: var(--color-surface); border: 1px solid var(--color-line); border-radius: var(--r-lg); overflow: hidden; }
+.tk-tabs > .ui-tabs { padding: 0 var(--sp-12); }
+.tk-pane { padding: var(--sp-16); display: flex; flex-direction: column; gap: var(--sp-16); }
+.tk-pane__bar { display: flex; align-items: center; gap: var(--sp-10); margin: calc(-1 * var(--sp-16)) calc(-1 * var(--sp-16)) 0; padding: var(--sp-12) var(--sp-16); border-bottom: 1px solid var(--color-line); font-size: var(--fs-xs); font-weight: var(--fw-semibold); color: var(--color-fg-sub); }
+.tk-pane__bar .ui-btn { margin-left: auto; border-radius: var(--r-pill); }
+.tk-busy { display: flex; align-items: center; gap: var(--sp-8); color: var(--color-fg-sub); }
+
+/* ① 고객이 보낸 것 */
+.tk-kv { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-8) var(--sp-24); padding-bottom: var(--sp-16); border-bottom: 1px solid var(--color-line); }
+.tk-kv > div { display: flex; gap: var(--sp-16); min-width: 0; }
+.tk-kv dt { flex: none; width: 44px; color: var(--color-fg-sub); }
+.tk-kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.tk-text-head { display: flex; justify-content: space-between; margin-bottom: var(--sp-6); font-size: var(--fs-xs); color: var(--color-fg-sub); }
+.tk-text { margin: 0; padding: var(--sp-12) var(--sp-14); background: var(--color-bg); border: 1px solid var(--color-line); border-radius: var(--r-md); white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.65; }
+.tk-text[dir="rtl"] { text-align: right; font-family: var(--font-ar); }
+.tk-text mark { background: var(--color-mark); color: inherit; padding: 0 2px; border-radius: 3px; }
+.tk-note { font-size: var(--fs-xs); color: var(--color-fg-sub); }
+.tk-replies { display: flex; flex-direction: column; gap: var(--sp-10); }
+
+/* ② 시스템이 판단한 것: 문의마다 한 칸, 줄 = 이름 | 값 | 왜? (목업 .jrow) */
+.tk-sub { display: flex; flex-direction: column; }
+.tk-sub + .tk-sub { margin-top: var(--sp-16); padding-top: var(--sp-16); border-top: 1px solid var(--color-line); }
+.tk-sub__head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-8); margin-bottom: var(--sp-6); font-weight: var(--fw-semibold); }
+.tk-row { display: grid; grid-template-columns: 106px minmax(0, 1fr) auto; gap: var(--sp-12); align-items: start; padding: 9px 0; border-bottom: 1px dashed var(--color-line); }
+.tk-row:last-child { border-bottom: 0; }
+.tk-row.is-focus { background: var(--color-seg-hover); }
+.tk-row__k { color: var(--color-fg-sub); }
+.tk-row__v { display: flex; flex-direction: column; gap: var(--sp-6); min-width: 0; }
+.tk-row__line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-6) var(--sp-10); }
+.tk-row__ev { font-size: var(--fs-xs); color: var(--color-fg-sub); }
+.tk-link { padding: 0; border: 0; background: none; color: var(--color-accent); font: inherit; font-size: var(--fs-xs); cursor: pointer; }
+.tk-link:hover { text-decoration: underline; }
+.tk-link--b { font-size: inherit; font-weight: var(--fw-semibold); }
+.tk-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-4); }
+.tk-items li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-6); }
+.tk-items .is-provided { color: var(--color-pos); }
+.tk-items .is-blocking { color: var(--color-neg); font-weight: var(--fw-semibold); }
+.tk-items .is-missing { color: var(--color-crit); }
+.tk-items .tk-items__sub { color: var(--color-fg-sub); font-weight: var(--fw-regular); }
+.tk-items input { height: 28px; padding: 0 var(--sp-8); border: 1px solid var(--color-line); border-radius: var(--r-sm); font: inherit; font-size: var(--fs-xs); }
+.tk-edit { display: flex; flex-wrap: wrap; align-items: end; gap: var(--sp-10); padding: var(--sp-12); background: var(--color-hover); border-radius: var(--r-md); }
+.tk-edit .ui-field { min-width: 160px; }
+.tk-fault dl { display: grid; grid-template-columns: 40px 1fr; gap: 2px var(--sp-8); margin: var(--sp-4) 0 0; font-size: var(--fs-s); }
+.tk-fault dt { color: var(--color-fg-sub); }
+.tk-fault dd { margin: 0; }
+.tk-runs { font-size: var(--fs-s); }
+.tk-runs summary { cursor: pointer; color: var(--color-accent); }
+
+/* ③ 보낼 것 */
+.tk-send-tabs { margin: 0 calc(-1 * var(--sp-16)); padding: 0 var(--sp-4); }
+.tk-draft { display: flex; flex-direction: column; gap: var(--sp-12); padding: var(--sp-14) var(--sp-16); border: 1px solid var(--color-line); border-radius: var(--r-lg); }
+.tk-draft--sent { background: var(--color-hover); }
+.tk-draft__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-8); }
+.tk-draft__head b { font-weight: var(--fw-semibold); }
+.tk-marks { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-6); }
+.tk-marks__note { font-size: var(--fs-xs); color: var(--color-fg-sub); }
+.tk-mark { display: inline-flex; align-items: center; gap: var(--sp-4); height: 26px; padding: 0 var(--sp-10); border: 1px solid; border-radius: var(--r-pill); background: var(--color-surface); font: inherit; font-size: var(--fs-xs); font-weight: var(--fw-semibold); cursor: pointer; }
+.tk-mark--neg { color: var(--color-neg); border-color: color-mix(in srgb, var(--color-neg) 35%, transparent); background: var(--color-neg-bg); }
+.tk-mark--crit { color: var(--color-crit); border-color: color-mix(in srgb, var(--color-crit) 35%, transparent); background: var(--color-crit-bg); }
+.tk-mark--neu { color: var(--color-neu); border-color: var(--color-line); background: var(--color-neu-bg); }
+.tk-mark--pos { color: var(--color-pos); border-color: color-mix(in srgb, var(--color-pos) 35%, transparent); background: var(--color-pos-bg); cursor: default; }
+.tk-panes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--sp-10); }
+.tk-panes .tk-text-head b { color: var(--color-fg); font-weight: var(--fw-semibold); }
+.tk-editor { width: 100%; min-height: 260px; padding: var(--sp-12) var(--sp-14); border: 1px solid var(--color-line); border-radius: var(--r-md); background: var(--color-surface); color: var(--color-fg); font: inherit; line-height: 1.65; resize: vertical; }
+.tk-editor:focus { outline: none; border-color: var(--color-accent); box-shadow: var(--focus-ring); }
+.tk-view { min-height: 260px; background: var(--color-surface); }
+.tk-gloss { min-height: 260px; border-style: dashed; background: var(--color-surface); }
+.tk-gloss.is-old { opacity: 0.55; }
+.tk-view .link { color: var(--color-accent); text-decoration: underline; cursor: pointer; background: none; border: 0; padding: 0; font: inherit; }
+.tk-view .hl-bad { text-decoration: underline wavy var(--color-neg); text-decoration-thickness: 1.5px; }
+.tk-view .hl-finding { text-decoration: underline dotted var(--color-neg); text-decoration-thickness: 2px; }
+.tk-draft__foot { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-8); }
+.tk-draft__foot .tk-note { margin-right: auto; }
+.tk-empty { display: flex; flex-direction: column; gap: var(--sp-10); color: var(--color-fg-sub); }
+.tk-old summary { cursor: pointer; color: var(--color-fg-sub); font-size: var(--fs-s); }
+.tk-old .tk-text { margin-top: var(--sp-8); }
+.tk-dept { display: flex; flex-direction: column; gap: var(--sp-8); padding: var(--sp-14) var(--sp-16); border: 1px solid var(--color-line); border-radius: var(--r-lg); background: var(--color-hover); }
+.tk-dept h3 { margin: 0; font-size: var(--fs-b); }
+.tk-dept__lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-8); }
+
+/* ④ 이력 (목업 .tl) */
+.tk-tl { list-style: none; margin: 0; padding: 0; }
+.tk-tl li { display: grid; grid-template-columns: 136px 92px minmax(0, 1fr); gap: var(--sp-12); align-items: start; padding: 10px 0; border-bottom: 1px solid var(--color-line); }
+.tk-tl li:last-child { border-bottom: 0; }
+.tk-tl__at { font-size: var(--fs-xs); color: var(--color-fg-sub); font-variant-numeric: tabular-nums; padding-top: 2px; }
+.tk-tl__who { margin-left: var(--sp-6); font-size: var(--fs-xs); color: var(--color-fg-sub); }
+.tk-tl details { margin-top: var(--sp-4); }
+.tk-tl summary { cursor: pointer; font-size: var(--fs-xs); color: var(--color-accent); }
+
+/* 팝업 안 양식 */
+.tk-form { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-12) var(--sp-16); }
+.tk-form .is-wide { grid-column: 1 / -1; }
+.tk-form textarea { min-height: 90px; }
+.tk-kvs { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--sp-6) var(--sp-14); margin: 0; }
+.tk-kvs dt { color: var(--color-fg-sub); }
+.tk-kvs dd { margin: 0; overflow-wrap: anywhere; }
+.tk-lines { margin: 0; padding-left: var(--sp-16); display: flex; flex-direction: column; gap: var(--sp-4); }
+
+@media (max-width: 1100px) {
+  .tk-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: var(--sp-12); }
+  .tk-stat:nth-child(4) { padding-left: 0; border-left: 0; }
+  .tk-kv { grid-template-columns: 1fr 1fr; }
+  .tk-panes { grid-template-columns: 1fr; }
+}
+
+/* 로딩 자리 */
+.tk-skeleton { min-height: 120px; background: var(--color-hover); }
+.tk-tabs.tk-skeleton { min-height: 360px; }

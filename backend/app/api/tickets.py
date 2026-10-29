@@ -190,9 +190,11 @@ def list_tickets(dept: str | None = None, status: str | None = None, priority: s
 
 
 @router.get("/tickets/{ticket_id}", response_model=schemas.Detail, response_model_exclude_unset=True)
-def get_ticket(ticket_id: str, conn: Connection = Depends(get_conn),
+def get_ticket(ticket_id: str, conn: Connection = Depends(get_conn), as_of: datetime | None = None,
                x_agent_dept: str | None = Header(default=None)) -> dict:
-    detail = ticket_detail(conn, ticket_id, agent_dept=(x_agent_dept or "").strip() or None)  # 부서별 작성 영역(C-164)
+    # as_of: SLA 두 시계의 기준 시각(접수함·나의 업무 현황과 같은 뜻, 비우면 지금). 화면의 "스냅샷" 기준 시각용(구현 선택)
+    detail = ticket_detail(conn, ticket_id, agent_dept=(x_agent_dept or "").strip() or None,  # 부서별 작성 영역(C-164)
+                           as_of=as_of)
     if detail is None:
         raise HTTPException(404, MSG_NO_TICKET)
     return detail

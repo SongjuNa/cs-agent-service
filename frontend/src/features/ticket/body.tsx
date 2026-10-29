@@ -1,7 +1,7 @@
 // 초안 본문 그리기 (화면 정의서 v2 CP-4 출처 링크, CP-5 강조).
 // 인용 (DOC §n.m)과 조회값 숫자는 링크(P2), 자체 대조 불일치는 Red 밑줄, ⑤ 지적 문장은 Red 점선 밑줄.
 import type { ReactNode } from "react";
-import type { Finding, Lookup } from "./api";
+import type { Finding, Lookup } from "../../api";
 
 const CITATION = /\(\s*([A-Z]{2,4}-[A-Za-z0-9_.-]+?)\s*§\s*(Q?[0-9]+(?:\.[0-9]+)*)\s*\)/g;
 
@@ -45,7 +45,9 @@ export function renderBody(
     const value = String(lv.value);
     if (!/\d/.test(value)) continue;
     const idx = links.push({ kind: "lookup", lookup: lv }) - 1;
-    markAll(body, value, (m) => (m.link = m.link ?? idx), marks, true);
+    // 금액은 초안에 "520.00"처럼 소수 둘째 자리로 쓰인다. 긴 꼴부터 찾는다
+    const forms = typeof lv.value === "number" && Number.isFinite(lv.value) ? [lv.value.toFixed(2), value] : [value];
+    for (const f of [...new Set(forms)]) markAll(body, f, (m) => (m.link = m.link ?? idx), marks, true);
   }
   for (const token of opts.bad) markAll(body, token, (m) => (m.bad = true), marks, true);
   opts.findings.forEach((f, i) => markAll(body, f.quote, (m) => (m.finding = m.finding ?? i), marks));

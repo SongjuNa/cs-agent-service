@@ -279,7 +279,8 @@ export const api = {
     call<CallNote>("POST", "/calls/note-draft", { utterances, language, product_code: productCode }),
   intake: (data: TicketInput) => call<{ ticket_id: string; processing: boolean }>("POST", "/tickets", data),
   reprocess: (id: string) => call<{ ticket_id: string; processing: boolean }>("POST", `/tickets/${encodeURIComponent(id)}/reprocess`),
-  ticket: (id: string) => call<Detail>("GET", `/tickets/${encodeURIComponent(id)}`),
+  ticket: (id: string, asOf: string | null = null) =>
+    call<Detail>("GET", `/tickets/${encodeURIComponent(id)}${asOf ? `?as_of=${encodeURIComponent(asOf)}` : ""}`),
   chunk: (chunkId: string) => call<Chunk>("GET", `/chunks/${encodeURIComponent(chunkId)}`),
   save: (draftId: number, body: string) => call<{ gloss: boolean }>("PUT", `/messages/${draftId}`, { body }),
   gloss: (draftId: number) => call<{ gloss: boolean }>("POST", `/messages/${draftId}/gloss`),
