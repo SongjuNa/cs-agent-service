@@ -132,18 +132,7 @@ mark.extract { background: transparent; text-decoration: underline 2px #e0b400; 
 .subtabs .escalate { margin-left: auto; }
 @media (max-width: 700px) { .form-grid { grid-template-columns: 1fr; } }
 
-/* SCR-04 나의 업무 현황 */
-.my-work section { margin-top: 18px; }
-.scope-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--gray); }
-.scope-switch button[aria-pressed="true"] { background: var(--ls-blue); color: #fff; border-color: var(--ls-blue); }
-.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
-.tile { display: flex; flex-direction: column; align-items: flex-start; padding: 12px; border: 1px solid var(--line); border-radius: 6px; background: #fff; cursor: pointer; }
-.tile strong { font-size: 26px; color: var(--ls-blue); }
-.today { margin: 4px 0; }
 .stale { opacity: 0.45; }
-.waitbar { position: relative; display: inline-block; width: 120px; height: 8px; background: #f1f2f2; border-radius: 4px; vertical-align: middle; }
-.waitbar .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--gold); border-radius: 4px; }
-.waitbar .tick { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--red); }
 .diagnosis h5 { margin: 0; }
 .fault { margin-top: 6px; }
 .fault-body { display: grid; grid-template-columns: 40px 1fr; gap: 2px 8px; margin: 6px 0 0; font-size: 13px; }

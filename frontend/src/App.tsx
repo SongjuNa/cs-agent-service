@@ -1,12 +1,11 @@
 // 주소 나누기와 공통 틀(SCR-00). 화면은 AppShell 안에 그린다. 주소는 화면 정의서 v2 0-2절과 기존 경로를 그대로 쓴다.
 import { useCallback, useEffect, useState } from "react";
-import { SNAPSHOT } from "./api";
 import { AppShell, MENU, type Crumb } from "./app/AppShell";
 import { useSession } from "./app/session";
 import { InboxPage } from "./features/inbox/InboxPage";
 import { lastInboxUrl } from "./features/inbox/inboxQuery";
 import { IntakePage } from "./features/intake/IntakePage";
-import { MyWorkPage } from "./MyWorkPage";
+import { MyWorkPage } from "./features/mywork/MyWorkPage";
 import { TicketPage } from "./features/ticket/TicketPage";
 import { EmptyState, PageHeader } from "./ui";
 
@@ -68,12 +67,11 @@ export function App() {
   }, []);
 
   const open = (id: string) => navigate(`/tickets/${encodeURIComponent(id)}`);
-  const asOf = mode === "snapshot" ? SNAPSHOT : null;
 
   return (
     <AppShell active={activeKey(page)} crumbs={crumbsOf(page)} navigate={navigate}>
       {page.kind === "intake" ? <IntakePage onOpen={open} navigate={navigate} />
-        : page.kind === "my" ? <MyWorkPage key={`${dept}|${mode}|${agent}`} dept={dept} agent={agent} asOf={asOf} onOpen={open} />
+        : page.kind === "my" ? <MyWorkPage key={`${dept}|${mode}|${agent}`} onOpen={open} navigate={navigate} />
         : page.kind === "ticket" ? <TicketPage key={`${page.id}|${dept}`} ticketId={page.id} agent={agent} onBack={back} />
         : page.kind === "inbox" ? <InboxPage key={`${dept}|${mode}`} flash={flash} navigate={navigate} onOpen={(id) => open(id)} />
         : <MenuPlaceholder pageKey={page.key} />}

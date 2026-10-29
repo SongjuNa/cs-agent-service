@@ -11,13 +11,13 @@ export async function waitDone(request: APIRequestContext, id: string, dept = "T
   return (await request.get(api(`/tickets/${id}`), { headers: H(dept) })).json();
 }
 
-/** 정답지 문의 하나를 지금 시각으로 새로 접수하고 처리가 끝날 때까지 기다린다 */
-export async function intakeCopy(request: APIRequestContext, sourceId: string, dept = "TS_LV"): Promise<string> {
+/** 정답지 문의 하나를 지금 시각(received를 주면 그 시각)으로 새로 접수하고 처리가 끝날 때까지 기다린다 */
+export async function intakeCopy(request: APIRequestContext, sourceId: string, dept = "TS_LV", received: string | null = null): Promise<string> {
   const g = await (await request.get(api(`/gold/tickets/${sourceId}`))).json();
   const res = await request.post(api("/tickets"), {
     headers: H(dept),
     data: { channel: g.channel, customer_id: g.customer_id, product_code: g.product_code ?? null, language: g.language,
-            inquiry_subject: null, inquiry_body: g.inquiry_body, received_at_utc: null, source_ticket_id: g.source_ticket_id,
+            inquiry_subject: null, inquiry_body: g.inquiry_body, received_at_utc: received, source_ticket_id: g.source_ticket_id,
             contact_name: null, contact_email: null, contact_phone: null },
   });
   expect(res.ok()).toBeTruthy();

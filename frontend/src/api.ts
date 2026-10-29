@@ -48,7 +48,10 @@ export type Loaded = S["Loaded"];
 export type Department = S["Department"];
 export type Agent = S["Agent"];
 export type InboxRow = S["InboxRow"];
-export type WorkRow = Omit<S["RiskRow"], "alerts" | "remaining_h">;
+type WorkBase = Omit<S["RiskRow"], "alerts" | "remaining_h">;
+/** 나의 업무 현황 네 영역의 행. 공통 칸은 꼭 있고, 영역마다 다른 칸은 있을 수도 없을 수도 있다. */
+export type WorkRow = WorkBase &
+  Partial<Omit<S["RiskRow"] & S["DraftRow"] & S["WaitingCustomerRow"] & S["WaitingEscalationRow"], keyof WorkBase>>;
 export type Workload = S["Workload"];
 export type Inbox = S["Inbox"];
 

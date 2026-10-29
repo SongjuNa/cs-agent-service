@@ -1,0 +1,47 @@
+/* SCR-04 나의 업무 현황. 값은 목업 v1.42 `viewHome`(.greet, .ag-head/.ag-k 숫자 칸 20px/600, .today).
+   색은 tokens.css 변수만 쓴다(principles §3). */
+
+.mw { display: flex; flex-direction: column; gap: var(--sp-12); }
+.mw-body { display: flex; flex-direction: column; gap: var(--sp-16); }
+.mw-body.is-stale { opacity: 0.55; }
+.mw-sub { font-size: var(--fs-xs); color: var(--color-fg-sub); }
+.mw-scope { padding: 0; }
+.mw-skeleton { height: 360px; border-radius: var(--r-lg); background: var(--color-hover); }
+
+.mw-greet { margin: 0; font-size: var(--fs-m); color: var(--color-fg-sub); }
+.mw-greet b { color: var(--color-fg); }
+.mw-greet b.is-bad { color: var(--color-neg); }
+
+/* 숫자 칸 4개 (목업 .ag-head) */
+.mw-tiles { display: flex; flex-wrap: wrap; align-items: stretch; border-top: 1px solid var(--color-line); border-bottom: 1px solid var(--color-line); }
+.mw-k { display: flex; flex-direction: column; gap: 2px; margin-right: var(--sp-24); padding: var(--sp-10) 0; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--color-fg); font: inherit; text-align: left; cursor: pointer; }
+.mw-k span { font-size: var(--fs-xs); color: var(--color-fg-sub); }
+.mw-k b { font-size: 20px; font-weight: var(--fw-semibold); line-height: 1.2; font-variant-numeric: tabular-nums; }
+.mw-k b.is-bad { color: var(--color-neg); }
+.mw-k em { font-style: normal; font-size: var(--fs-xs); color: var(--color-fg-sub); }
+.mw-k:hover span, .mw-k:focus-visible span { color: var(--color-brand); }
+.mw-k.is-on { border-bottom-color: var(--color-brand); }
+.mw-k.is-on span { color: var(--color-brand); font-weight: var(--fw-semibold); }
+.mw-k:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+.mw-card { overflow: hidden; }
+.mw-card > .ui-tabs { padding: 0 var(--sp-12); }
+.mw-pager { padding: 0 var(--sp-16); }
+.mw-pager:empty { display: none; }
+.mw-tid { font-family: var(--font-code); color: var(--color-accent); }
+.mw-seq { color: var(--color-fg-sub); }
+.mw-chips { display: inline-flex; flex-wrap: wrap; gap: var(--sp-4); }
+.mw-check { color: var(--color-crit); font-size: var(--fs-xs); font-weight: var(--fw-semibold); }
+.mw-sent { color: var(--color-info); font-size: var(--fs-xs); font-weight: var(--fw-semibold); }
+
+/* 126h·168h 눈금 막대 */
+.mw-bar { position: relative; display: inline-block; width: 140px; height: 8px; border-radius: var(--r-pill); background: var(--color-neu-bg); vertical-align: middle; }
+.mw-bar__fill { position: absolute; inset: 0 auto 0 0; border-radius: var(--r-pill); background: var(--color-accent); }
+.mw-bar__fill.is-late { background: var(--color-crit); }
+.mw-bar__tick { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--color-neg); }
+
+/* 오늘 처리한 건수 (목업 .today) */
+.mw-today { padding: var(--sp-12) var(--sp-16); }
+.mw-today h3 { margin: 0 0 var(--sp-6); font-size: var(--fs-b); font-weight: var(--fw-semibold); }
+.mw-today__n { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-6) var(--sp-20); font-size: var(--fs-s); color: var(--color-fg-sub); }
+.mw-today__n b { margin-left: var(--sp-4); color: var(--color-fg); font-variant-numeric: tabular-nums; }
