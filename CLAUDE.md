@@ -4,7 +4,7 @@
 
 ## 무엇을 만들지
 - 만들 기능은 `openspec/changes/<변경 이름>/`의 proposal·specs·design·tasks를 따른다. 여기에 없는 기능은 만들지 않는다.
-- 현재 범위는 MVP 3순위 3개 기능과 확장 FR-050 통화 받아쓰기(2026-10-27 조장 결정으로 지금 만듦)이다(1순위 18개와 2순위 15개는 완료, 목록은 `openspec/config.yaml`). 여유 시 기능은 만들지 않는다.
+- 현재 범위는 MVP 3순위 3개 기능과 확장 FR-050 통화 받아쓰기(2026-10-27 조장 결정으로 지금 만듦)이다(1순위 18개와 2순위 15개는 완료, 목록은 `openspec/config.yaml`). 여유 시 기능은 FR-019 유사 해결사례 검색과 FR-034 운영 대시보드만 만들고(2026-10-29 조장 결정), 나머지는 만들지 않는다. 화면 작업에 필요한 응답 모델(add-api-response-models)과 FR-030 처리 3 직접 작성(add-manual-draft)도 이 결정으로 만든다.
 
 ## 기준 문서 (`docs/`)
 - 기능 요구사항 명세서 v1.5: `docs/requirements/functional-requirements.md`
