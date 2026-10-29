@@ -25,7 +25,7 @@ export function EmptyState({ title, children }: { title: ReactNode; children?: R
 }
 
 export interface FieldProps {
-  label: string;
+  label: ReactNode;
   required?: boolean;
   hint?: ReactNode;
   /** 서버 오류 문구(400 detail.errors[].message)나 화면 검사 문구 */

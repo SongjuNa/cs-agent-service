@@ -5,7 +5,7 @@ import { AppShell, MENU, type Crumb } from "./app/AppShell";
 import { useSession } from "./app/session";
 import { InboxPage } from "./features/inbox/InboxPage";
 import { lastInboxUrl } from "./features/inbox/inboxQuery";
-import { IntakePage } from "./IntakePage";
+import { IntakePage } from "./features/intake/IntakePage";
 import { MyWorkPage } from "./MyWorkPage";
 import { TicketPage } from "./features/ticket/TicketPage";
 import { EmptyState, PageHeader } from "./ui";
@@ -34,7 +34,7 @@ function activeKey(page: Page): string {
 
 function crumbsOf(page: Page): Crumb[] {
   if (page.kind === "ticket") return [{ label: "접수", path: "/my" }, { label: "접수함", path: lastInboxUrl() }, { label: page.id }];
-  if (page.kind === "intake") return [{ label: "접수", path: "/my" }, { label: "접수함", path: "/inbox" }, { label: "문의 접수" }];
+  if (page.kind === "intake") return [{ label: "접수", path: "/my" }, { label: "접수함", path: "/inbox" }, { label: "접수 시뮬레이터" }];
   if (page.kind === "my") return [{ label: "접수", path: "/my" }, { label: "나의 업무 현황" }];
   if (page.kind === "inbox") return [{ label: "접수", path: "/my" }, { label: "접수함" }];
   const group = MENU.find((g) => g.items.some((i) => i.key === page.key));
@@ -72,7 +72,7 @@ export function App() {
 
   return (
     <AppShell active={activeKey(page)} crumbs={crumbsOf(page)} navigate={navigate}>
-      {page.kind === "intake" ? <IntakePage onCreated={open} />
+      {page.kind === "intake" ? <IntakePage onOpen={open} navigate={navigate} />
         : page.kind === "my" ? <MyWorkPage key={`${dept}|${mode}|${agent}`} dept={dept} agent={agent} asOf={asOf} onOpen={open} />
         : page.kind === "ticket" ? <TicketPage key={`${page.id}|${dept}`} ticketId={page.id} agent={agent} onBack={back} />
         : page.kind === "inbox" ? <InboxPage key={`${dept}|${mode}`} flash={flash} navigate={navigate} onOpen={(id) => open(id)} />
