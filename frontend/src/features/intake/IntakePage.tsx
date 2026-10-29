@@ -7,7 +7,6 @@ import { useDepartments } from "../../app/queries";
 import { useSession } from "../../app/session";
 import { Banner, Button, Chip, Field, PageHeader } from "../../ui";
 import { lastInboxUrl } from "../inbox/inboxQuery";
-import { CallPanel } from "../phone/CallPanel";
 import { langName } from "../ticket/CustomerTab";
 import "./intake.css";
 
@@ -187,12 +186,6 @@ function InputStep({ form, setForm, origin, setOrigin, onClear, onAccepted }: {
             </select>
           </Field>
           <div />
-          {form.channel === "PHONE" && (
-            <div className="is-full">
-              <CallPanel customerId={form.customer_id.trim()} language={form.language} productCode={form.product_code.trim()}
-                         onNote={(note, startedAt) => setForm((f) => ({ ...f, inquiry_body: note, received_at: f.received_at || startedAt }))} />
-            </div>
-          )}
           <div className="is-full">
             <Field label={lab("본문")} required error={errors.inquiry_body}
                    hint={<span className={form.inquiry_body.length > MAX_BODY ? "tk-neg" : undefined}>{form.inquiry_body.length.toLocaleString()} / 2,000자</span>}>

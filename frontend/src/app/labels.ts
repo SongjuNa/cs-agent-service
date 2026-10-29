@@ -38,5 +38,10 @@ export const ALERT: Record<string, string> = {
   RES_BREACHED: "해결 기한 지남",
 };
 
+/** 긴급도 (테이블 정의서 v1.3 urgency_flag) */
+export const URGENCY: Record<string, string> = {
+  NONE: "특이사항 없음", SAFETY: "안전", SITE_DOWN: "현장 정지", PROD_IMPACT: "생산 영향", DEADLINE: "기한", COMMISSION: "시운전",
+};
+
 export const label = (map: Record<string, string>, code: string | null | undefined): string =>
   code ? map[code] ?? code : "—";

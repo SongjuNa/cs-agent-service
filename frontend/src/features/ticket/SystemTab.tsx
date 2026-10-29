@@ -2,14 +2,11 @@
 // 유형·긴급도·제품 고치기(FR-030 처리 5), 받은 항목 표시(C-07), 우선순위 [조정](P3), 실행 기록(C-11)도 이 탭에 둔다.
 import { useEffect, useRef, useState } from "react";
 import { api, type Detail, type EvidenceRow, type FaultCandidate, type RunRow, type SubTicket } from "../../api";
-import { CATEGORY, label } from "../../app/labels";
+import { CATEGORY, URGENCY, label } from "../../app/labels";
 import { Button, Chip, Field, PriorityBadge, SlaBadge, StatusBadge } from "../../ui";
 import type { SourceTarget } from "./Popups";
 
 const CATEGORIES = ["DEFECT", "FW_UPDATE", "MANUAL", "QUOTE", "TECH_SPEC", "COMPLIANCE", "RETURN", "WARRANTY", "INSTALL", "ORDER_LEAD"];
-const URGENCY: Record<string, string> = {
-  NONE: "특이사항 없음", SAFETY: "안전", SITE_DOWN: "현장 정지", PROD_IMPACT: "생산 영향", DEADLINE: "기한", COMMISSION: "시운전",
-};
 const CHECK_NAMES: Record<string, string> = {
   LOW_CONFIDENCE: "확신 낮음·판정 실패", LANG_UNCERTAIN: "언어 불확실", EXTRACT_FAILED: "추출 실패", PRODUCT_UNKNOWN: "제품 미확정",
   RULE_FAILED: "규칙 판정 실패", RETURN_REASON: "반품 사유 확인 필요", NO_EVIDENCE: "근거 없음", DRAFT_CHECK: "자체 대조 불일치",

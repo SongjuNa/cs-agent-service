@@ -5,11 +5,12 @@ import { useSession } from "./app/session";
 import { InboxPage } from "./features/inbox/InboxPage";
 import { lastInboxUrl } from "./features/inbox/inboxQuery";
 import { IntakePage } from "./features/intake/IntakePage";
+import { PhonePage } from "./features/phone/PhonePage";
 import { MyWorkPage } from "./features/mywork/MyWorkPage";
 import { TicketPage } from "./features/ticket/TicketPage";
 import { EmptyState, PageHeader } from "./ui";
 
-type Page = { kind: "inbox" } | { kind: "intake" } | { kind: "my" } | { kind: "ticket"; id: string } | { kind: "menu"; key: string };
+type Page = { kind: "inbox" } | { kind: "intake" } | { kind: "my" } | { kind: "phone" } | { kind: "ticket"; id: string } | { kind: "menu"; key: string };
 
 // 목업 메뉴 중 우리 시스템 밖이라 목업 화면으로만 두는 것 (docs/frontend/screens/README "명세를 쓰지 않은 목업 화면")
 const MOCK_ONLY = new Set(["notice", "sysnote", "chatbot", "portal"]);
@@ -20,6 +21,7 @@ function pageFromPath(): Page {
   if (m) return { kind: "ticket", id: decodeURIComponent(m[1]) };
   if (path === "/intake") return { kind: "intake" };
   if (path === "/my") return { kind: "my" };
+  if (path === "/phone") return { kind: "phone" };
   if (path === "/" || path === "/inbox") return { kind: "inbox" }; // 접수함이 기본 화면(SCR-00-05)
   const item = MENU.flatMap((g) => g.items).find((i) => i.path === path);
   return item ? { kind: "menu", key: item.key } : { kind: "inbox" };
@@ -27,6 +29,7 @@ function pageFromPath(): Page {
 
 function activeKey(page: Page): string {
   if (page.kind === "my") return "home";
+  if (page.kind === "phone") return "phone";
   if (page.kind === "intake" || page.kind === "ticket" || page.kind === "inbox") return "inbox";
   return page.key;
 }
@@ -35,6 +38,7 @@ function crumbsOf(page: Page): Crumb[] {
   if (page.kind === "ticket") return [{ label: "접수", path: "/my" }, { label: "접수함", path: lastInboxUrl() }, { label: page.id }];
   if (page.kind === "intake") return [{ label: "접수", path: "/my" }, { label: "접수함", path: "/inbox" }, { label: "접수 시뮬레이터" }];
   if (page.kind === "my") return [{ label: "접수", path: "/my" }, { label: "나의 업무 현황" }];
+  if (page.kind === "phone") return [{ label: "접수", path: "/my" }, { label: "전화 상담" }];
   if (page.kind === "inbox") return [{ label: "접수", path: "/my" }, { label: "접수함" }];
   const group = MENU.find((g) => g.items.some((i) => i.key === page.key));
   const item = group?.items.find((i) => i.key === page.key);
@@ -71,6 +75,7 @@ export function App() {
   return (
     <AppShell active={activeKey(page)} crumbs={crumbsOf(page)} navigate={navigate}>
       {page.kind === "intake" ? <IntakePage onOpen={open} navigate={navigate} />
+        : page.kind === "phone" ? <PhonePage onOpen={open} />
         : page.kind === "my" ? <MyWorkPage key={`${dept}|${mode}|${agent}`} onOpen={open} navigate={navigate} />
         : page.kind === "ticket" ? <TicketPage key={`${page.id}|${dept}`} ticketId={page.id} agent={agent} onBack={back} />
         : page.kind === "inbox" ? <InboxPage key={`${dept}|${mode}`} flash={flash} navigate={navigate} onOpen={(id) => open(id)} />
