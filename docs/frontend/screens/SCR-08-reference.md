@@ -1,6 +1,6 @@
 # 화면 명세: SCR-08 기준정보 보기 (문서·제품·규칙·부서) (임시 번호)
 
-- 연결 요구사항: FR-초안-02(문서 관리, 보기 전용), FR-초안-03(제품 관리, 보기 전용), FR-초안-04(규칙·부서 보기), FR-024("왜?"가 가리키는 행), 2026-10-23 조장 결정(규칙표 관리 화면은 범위 밖)
+- 연결 요구사항: FR-초안-02(문서 관리, 보기 전용), FR-초안-03(제품 관리, 보기 전용), FR-초안-04(규칙·부서 보기), FR-024([근거 보기], 예전 "왜?"가 가리키는 행), 2026-10-23 조장 결정(규칙표 관리 화면은 범위 밖)
 - 기준 목업: cs-agent-mockup_v1.42.html `viewDocs`, `viewKnow`, `KTABS` (레이아웃 기준선: 지식 관리 메뉴 4개 → 탭 → 요약 → 필터 → 표)
 - 화면 정의서: 없음
 - 사용 API (아직 없음, 변경 add-reference-views): `GET /ref/documents`, `/ref/documents/{doc_id}`, `GET /ref/products`, `/ref/products/{product_code}`, `GET /ref/rules/{kind}` (kind = priority, routing, required-info, sla), `GET /chunks/{chunk_id}`(있음), `GET /ref/departments`(있음)

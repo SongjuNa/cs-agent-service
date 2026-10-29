@@ -61,11 +61,11 @@ test.describe("시연 티켓 읽기", () => {
     await expect(card.locator(".tk-draft__head")).toContainText("en");
   });
 
-  test("SCR-03-AC-2: 우선순위 '왜?'를 누르면 P1에 규칙 번호와 조건, 판정 근거가 보인다", async ({ page, request }) => {
+  test("SCR-03-AC-2: 우선순위 [근거 보기]를 누르면 P1에 규칙 번호와 조건, 판정 근거가 보인다", async ({ page, request }) => {
     const c3 = (await detail(request, DEMO_17)).sub_tickets[0].evidence_rows.find((r: Json) => r.id === "C-03");
     await page.goto(`/tickets/${DEMO_17}?tab=system`);
-    await row(page, 1, "C-03").getByRole("button", { name: "왜?" }).click();
-    const p1 = dialog(page, /왜\?/);
+    await row(page, 1, "C-03").getByRole("button", { name: "근거 보기" }).click();
+    const p1 = dialog(page, /근거 보기/);
     await expect(p1).toBeVisible();
     await expect(p1).toContainText(c3.why.rule.rule_id);
     await expect(p1).toContainText(c3.why.rule.condition);

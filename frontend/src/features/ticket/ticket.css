@@ -142,3 +142,4 @@
 /* 로딩 자리 */
 .tk-skeleton { min-height: 120px; background: var(--color-hover); }
 .tk-tabs.tk-skeleton { min-height: 360px; }
+.tk-why { align-self: start; white-space: nowrap; } /* 판단 줄 오른쪽 [근거 보기] */

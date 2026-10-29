@@ -23,7 +23,7 @@ function Value({ value }: { value: unknown }): ReactNode {
 
 export function WhyPopup({ label, why, onClose, onRule }: { label: string; why: Record<string, unknown>; onClose: () => void; onRule?: () => void }) {
   return (
-    <Modal title={`왜? ${label}`} onClose={onClose} wide
+    <Modal title={`근거 보기: ${label}`} onClose={onClose} wide
       footer={<>{onRule && <Button variant="ghost" onClick={onRule}>규칙표에서 보기</Button>}<Button onClick={onClose}>닫기</Button></>}>
       <Value value={why} />
     </Modal>

@@ -73,13 +73,13 @@ test("SCR-08-AC-4 어느 표에도 고치기·올리기·색인 다시 만들기
 });
 
 // AC는 아니다. 변경 add-reference-views 결정 4 「왜?」 → "규칙표에서 보기"가 그 규칙 행을 강조하는지 본다
-test("SCR-08 「왜?」의 규칙표에서 보기: 우선순위·부서 배정 규칙 행이 강조된다", async ({ page, request }) => {
+test("SCR-08 [근거 보기]의 규칙표에서 보기: 우선순위·부서 배정 규칙 행이 강조된다", async ({ page, request }) => {
   const id = "CSV1-004004"; // 시연 티켓(원본 CSV1-000017)
   const sub = (await (await request.get(api(`/tickets/${id}`), { headers: { "X-Agent-Dept": "TS_LV" } })).json()).sub_tickets[0].sub_ticket;
   await useSession(page, { dept: "TS_LV" });
   for (const [rowId, ruleId, tab] of [["C-03", sub.priority_rule_id, "우선순위 규칙"], ["C-04", sub.routing_rule_id, "부서 배정 규칙"]]) {
     await page.goto(`/tickets/${id}?tab=system`);
-    await page.getByTestId("judge-1").locator(`[data-row="${rowId}"]`).getByRole("button", { name: "왜?" }).click();
+    await page.getByTestId("judge-1").locator(`[data-row="${rowId}"]`).getByRole("button", { name: "근거 보기" }).click();
     await page.getByRole("button", { name: "규칙표에서 보기" }).click();
     await expect(page).toHaveURL(new RegExp(`/rules\\?.*rule=${ruleId}`));
     await expect(page.getByRole("tab", { name: tab })).toHaveAttribute("aria-selected", "true");

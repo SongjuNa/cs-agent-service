@@ -272,7 +272,8 @@ export function SystemTab({ detail, locked, focus, onWhy, onSource, onAdjust, on
                               onReceived={(field, value) => onEdit(sub, { received_fields: [{ field, value: value || null }] })} />
                   ) : <RowBody sub={sub} row={row} onSource={onSource} />}
                 </div>
-                <button type="button" className="tk-link" onClick={() => onWhy(row)}>왜?</button>
+                {/* 목업의 "왜?" 글자 링크 대신 일반 버튼(2026-10-29 조장 요청) */}
+                <Button size="sm" className="tk-why" onClick={() => onWhy(row)}>근거 보기</Button>
               </div>
               {row.id === "C-08" && <Similar sub={sub} onCases={onCases} />}
               </Fragment>
