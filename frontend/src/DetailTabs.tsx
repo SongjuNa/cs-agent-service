@@ -21,7 +21,7 @@ export function StatusBadge({ status }: { status: string }) {
   return <span className={`badge ${STATUS_CLASS[status] ?? ""}`}>{STATUS_MARK[status] ?? ""} {status}</span>;
 }
 
-const hours = (h: number | null | undefined) => (h === null || h === undefined ? "—" : `${Number(h).toFixed(1)}h`);
+const hours = (h: number | string | null | undefined) => (h === null || h === undefined ? "—" : `${Number(h).toFixed(1)}h`);
 
 /** SLA 두 시계(FR-026 출력, SCR-03 C-06). 대기 중이면 해결 시계 "멈춤" */
 export function Clocks({ sub }: { sub: SubTicket }) {

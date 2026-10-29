@@ -5,13 +5,14 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from psycopg import Connection
 
+from app.api import schemas
 from app.api.deps import get_conn
 from app.db.runs import run_steps, ticket_runs
 
 router = APIRouter()
 
 
-@router.get("/tickets/{ticket_id}/runs")
+@router.get("/tickets/{ticket_id}/runs", response_model=schemas.Runs, response_model_exclude_unset=True)
 def get_runs(ticket_id: str, conn: Connection = Depends(get_conn)) -> dict:
     runs = ticket_runs(conn, ticket_id)
     if runs is None:
@@ -19,7 +20,7 @@ def get_runs(ticket_id: str, conn: Connection = Depends(get_conn)) -> dict:
     return {"ticket_id": ticket_id, "runs": runs}
 
 
-@router.get("/runs/{run_id}/steps")
+@router.get("/runs/{run_id}/steps", response_model=schemas.Steps, response_model_exclude_unset=True)
 def get_steps(run_id: int, conn: Connection = Depends(get_conn)) -> dict:
     out = run_steps(conn, run_id)
     if out is None:

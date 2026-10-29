@@ -14,6 +14,7 @@ from datetime import timezone
 from fastapi import APIRouter, Depends, HTTPException
 from psycopg import Connection
 
+from app.api import schemas
 from app.api.deps import get_conn
 
 router = APIRouter()
@@ -24,7 +25,7 @@ MSG_NOT_FOUND = "문의를 찾을 수 없음"  # FR-003 예외 2행
 FIELDS = ("channel", "customer_id", "product_code", "language", "inquiry_body", "received_at_utc")
 
 
-@router.get("/gold/tickets/{source_ticket_id}")
+@router.get("/gold/tickets/{source_ticket_id}", response_model=schemas.Loaded, response_model_exclude_unset=True)
 def load(source_ticket_id: str, conn: Connection = Depends(get_conn)) -> dict:
     tid = source_ticket_id.strip().upper()
     cols = ", ".join(FIELDS)
