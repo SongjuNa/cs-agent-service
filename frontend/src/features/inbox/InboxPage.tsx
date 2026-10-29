@@ -71,11 +71,13 @@ const COLUMNS: Column<Row>[] = [
     ? <>{r.priority === "P1" && <span className="inbox-p1dot" title="우선순위 P1" />}<PriorityBadge priority={r.priority} adjusted={!!r.priority_adjusted} /></>
     : <span className="sub">—</span> },
   { key: "status", header: "처리 상태", sortKey: "status", render: (r) => (
-    <>
-      {label(STATUS, r.status)}
-      {r.escalated_in_from ? <span className="sub"> {r.escalated_in_from}에서 이관됨</span>
-        : r.status === "ESCALATED" && r.escalated_to ? <span className="sub"> → {r.escalated_to}</span> : null}
-    </>
+    // 이관받은 줄은 상태 칸에 "{원 부서}에서 이관됨"만 보인다(FR-029 처리 1)
+    r.escalated_in_from ? <>{r.escalated_in_from}에서 이관됨</> : (
+      <>
+        {label(STATUS, r.status)}
+        {r.status === "ESCALATED" && r.escalated_to ? <span className="sub"> → {r.escalated_to}</span> : null}
+      </>
+    )
   ) },
   { key: "remaining", header: "남은 시간", sortKey: "remaining", align: "right", render: remainingCell },
   { key: "alerts", header: "경고", render: (r) => r.alerts.length ? <span className="inbox-chips">{r.alerts.map((a) => <AlertChip key={a} alert={a} />)}</span> : null },
