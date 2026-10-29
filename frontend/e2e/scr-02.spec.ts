@@ -13,13 +13,13 @@ async function column(page: Page, header: string): Promise<string[]> {
 }
 
 test("SCR-02-AC-1: 미해결 360건 재생 + 스냅샷, TS_LV 요약 '전체 n'과 맨 위 행(경고 있음, 남은 시간 최소)", async ({ page, request }) => {
-  // 명세의 "전체 67"은 담당 부서 수다. 처리 1(v1.5)은 이관받은 문의도 보여서 화면 수는 서버 counts.total로 본다(조장 확인 중)
+  // "전체 69" = 담당 67 + 이관받은 2(조장 결정 2026-10-29). 데모 접수·시험 사본이 TS_LV에 더해지므로 화면 수는 서버 counts.total로 본다
   const api = await (await request.get("http://localhost:8000/tickets?dept=TS_LV&as_of=2026-09-30T23:59:00Z&size=1")).json();
   await useSession(page, { dept: "TS_LV", snapshot: true });
   await page.goto("/inbox");
   await expect(rows(page).first()).toBeVisible();
   await expect(page.getByRole("tab", { name: new RegExp(`^전체\\s*${api.counts.total}$`) })).toBeVisible();
-  expect(api.counts.total).toBeGreaterThanOrEqual(67);
+  expect(api.counts.total).toBeGreaterThanOrEqual(69);
   const alerts = await column(page, "경고");
   expect(alerts[0].trim()).not.toBe("");
   const left = (await column(page, "남은 시간")).map((t) => Number(t.replace("−", "-").replace(/[^\d.-]/g, "")));
