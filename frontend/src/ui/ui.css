@@ -36,7 +36,7 @@
   padding: 0 var(--sp-10);
   border-radius: var(--r-pill);
   font-size: var(--fs-xs);
-  font-weight: var(--fw-medium);
+  font-weight: var(--fw-semibold);
   white-space: nowrap;
   background: var(--color-neu-bg);
   color: var(--color-neu);
@@ -46,7 +46,7 @@
 .ui-chip--pos { background: var(--color-pos-bg); color: var(--color-pos); }
 .ui-chip--info { background: var(--color-teal-bg); color: var(--color-teal-ink); }
 .ui-chip--brand { background: var(--color-selected); color: var(--color-brand); }
-.ui-chip--outline { background: transparent; border: 1px solid var(--color-line); color: var(--color-fg-sub); }
+.ui-chip--outline { background: transparent; border: 1px solid var(--color-line); color: var(--color-fg-sub); font-size: 11px; font-weight: var(--fw-medium); }
 .ui-chip__icon { font-size: var(--fs-xs); line-height: 1; }
 
 .ui-prio {
@@ -55,7 +55,8 @@
   min-width: 32px;
   height: var(--h-chip);
   padding: 0 var(--sp-6);
-  border-radius: var(--sp-8);
+  border-radius: var(--r-lg);
+  font-size: var(--fs-s);
   font-weight: var(--fw-medium);
   font-variant-numeric: tabular-nums;
 }
@@ -113,7 +114,8 @@
 .ui-tab {
   border: 0;
   background: none;
-  padding: var(--sp-12) var(--sp-10);
+  padding: var(--sp-14);
+  border-radius: 0;
   color: var(--color-fg-sub);
   font: inherit;
   font-weight: var(--fw-medium);
@@ -189,3 +191,17 @@
 .ui-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-8); }
 .ui-row + .ui-row { margin-top: var(--sp-12); }
 .ui-gallery { min-height: 100vh; background: var(--color-page); color: var(--color-fg); font-family: var(--font-body); padding: var(--sp-24); display: flex; flex-direction: column; gap: var(--sp-16); }
+
+/* 글줄 높이: 목업은 body 1.5를 모든 부품이 물려받는다. 기존 화면 틀(styles.css)과 상관없이 같게 보이도록 부품마다 둔다 */
+.ui-btn, .ui-tab, .ui-page-head, .ui-card, .ui-banner, .ui-dialog, .ui-table, .ui-pager, .ui-field, .ui-empty, .ui-gallery { line-height: var(--lh-base); }
+
+/* 표 안 티켓 번호 링크 (목업 td a.tid) */
+.ui-tid { color: var(--color-info); font-weight: var(--fw-medium); text-decoration: none; font-variant-numeric: tabular-nums; }
+.ui-tid:hover { text-decoration: underline; }
+
+/* 칸막이 탭 (목업 접수함 .summary: 전체·경고·정보 요청 필요…) */
+.ui-tabs--seg { border-bottom: 0; gap: var(--sp-4); padding: var(--sp-8) var(--sp-12); }
+.ui-tabs--seg .ui-tab { padding: 7px var(--sp-14); border: 0; margin: 0; border-radius: var(--r-sm); font-size: var(--fs-s); font-weight: var(--fw-regular); }
+.ui-tabs--seg .ui-tab:hover:not(:disabled) { background: var(--color-seg-hover); color: var(--color-fg); }
+.ui-tabs--seg .ui-tab[aria-selected="true"] { background: var(--color-seg-on); color: var(--color-brand); font-weight: var(--fw-semibold); }
+.ui-tabs--seg .ui-tab__count { background: none; color: inherit; font-weight: var(--fw-semibold); padding: 0; }

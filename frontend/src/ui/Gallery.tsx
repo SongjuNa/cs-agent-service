@@ -18,7 +18,7 @@ const ROWS: Row[] = [
 ];
 
 const COLUMNS: Column<Row>[] = [
-  { key: "id", header: "하위 문의", render: (r) => <code>{r.id}</code>, sortKey: "id" },
+  { key: "id", header: "하위 문의", render: (r) => <a className="ui-tid" href="#" onClick={(e) => e.preventDefault()}>{r.id}</a>, sortKey: "id" },
   { key: "status", header: "상태", render: (r) => <StatusBadge status={r.status} /> },
   { key: "prio", header: "우선순위", render: (r) => <PriorityBadge priority={r.priority} adjusted={r.adjusted} />, sortKey: "priority" },
   { key: "sla", header: "SLA", render: (r) => <SlaBadge status={r.sla} /> },
@@ -76,6 +76,8 @@ export function Gallery() {
       </Card>
 
       <Card title="탭 · 표 · 쪽 넘김" actions={<Button size="sm" onClick={() => setLoading(!loading)}>{loading ? "로딩 끄기" : "로딩 보기"}</Button>}>
+        <Tabs label="칸막이 탭" variant="seg" value={tab} onChange={setTab}
+          items={[{ key: "send", label: "전체", count: 67 }, { key: "wait", label: "경고", count: 34 }, { key: "off", label: "정보 요청 필요", count: 16 }]} />
         <Tabs label="견본 탭" value={tab} onChange={setTab}
           items={[{ key: "send", label: "보낼 것", count: 4 }, { key: "wait", label: "기다리는 것", count: 2 }, { key: "off", label: "못 고름", disabled: true }]} />
         <DataTable caption="견본 표" columns={COLUMNS} rows={loading ? undefined : ROWS} loading={loading} rowKey={(r) => r.id}

@@ -33,9 +33,10 @@ export interface TabItem {
   disabled?: boolean;
 }
 
-export function Tabs({ items, value, onChange, label }: { items: TabItem[]; value: string; onChange: (key: string) => void; label: string }) {
+/** variant="line" = 밑줄 탭(목업 문의 상세 .tabs), "seg" = 칸막이 탭(목업 접수함 .summary) */
+export function Tabs({ items, value, onChange, label, variant = "line" }: { items: TabItem[]; value: string; onChange: (key: string) => void; label: string; variant?: "line" | "seg" }) {
   return (
-    <div className="ui-tabs" role="tablist" aria-label={label}>
+    <div className={variant === "seg" ? "ui-tabs ui-tabs--seg" : "ui-tabs"} role="tablist" aria-label={label}>
       {items.map((t) => (
         <button
           key={t.key}

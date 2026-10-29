@@ -24,6 +24,8 @@
   --color-line: #e4e8ef;
   --color-hover: #f6f8fb;
   --color-selected: #e7edf7;
+  --color-seg-on: #dcebf6;   /* 칸막이 탭 고른 것 (목업 .summary button.on) */
+  --color-seg-hover: #eaf4fa;
   --color-mark: #fff1c2; /* 원문에서 뽑은 값 강조 */
   --color-overlay: rgba(10, 30, 90, 0.28);
 
@@ -69,7 +71,8 @@
   --fw-medium: 500;
   --fw-semibold: 600;
   --fw-bold: 700;
-  --lh-body: 1.55;
+  --lh-base: 1.5;  /* 목업 body line-height */
+  --lh-body: 1.55; /* 긴 글(textarea) */
 
   /* 간격: 목업에 많이 나오는 값(2·4·6·8·10·12·14·16·20·24px) */
   --sp-2: 2px;
@@ -83,12 +86,12 @@
   --sp-20: 20px;
   --sp-24: 24px;
 
-  /* 모서리: 목업 CSS 맨 끝의 최종 값(:root --r-lg 8px, --r-md 6px, --r-sm 4px)과 입력 칸 8px */
+  /* 모서리: 목업 CSS 맨 끝의 최종 값(:root --r-lg 8px, --r-md 6px, --r-sm 4px) */
   --r-xs: 4px;
   --r-sm: 4px;
   --r-md: 6px;
   --r-lg: 8px;
-  --r-input: 8px;
+  --r-input: 12px; /* 목업 최종 .field select·input */
   --r-pill: 999px;
 
   /* 높이 */
@@ -115,6 +118,8 @@
     --color-line: #2c3542;
     --color-hover: #212a36;
     --color-selected: #1b2c42;
+    --color-seg-on: #1b3550; /* 목업에 어두운 값 없음, 제안 */
+    --color-seg-hover: #162a3e;
     --color-mark: #4a3b12;
     --color-overlay: rgba(0, 0, 0, 0.6);
     --color-brand: #3d9ad1;
@@ -146,6 +151,8 @@
   --color-line: #2c3542;
   --color-hover: #212a36;
   --color-selected: #1b2c42;
+  --color-seg-on: #1b3550; /* 목업에 어두운 값 없음, 제안 */
+  --color-seg-hover: #162a3e;
   --color-mark: #4a3b12;
   --color-overlay: rgba(0, 0, 0, 0.6);
   --color-brand: #3d9ad1;
