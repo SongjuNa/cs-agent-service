@@ -12,8 +12,12 @@ import { EmptyState, PageHeader } from "./ui";
 
 type Page = { kind: "inbox" } | { kind: "intake" } | { kind: "my" } | { kind: "phone" } | { kind: "ticket"; id: string } | { kind: "menu"; key: string };
 
-// 목업 메뉴 중 우리 시스템 밖이라 목업 화면으로만 두는 것 (docs/frontend/screens/README "명세를 쓰지 않은 목업 화면")
-const MOCK_ONLY = new Set(["notice", "sysnote", "chatbot", "portal"]);
+// 목업 메뉴 중 목업 화면으로만 두는 것 (docs/frontend/screens/README "명세를 쓰지 않은 목업 화면").
+// 운영 대시보드는 보여 줄 화면을 정하기 전이라 목업 화면으로 둔다(2026-10-29 조장 결정)
+const MOCK_ONLY = new Set(["notice", "sysnote", "chatbot", "portal", "ops"]);
+const MOCK_REASON: Record<string, string> = {
+  ops: "보여 줄 화면을 정하기 전이라 목업 화면으로 둡니다(2026-10-29 조장 결정).",
+};
 
 function pageFromPath(): Page {
   const path = window.location.pathname;
@@ -90,7 +94,7 @@ function MenuPlaceholder({ pageKey }: { pageKey: string }) {
     <>
       <PageHeader title={item?.label ?? ""} />
       <EmptyState title={MOCK_ONLY.has(pageKey) ? "목업 화면으로만 두는 메뉴입니다" : "다음 슬라이스에서 만듭니다"}>
-        {MOCK_ONLY.has(pageKey) ? "우리 시스템 밖의 기능이라 만들지 않습니다(화면 명세 README)." : "화면 명세는 docs/frontend/screens/에 있습니다."}
+        {MOCK_ONLY.has(pageKey) ? MOCK_REASON[pageKey] ?? "우리 시스템 밖의 기능이라 만들지 않습니다(화면 명세 README)." : "화면 명세는 docs/frontend/screens/에 있습니다."}
       </EmptyState>
     </>
   );
