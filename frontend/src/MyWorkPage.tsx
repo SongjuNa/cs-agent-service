@@ -1,7 +1,24 @@
 // SCR-04 나의 업무 현황 (화면 정의서 v1, 명세서 FR-047, 기술 명세서 §8-3). 숫자는 서버가 센 값을 그대로 보인다.
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError, type WorkRow, type Workload } from "./api";
-import { ALERT_LABEL, STATUS_BADGE } from "./InboxPage";
+
+// 이전 접수함에서 옮김. 나의 업무 현황 슬라이스(4)에서 공통 배지로 바꾼다
+// 상태 배지: 화면 정의서 v2 부록 B-3 색 + 기호(색만으로 뜻을 나누지 않는다)
+const STATUS_BADGE: Record<string, { cls: string; mark: string }> = {
+  NEW: { cls: "st-new", mark: "○" },
+  IN_PROGRESS: { cls: "st-progress", mark: "▶" },
+  WAITING_CUSTOMER: { cls: "st-waiting", mark: "⏸" },
+  ESCALATED: { cls: "st-escalated", mark: "↗" },
+  RESOLVED: { cls: "st-resolved", mark: "✓" },
+  CLOSED: { cls: "st-closed", mark: "■" },
+};
+
+const ALERT_LABEL: Record<string, { text: string; cls: string }> = {
+  FR_AT_RISK: { text: "⚠ 1차 위험", cls: "gold" },
+  FR_BREACHED: { text: "! 1차 위반", cls: "bad" },
+  RES_AT_RISK: { text: "⚠ 해결 위험", cls: "gold" },
+  RES_BREACHED: { text: "! 해결 위반", cls: "bad" },
+};
 
 const REFRESH_MS = 5 * 60 * 1000; // FR-047 처리 6, §8-2 (FR-027 점검 주기와 같게)
 const FAIL = "불러오지 못함. 새로고침"; // FR-047 예외 4행

@@ -48,6 +48,7 @@
 .ui-chip--brand { background: var(--color-selected); color: var(--color-brand); }
 .ui-chip--outline { background: transparent; border: 1px solid var(--color-line); color: var(--color-fg-sub); font-size: 11px; font-weight: var(--fw-medium); }
 .ui-chip__icon { font-size: var(--fs-xs); line-height: 1; }
+.ui-chip--neg:not(.has-icon)::before, .ui-chip--crit:not(.has-icon)::before, .ui-chip--pos:not(.has-icon)::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
 
 .ui-prio {
   display: inline-grid;
@@ -101,13 +102,21 @@
 .ui-table .is-right { text-align: right; }
 .ui-table .is-wrap { white-space: normal; }
 .ui-table tbody tr.is-link { cursor: pointer; }
-.ui-table tbody tr.is-link:hover { background: var(--color-hover); }
+.ui-table tbody tr.is-link:hover td { background: var(--color-hover); }
+.ui-table tbody tr.is-link:hover td:first-child { border-radius: 12px 0 0 12px; }
+.ui-table tbody tr.is-link:hover td:last-child { border-radius: 0 12px 12px 0; }
 .ui-table tbody tr.is-faded { color: var(--color-fg-faint); }
 .ui-table--stale { opacity: 0.5; }
 .ui-skeleton { display: block; height: 12px; border-radius: var(--r-xs); background: var(--color-hover); }
 
 /* 쪽 넘김 */
-.ui-pager { display: flex; gap: var(--sp-8); align-items: center; justify-content: flex-end; padding: var(--sp-10) var(--sp-16); font-size: var(--fs-s); color: var(--color-fg-sub); }
+.ui-pager { display: flex; gap: var(--sp-8); align-items: center; justify-content: space-between; flex-wrap: wrap; padding: var(--sp-10) var(--sp-16); border-top: 1px solid var(--color-line); font-size: var(--fs-s); color: var(--color-fg-sub); }
+.ui-pager__nums { display: flex; align-items: center; gap: 2px; }
+.ui-pager__nums button { min-width: 32px; height: 32px; padding: 1px var(--sp-6); border: 0; border-radius: var(--r-pill); background: transparent; color: var(--color-fg-sub); font: inherit; cursor: pointer; }
+.ui-pager__nums button:hover:not(:disabled) { background: var(--color-hover); color: var(--color-fg); }
+.ui-pager__nums button[aria-current="page"] { background: var(--color-brand); color: var(--color-brand-fg); font-weight: var(--fw-semibold); }
+.ui-pager__nums button:disabled { opacity: 0.4; cursor: default; }
+.ui-pager__gap { color: var(--color-fg-faint); padding: 0 2px; }
 
 /* 탭 */
 .ui-tabs { display: flex; border-bottom: 1px solid var(--color-line); padding: 0 var(--sp-8); overflow-x: auto; }

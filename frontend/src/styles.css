@@ -19,19 +19,6 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 button.primary { background: var(--ls-blue); color: #fff; border-color: var(--ls-blue); }
 input { font: inherit; padding: 4px 8px; border: 1px solid var(--line); border-radius: 4px; }
 
-.shell { display: flex; min-height: 100vh; }
-.sidebar { width: 200px; background: var(--ls-blue); color: #fff; padding: 12px; flex-shrink: 0; }
-.shell.collapsed .sidebar { width: 44px; padding: 12px 6px; }
-.sidebar .collapse { background: transparent; color: #fff; border-color: rgba(255, 255, 255, 0.4); }
-.sidebar nav { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
-.sidebar .brand { font-weight: 700; margin-bottom: 8px; }
-.sidebar a { color: #fff; text-decoration: none; }
-.sidebar a.active { font-weight: 700; border-left: 3px solid #fff; padding-left: 6px; }
-.sidebar .disabled { opacity: 0.45; }
-.main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.topbar { display: flex; gap: 16px; justify-content: space-between; align-items: center; padding: 8px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-.topbar form { display: flex; gap: 6px; align-items: center; }
-main { padding: 16px; }
 .page-msg { padding: 16px; }
 
 .ok { color: var(--green); }
@@ -108,8 +95,6 @@ main { padding: 16px; }
 .h04 .retry { margin-left: 8px; }
 
 /* SCR-02 접수함. 상태 배지 색은 화면 정의서 v2 부록 B-3 */
-.topbar select { font: inherit; padding: 4px 8px; border: 1px solid var(--line); border-radius: 4px; }
-.sidebar a.brand { font-weight: 700; margin-bottom: 8px; }
 .counts { display: flex; gap: 16px; flex-wrap: wrap; background: var(--surface-blue); padding: 8px 12px; border-radius: 4px; margin-bottom: 8px; }
 .filters { display: grid; gap: 6px; margin-bottom: 10px; }
 .filter-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }

@@ -1,0 +1,32 @@
+/* SCR-02 접수함. 값은 목업 v1.42 viewInbox를 브라우저에서 잰 값(.summary, .if-panel, .inbox-t, .npager). */
+.inbox-card { overflow: hidden; }
+.inbox-card .ui-tabs--seg { border-bottom: 1px solid var(--color-line); }
+.inbox-card .ui-table td { color: var(--color-fg); }
+.inbox-link-btn { color: var(--color-info); text-decoration: none; }
+
+.inbox-filters { display: flex; flex-direction: column; gap: var(--sp-12); margin: var(--sp-12) var(--sp-16); padding: var(--sp-14) 18px; background: var(--color-filter-bg); border: 1px solid var(--color-filter-line); border-radius: var(--r-md); }
+.inbox-filters__row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-12) var(--sp-16); }
+@media (min-width: 1200px) {
+  .inbox-filters__top { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) repeat(4, auto); }
+}
+.inbox-field { display: flex; align-items: center; gap: var(--sp-8); min-width: 150px; flex: 1 1 0; }
+.inbox-field > span { width: 56px; flex: none; font-size: var(--fs-xs); font-weight: var(--fw-semibold); color: var(--color-fg); }
+.inbox-field select, .inbox-field input { flex: 1; width: 100%; min-width: 0; height: var(--h-control); padding: 0 var(--sp-10); border: 1px solid var(--color-line); border-radius: var(--r-input); background: var(--color-surface); color: var(--color-fg); font: inherit; }
+.inbox-field select:focus, .inbox-field input:focus { border-color: var(--color-accent); box-shadow: var(--focus-ring); outline: 0; }
+.inbox-field--grow { flex: 1 1 auto; }
+.inbox-check, .inbox-switch { display: inline-flex; align-items: center; gap: var(--sp-6); height: var(--h-control); font-size: var(--fs-s); cursor: pointer; white-space: nowrap; }
+.inbox-switch { gap: var(--sp-8); margin-left: var(--sp-10); }
+.inbox-switch input { appearance: none; width: 34px; height: 20px; margin: 0; border-radius: 10px; background: var(--color-line); position: relative; cursor: pointer; }
+.inbox-switch input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: left 0.15s; }
+.inbox-switch input:checked { background: var(--color-brand); }
+.inbox-switch input:checked::after { left: 16px; }
+.inbox-search { flex-wrap: nowrap; }
+.inbox-go { height: 38px; padding: 0 var(--sp-20); border-radius: var(--r-sm); flex: none; }
+.inbox-go svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; }
+
+.inbox-card .sub { color: var(--color-fg-sub); }
+.inbox-card .neg-t { color: var(--color-neg); }
+.inbox-co { display: inline-flex; align-items: center; gap: var(--sp-6); }
+.inbox-co__name { max-width: 170px; overflow: hidden; text-overflow: ellipsis; }
+.inbox-chips { display: inline-flex; gap: var(--sp-4); }
+.inbox-p1dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--color-danger-solid); margin-right: var(--sp-6); vertical-align: middle; }

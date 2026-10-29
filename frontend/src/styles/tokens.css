@@ -26,6 +26,8 @@
   --color-selected: #e7edf7;
   --color-seg-on: #dcebf6;   /* 칸막이 탭 고른 것 (목업 .summary button.on) */
   --color-seg-hover: #eaf4fa;
+  --color-filter-bg: #eaf4fa;   /* 필터 판 (목업 .if-panel) */
+  --color-filter-line: #cfe3f0;
   --color-mark: #fff1c2; /* 원문에서 뽑은 값 강조 */
   --color-overlay: rgba(10, 30, 90, 0.28);
 
@@ -42,6 +44,8 @@
   --color-side-sub: rgba(255, 255, 255, 0.78);
   --color-side-hover: rgba(255, 255, 255, 0.12);
   --color-side-on: rgba(255, 255, 255, 0.22);
+  --color-gnav-on: #1c3478;  /* 머리 막대 대메뉴 고른 것 (목업 .gnav a.on) */
+  --color-bell: #d92d20;     /* 종 알림 수 (목업 .badge) */
 
   /* 2층: 상태 색(글자 / 옅은 바탕). 목업 v1.42 값(조장 결정 2026-10-29). 색만으로 뜻을 나누지 않고 늘 글자·기호를 함께 쓴다 */
   --color-neg: #d0021b;      /* 위반·걸림 */
@@ -98,6 +102,8 @@
   --h-control: 36px;    /* 버튼·입력 칸 */
   --h-control-sm: 30px; /* 작은 버튼 */
   --h-chip: 22px;
+  --h-shell-top: 64px;   /* 머리 막대 (목업 header.shell) */
+  --w-shell-nav: 248px;  /* 왼쪽 메뉴 (목업 .frame) */
 
   /* 그림자 */
   --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04);
@@ -120,6 +126,8 @@
     --color-selected: #1b2c42;
     --color-seg-on: #1b3550; /* 목업에 어두운 값 없음, 제안 */
     --color-seg-hover: #162a3e;
+    --color-filter-bg: #12283d; /* 목업 어두운 .if-panel */
+    --color-filter-line: #1e3a55;
     --color-mark: #4a3b12;
     --color-overlay: rgba(0, 0, 0, 0.6);
     --color-brand: #3d9ad1;
@@ -153,6 +161,8 @@
   --color-selected: #1b2c42;
   --color-seg-on: #1b3550; /* 목업에 어두운 값 없음, 제안 */
   --color-seg-hover: #162a3e;
+  --color-filter-bg: #12283d; /* 목업 어두운 .if-panel */
+  --color-filter-line: #1e3a55;
   --color-mark: #4a3b12;
   --color-overlay: rgba(0, 0, 0, 0.6);
   --color-brand: #3d9ad1;

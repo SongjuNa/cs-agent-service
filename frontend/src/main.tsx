@@ -2,6 +2,7 @@ import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { App } from "./App";
+import { SessionProvider } from "./app/session";
 import { queryClient } from "./queryClient";
 import "./styles/tokens.css";
 import "./styles.css";
@@ -13,7 +14,7 @@ const showGallery = import.meta.env.DEV && window.location.pathname === "/ui";
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      {showGallery ? <Suspense fallback={null}><Gallery /></Suspense> : <App />}
+      {showGallery ? <Suspense fallback={null}><Gallery /></Suspense> : <SessionProvider><App /></SessionProvider>}
     </QueryClientProvider>
   </StrictMode>,
 );

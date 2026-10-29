@@ -17,24 +17,24 @@ export function StatusBadge({ status }: { status: string }) {
   return <Chip tone={s.tone} icon={s.icon} title={status}>{s.label}</Chip>;
 }
 
-const ALERT: Record<string, { label: string; tone: Tone; icon: string }> = {
-  FR_AT_RISK: { label: "1차 응답 임박", tone: "crit", icon: "!" },
-  FR_BREACHED: { label: "1차 응답 지남", tone: "neg", icon: "!" },
-  RES_AT_RISK: { label: "해결 기한 임박", tone: "crit", icon: "!" },
-  RES_BREACHED: { label: "해결 기한 지남", tone: "neg", icon: "!" },
+const ALERT: Record<string, { label: string; tone: Tone; icon?: string }> = {
+  FR_AT_RISK: { label: "1차 응답 임박", tone: "crit" },
+  FR_BREACHED: { label: "1차 응답 지남", tone: "neg" },
+  RES_AT_RISK: { label: "해결 기한 임박", tone: "crit" },
+  RES_BREACHED: { label: "해결 기한 지남", tone: "neg" },
 };
 
 /** SLA 경고 칩 (FR-027) */
 export function AlertChip({ alert }: { alert: string }) {
-  const a = ALERT[alert] ?? { label: alert, tone: "crit" as Tone, icon: "!" };
+  const a = ALERT[alert] ?? { label: alert, tone: "crit" as Tone };
   return <Chip tone={a.tone} icon={a.icon} title={alert}>{a.label}</Chip>;
 }
 
 const SLA: Record<string, { label: string; tone: Tone; icon?: string }> = {
   ON_TRACK: { label: "정상", tone: "pos" },
   MET: { label: "충족", tone: "pos", icon: "✓" },
-  AT_RISK: { label: "임박", tone: "crit", icon: "!" },
-  BREACHED: { label: "위반", tone: "neg", icon: "!" },
+  AT_RISK: { label: "임박", tone: "crit" },
+  BREACHED: { label: "위반", tone: "neg" },
   PAUSED: { label: "멈춤", tone: "neu", icon: "⏸" },
 };
 
