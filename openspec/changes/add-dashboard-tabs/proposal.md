@@ -10,7 +10,7 @@
 - **제품 탭 `GET /dashboard/products`**: 제품군·제품별 문의 수, 미해결 수, 살아 있는 경고 수를 낸다(근거: 테이블 정의서 v1.3 svc.sub_ticket product_code, ref.product family, svc.sla_alert).
 - **고객 탭 `GET /dashboard/customers`**: 등급별·나라별 문의 수, 미해결 수, 살아 있는 경고 수를 낸다(근거: 테이블 정의서 v1.3 ref.customer tier·country).
 - **"AI 자동 처리" 넣지 않음**: 목업 AI 탭의 "승인 없이 보냈습니다"는 CLAUDE.md 규칙 3과 D32에 어긋나므로 만들지 않는다(근거: CLAUDE.md 규칙 3, 명세서 v1.5 D32).
-- **화면**: 운영 대시보드에 탭 3개를 더한다. 화면 위치는 add-ops-dashboard의 결정(별도 메뉴 또는 전체 보기 스위치)을 따른다(근거: 변경 add-ops-dashboard tasks 0.1).
+- **화면**: 운영 대시보드에 탭 3개를 더한다. 화면은 별도 메뉴인 운영 대시보드에 둔다(근거: 변경 add-ops-dashboard tasks 0.1, 조장 결정 2026-10-29).
 
 ## Capabilities
 

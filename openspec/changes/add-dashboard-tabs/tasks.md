@@ -2,7 +2,7 @@
 
 ## 0. 앞선 변경
 
-- [ ] 0.1 add-ops-dashboard 구현과 화면 위치 결정 (proposal 화면)
+- [ ] 0.1 add-ops-dashboard 구현 (화면 위치는 별도 메뉴로 결정, 2026-10-29)
 
 ## 1. 서버
 
