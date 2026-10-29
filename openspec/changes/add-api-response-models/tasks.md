@@ -14,4 +14,4 @@
 ## 3. 시험
 
 - [x] 3.1 `tests/acceptance/test_api_contract.py` (design 결정 5)
-- [ ] 3.2 `pytest` 전체(DB 필요), `npm run build` — build 통과, 계약 시험 3개 통과, DB 시험은 아직
+- [x] 3.2 `pytest` 전체(DB 필요), `npm run build` — build 통과, pytest 309 통과·27 건너뜀(PostgreSQL 16 pgvector, 2026-10-29)
