@@ -109,6 +109,31 @@ def exclusions(conn: Connection, gold: list[Gold]) -> dict[str, str]:
     return out
 
 
+def events_of(g: Gold) -> list[tuple[str, str, datetime]]:
+    """정답지 시각으로 쌓을 상태 이력(위 머리말 1~4). 시연 재생(W6, jobs/replay_demo.py)도 같은 순서를 쓴다."""
+    events = [("NEW", "INTAKE", g.received)]
+    if g.status != "NEW":
+        events.append(("IN_PROGRESS", "PIPELINE_DONE", g.received))
+    waiting_end = False
+    if g.info_sent and g.first_response is not None:
+        events.append(("WAITING_CUSTOMER", "INFO_REQUEST_SENT", g.first_response))
+        if g.final_action == "CLOSED_NO_RESPONSE":
+            events.append(("CLOSED", "NO_REPLY_168H", g.first_response + NO_REPLY))
+            waiting_end = True
+        elif g.status == "WAITING_CUSTOMER":
+            waiting_end = True
+        else:
+            events.append(("IN_PROGRESS", "CUSTOMER_REPLY", g.first_response + timedelta(hours=float(g.wait_h or 0))))
+    if not waiting_end:
+        if g.escalated:
+            events.append(("ESCALATED", "ESCALATE", events[-1][2]))
+        if g.resolved is not None:
+            events.append(("RESOLVED", "FINAL_REPLY_SENT", g.resolved))
+            if g.status == "CLOSED":
+                events.append(("CLOSED", "NO_REPLY_168H_AFTER_RESOLVED", g.resolved + NO_REPLY))
+    return events
+
+
 def _transition(conn: Connection, sub_id: str, to_status: str, event: str, at: datetime,
                 reason: str | None = None, final_action: str | None = None) -> None:
     conn.execute("SELECT scoring.transition(%s, %s, %s, %s, 'SYSTEM', %s, %s)",
@@ -132,26 +157,7 @@ def replay_one(conn: Connection, g: Gold) -> int:
         (sub_id, g.ticket_id, g.category, g.priority, target.sla_id, target.sla_first_response_target_h,
          target.sla_resolution_target_h, name_of(g.assignee)),
     )
-    events = [("NEW", "INTAKE", g.received)]
-    if g.status != "NEW":
-        events.append(("IN_PROGRESS", "PIPELINE_DONE", g.received))
-    waiting_end = False
-    if g.info_sent and g.first_response is not None:
-        events.append(("WAITING_CUSTOMER", "INFO_REQUEST_SENT", g.first_response))
-        if g.final_action == "CLOSED_NO_RESPONSE":
-            events.append(("CLOSED", "NO_REPLY_168H", g.first_response + NO_REPLY))
-            waiting_end = True
-        elif g.status == "WAITING_CUSTOMER":
-            waiting_end = True
-        else:
-            events.append(("IN_PROGRESS", "CUSTOMER_REPLY", g.first_response + timedelta(hours=float(g.wait_h or 0))))
-    if not waiting_end:
-        if g.escalated:
-            events.append(("ESCALATED", "ESCALATE", events[-1][2]))
-        if g.resolved is not None:
-            events.append(("RESOLVED", "FINAL_REPLY_SENT", g.resolved))
-            if g.status == "CLOSED":
-                events.append(("CLOSED", "NO_REPLY_168H_AFTER_RESOLVED", g.resolved + NO_REPLY))
+    events = events_of(g)
     for to_status, event, at in events:
         _transition(conn, sub_id, to_status, event, at,
                     reason=g.escalation_reason or "이관(재생)" if event == "ESCALATE" else None,

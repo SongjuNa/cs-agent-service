@@ -37,19 +37,20 @@ test("SCR-00-AC-3: 부서를 고르지 않으면 '부서를 선택하세요'만 
   expect(lists).toEqual([]);
 });
 
-test("SCR-00-AC-4: 종 알림은 1차 응답 경고가 먼저이고 12건 이하다", async ({ page, request }) => {
-  // 명세의 Given(미해결 360건 재생, CSV1-003951)은 재생 작업이 없어 아직 확인할 수 없다. 순서와 개수만 본다
-  const roster: { name: string; dept: string }[] = await (await request.get(api("/ref/agents"))).json();
-  const agent = roster.find((a) => a.dept === "TS_AUTO")!.name;
-  await useSession(page, { dept: "TS_AUTO", agent });
+test("SCR-00-AC-4: 미해결 360건 재생 + 스냅샷 + TS_LV, 종 알림은 1차 응답 경고가 먼저이고 CSV1-003951이 그 묶음에 있으며 12건 이하다", async ({ page }) => {
+  // CSV1-003951의 담당은 명단 이름 zara(재생 W6, 운영진 ID → 명단 이름 C-131). 종 알림은 내 담당의 경고다(FR-047)
+  await useSession(page, { dept: "TS_LV", agent: "zara", snapshot: true });
   await page.goto("/inbox");
   await page.getByRole("button", { name: /알림/ }).click();
   const items = page.getByTestId("bell-list").locator("[data-alert]");
-  const kinds = await items.evaluateAll((els) => els.map((e) => e.getAttribute("data-alert") ?? ""));
-  expect(kinds.length).toBeLessThanOrEqual(12);
+  await expect(items.first()).toBeVisible();
+  const list = await items.evaluateAll((els) => els.map((e) => [e.getAttribute("data-alert") ?? "", e.textContent ?? ""]));
+  expect(list.length).toBeLessThanOrEqual(12);
+  const kinds = list.map(([k]) => k);
   const firstRes = kinds.findIndex((k) => k.startsWith("RES_"));
   const lastFr = kinds.map((k) => k.startsWith("FR_")).lastIndexOf(true);
-  if (firstRes >= 0 && lastFr >= 0) expect(lastFr).toBeLessThan(firstRes);
+  if (firstRes >= 0) expect(lastFr).toBeLessThan(firstRes);
+  expect(list.some(([k, text]) => k === "FR_AT_RISK" && text.includes("CSV1-003951"))).toBe(true);
 });
 
 test("SCR-00-AC-5: 새로고침해도 고른 부서·상담원·기준 시각이 그대로다", async ({ page }) => {

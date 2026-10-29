@@ -12,22 +12,23 @@ async function column(page: Page, header: string): Promise<string[]> {
   return rows(page).locator(`td:nth-child(${i + 1})`).allInnerTexts();
 }
 
-test("SCR-02-AC-1: 요약 '전체 n'이 보이고 맨 위 행은 경고가 있으며 남은 시간이 가장 적다", async ({ page }) => {
-  // 명세 Given은 미해결 360건 재생(TS_LV 67건). 재생 작업이 없어 지금 데이터(TS_AUTO)의 정렬 규칙만 본다
-  await useSession(page, { dept: "TS_AUTO", snapshot: true });
+test("SCR-02-AC-1: 미해결 360건 재생 + 스냅샷, TS_LV 요약 '전체 n'과 맨 위 행(경고 있음, 남은 시간 최소)", async ({ page, request }) => {
+  // 명세의 "전체 67"은 담당 부서 수다. 처리 1(v1.5)은 이관받은 문의도 보여서 화면 수는 서버 counts.total로 본다(조장 확인 중)
+  const api = await (await request.get("http://localhost:8000/tickets?dept=TS_LV&as_of=2026-09-30T23:59:00Z&size=1")).json();
+  await useSession(page, { dept: "TS_LV", snapshot: true });
   await page.goto("/inbox");
   await expect(rows(page).first()).toBeVisible();
-  const n = await rows(page).count();
-  await expect(page.getByRole("tab", { name: new RegExp(`^전체\\s*${n}$`) })).toBeVisible();
+  await expect(page.getByRole("tab", { name: new RegExp(`^전체\\s*${api.counts.total}$`) })).toBeVisible();
+  expect(api.counts.total).toBeGreaterThanOrEqual(67);
   const alerts = await column(page, "경고");
   expect(alerts[0].trim()).not.toBe("");
   const left = (await column(page, "남은 시간")).map((t) => Number(t.replace("−", "-").replace(/[^\d.-]/g, "")));
-  const withAlert = left.filter((_, i) => alerts[i].trim() !== "");
+  const withAlert = left.filter((v, i) => alerts[i].trim() !== "" && !Number.isNaN(v));
   expect(left[0]).toBe(Math.min(...withAlert));
 });
 
 test("SCR-02-AC-2: '정보 요청 필요' 요약을 누르면 모든 행의 정보 요청 열이 '필요'다", async ({ page }) => {
-  await useSession(page, { dept: "TS_AUTO", snapshot: true });
+  await useSession(page, { dept: "TS_LV", snapshot: true });
   await page.goto("/inbox");
   await page.getByRole("tab", { name: /^정보 요청 필요/ }).click();
   await expect(page).toHaveURL(/needs_info=true/);
@@ -93,15 +94,18 @@ test("SCR-02-AC-7: 목록 요청이 실패하면 이전 목록이 흐리게 남�
   await expect(page.getByText("목록을 불러오지 못함. 새로고침")).toBeVisible();
 });
 
-test("SCR-02-AC-8: 상세로 갔다가 [접수함으로]를 누르면 같은 필터·쪽으로 돌아온다", async ({ page }) => {
-  // 명세는 2쪽(50건 넘음). 지금 데이터는 한 쪽이라 필터·정렬이 지켜지는지로 본다. 2쪽은 재생 데이터가 생기면 바꾼다
-  await useSession(page, { dept: "TS_AUTO" });
-  await page.goto("/inbox?has_draft=true&sort=-received_at");
+test("SCR-02-AC-8: 2쪽을 보다가 상세로 갔다가 [접수함으로]를 누르면 같은 필터의 2쪽이 보인다", async ({ page }) => {
+  // TS_LV 스냅샷은 50건이 넘어 2쪽이 있다(재생 W6). 상세의 버튼 이름은 상세 슬라이스에서 [접수함으로]로 바꾼다
+  await useSession(page, { dept: "TS_LV", snapshot: true });
+  await page.goto("/inbox?sort=-received_at");
   await expect(rows(page).first()).toBeVisible();
+  await page.getByRole("button", { name: "2", exact: true }).click();
+  await expect(page).toHaveURL(/page=2/);
+  const firstOnPage2 = await rows(page).first().locator(".ui-tid").innerText();
   await rows(page).first().click();
   await expect(page).toHaveURL(/\/tickets\//);
   await page.getByRole("button", { name: /목록으로|접수함으로/ }).click();
-  await expect(page).toHaveURL(/\/inbox\?.*has_draft=true/);
-  await expect(page).toHaveURL(/sort=-received_at/);
-  await expect(page.getByRole("tab", { name: /^미발송 초안/ })).toHaveAttribute("aria-selected", "true");
+  await expect(page).toHaveURL(/\/inbox\?.*sort=-received_at/);
+  await expect(page).toHaveURL(/page=2/);
+  await expect(rows(page).first().locator(".ui-tid")).toHaveText(firstOnPage2);
 });
