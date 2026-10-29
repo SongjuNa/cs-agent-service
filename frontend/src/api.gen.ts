@@ -44,6 +44,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search
+         * @description 같은 에러 코드를 먼저, 그다음 q의 뜻이 가까운 순(q가 없으면 case_id 순)으로 20건(design 결정 1).
+         */
+        get: operations["search_cases_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cases/{case_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Detail
+         * @description 사례 상세(design 결정 2). 없는 사례·팀 정답지 사례는 404.
+         */
+        get: operations["detail_cases__case_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/chunks/{chunk_id}": {
         parameters: {
             query?: never;
@@ -842,6 +882,77 @@ export interface components {
             usage: components["schemas"]["Usage"][];
             /** Utterances */
             utterances: components["schemas"]["Utterance"][];
+        };
+        /** CaseDetail */
+        CaseDetail: {
+            /** Action Taken */
+            action_taken: string | null;
+            /** Case Id */
+            case_id: string;
+            /** Case Summary */
+            case_summary: string | null;
+            /** Category Code */
+            category_code: string | null;
+            /** Diagnosis Method */
+            diagnosis_method: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Initial Hypothesis */
+            initial_hypothesis: string | null;
+            /** Onsite Visit */
+            onsite_visit: string | null;
+            /** Product Code */
+            product_code: string | null;
+            /** Product Family */
+            product_family: string | null;
+            /** Recurrence Prevention */
+            recurrence_prevention: string | null;
+            /** Replacement Part */
+            replacement_part: string | null;
+            /** Resolution Result */
+            resolution_result: string | null;
+            /** Root Cause */
+            root_cause: string | null;
+            /** Symptom */
+            symptom: string | null;
+            /** Ticket Id */
+            ticket_id: string;
+            /** Time To Resolve Hours */
+            time_to_resolve_hours: string | null;
+        };
+        /** CaseRow */
+        CaseRow: {
+            /** Case Id */
+            case_id: string;
+            /** Case Summary */
+            case_summary: string | null;
+            /** Category Code */
+            category_code: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Product Code */
+            product_code: string | null;
+            /** Product Family */
+            product_family: string | null;
+            /** Resolution Result */
+            resolution_result: string | null;
+            /** Same Error Code */
+            same_error_code: boolean;
+            /** Score */
+            score: number | string | null;
+            /** Symptom */
+            symptom: string | null;
+            /** Ticket Id */
+            ticket_id: string;
+        };
+        /** CaseRows */
+        CaseRows: {
+            /** Notes */
+            notes: string[];
+            /** Rows */
+            rows: components["schemas"]["CaseRow"][];
+            /** Total */
+            total: number;
         };
         /** CheckFlag */
         CheckFlag: {
@@ -1815,6 +1926,30 @@ export interface components {
             /** Sent By Name */
             sent_by_name: string;
         };
+        /** SimilarCase */
+        SimilarCase: {
+            /** Action */
+            action: string | null;
+            /** Case Id */
+            case_id: string;
+            /** Cause */
+            cause: string | null;
+            /** Error Code */
+            error_code?: string | null;
+            /** Method */
+            method: string;
+            /** Result */
+            result: string | null;
+            /** Score */
+            score: number | string;
+        };
+        /** SimilarCases */
+        SimilarCases: {
+            /** Cases */
+            cases: components["schemas"]["SimilarCase"][];
+            /** Notes */
+            notes: string[];
+        };
         /** Sla */
         Sla: {
             /** As Of Utc */
@@ -1949,6 +2084,7 @@ export interface components {
             other_flags: string[];
             /** Product Name */
             product_name: string | null;
+            similar_cases?: components["schemas"]["SimilarCases"] | null;
             sla: components["schemas"]["Sla"] | null;
             state: components["schemas"]["SubState"];
             sub_ticket: components["schemas"]["SubTicketRow"];
@@ -2364,6 +2500,71 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CallResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_cases_get: {
+        parameters: {
+            query?: {
+                q?: string;
+                error_code?: string;
+                product_code?: string;
+                category_code?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaseRows"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    detail_cases__case_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaseDetail"];
                 };
             };
             /** @description Validation Error */

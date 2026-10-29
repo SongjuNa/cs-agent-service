@@ -1,0 +1,21 @@
+/* SCR-09 접수 이력(해결사례 검색). 값은 목업 v1.42 `viewSimilar`(안내 띠, 연한 파랑 거르기 상자, 표).
+   색은 tokens.css 변수만 쓴다(principles §3). */
+
+.cs { display: flex; flex-direction: column; gap: var(--sp-16); }
+.cs-sub { font-size: var(--fs-xs); color: var(--color-fg-sub); }
+.cs-mono { font-family: var(--font-code); }
+.cs-pad { padding: 0 var(--sp-16) var(--sp-12); }
+.cs-skeleton { height: 240px; margin: var(--sp-16); border-radius: var(--r-lg); background: var(--color-hover); }
+.cs-count { margin: 0; padding: 0 var(--sp-16); font-size: var(--fs-s); color: var(--color-fg-sub); }
+.cs-code { display: inline-flex; align-items: center; gap: var(--sp-6); }
+
+.cs-filter { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--sp-12); margin: var(--sp-16); padding: var(--sp-16); border: 1px solid var(--color-info-line, var(--color-line)); border-radius: var(--r-md); background: var(--color-info-bg); }
+.cs-field { display: flex; flex-direction: column; gap: var(--sp-4); }
+.cs-field--grow { flex: 1 1 280px; }
+.cs-field label { font-size: var(--fs-s); font-weight: var(--fw-semibold); }
+.cs-field input, .cs-field select { height: 36px; padding: 0 var(--sp-10); border: 1px solid var(--color-line); border-radius: var(--r-md); background: var(--color-surface); color: var(--color-fg); font: inherit; }
+
+.cs-kvs { display: grid; gap: var(--sp-8); margin: var(--sp-12) 0 0; }
+.cs-kvs > div { display: grid; grid-template-columns: 130px 1fr; gap: var(--sp-12); }
+.cs-kvs dt { font-size: var(--fs-xs); color: var(--color-fg-sub); }
+.cs-kvs dd { margin: 0; overflow-wrap: anywhere; }

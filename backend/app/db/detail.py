@@ -126,6 +126,7 @@ def _sub_detail(conn: Connection, sub: dict[str, Any], run: dict[str, Any] | Non
         "checks": [{"check_type": r["check_type"], "flag": (r["detail"] or {}).get("flag")} for r in failed],
         "other_flags": [f for f in flags if check_type_of(f) is None and f not in DRAFT_FLAGS],
         "diagnosis": out.get("Q8a"),  # 고장 진단 후보(FR-018). 고장 계열이 아니면 None
+        "similar_cases": out.get("Q8b"),  # 유사 해결사례(FR-019). 찾는 유형이 아니면 None. 초안에는 쓰지 않음
         "escalation": out.get("Q9a"),  # 이관 후보(FR-020). 버튼 없이 표시만
         "evidence_rows": _with_steps(_evidence_rows(conn, sub, out, flags, labels, status, edits), run_id, steps),
         "drafts": drafts,

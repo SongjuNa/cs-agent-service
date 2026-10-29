@@ -21,7 +21,7 @@ export const MENU: MenuGroup[] = [
     { key: "home", label: "나의 업무 현황", path: "/my", ready: true },
     { key: "inbox", label: "접수함", path: "/inbox", ready: true },
     { key: "phone", label: "전화 상담", path: "/phone", ready: true },
-    { key: "similar", label: "접수 이력", path: "/history" },
+    { key: "similar", label: "접수 이력", path: "/history", ready: true },
     { key: "customers", label: "고객 관리", path: "/customers", ready: true },
     { key: "chatbot", label: "챗봇 관리", path: "/chatbot" },
     { key: "portal", label: "고객포털 바로가기", path: "/portal", external: true },

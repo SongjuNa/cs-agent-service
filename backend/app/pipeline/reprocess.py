@@ -166,7 +166,7 @@ def reuse(conn: Connection, transport: Transport, ticket_input: dict[str, Any]) 
 def with_dept_reply(conn: Connection, transport: Transport, ticket_input: dict[str, Any]) -> UnderstandOutcome:
     """이관 부서 회신(DEPT_REPLY)의 첫 노드: 언어 모델 없이 저장값을 읽는다. 언어 모델은 Q8부터(§2-4, C-160).
 
-    규칙 단계(Q2~Q6)는 다시 계산해도 같은 값이고, 고장 진단(Q8a)·이관 후보(Q9a)는 직전 결과를 옮겨 적는다(그래프가 건너뜀).
+    규칙 단계(Q2~Q6)는 다시 계산해도 같은 값이고, 고장 진단(Q8a)·유사 해결사례(Q8b)·이관 후보(Q9a)는 직전 결과를 옮겨 적는다(그래프가 건너뜀).
     부서 회신 글을 dept_reply에 넣어 답변 경로(Q8~Q14)가 L4·Q11·L8에 쓰게 한다(§2-3 dept_reply).
     """
     outcome = reuse(conn, transport, {"ticket_id": ticket_input["ticket_id"], "target_ids": ticket_input["target_ids"]})
@@ -174,6 +174,7 @@ def with_dept_reply(conn: Connection, transport: Transport, ticket_input: dict[s
         for sub in outcome.state.sub_tickets:
             sub.dept_reply = dept_reply_text(conn, sub.sub_ticket_id) or None
             sub.diagnosis = last_pipeline_step(conn, sub.sub_ticket_id, "Q8a")
+            sub.similar_cases = last_pipeline_step(conn, sub.sub_ticket_id, "Q8b")
             sub.escalation = last_pipeline_step(conn, sub.sub_ticket_id, "Q9a")
     return outcome
 

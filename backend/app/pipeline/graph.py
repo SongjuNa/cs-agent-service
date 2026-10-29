@@ -1,6 +1,6 @@
 """처리 흐름 그래프 (기술 명세서 v1.4 §1-2 LangGraph, §2-1 하위 문의 그래프, §2-5 분기③④).
 
-understand(T1·T2·Q1) → rules(Q2~Q6) → diagnose(Q8a 고장 진단, 고장 계열만) → escalate(Q9a 이관 후보)
+understand(T1·T2·Q1) → rules(Q2~Q6) → diagnose(Q8a 고장 진단, 고장 계열만) → similar(Q8b 유사 해결사례, 고장 계열만) → escalate(Q9a 이관 후보)
   → info_request(분기③ 막는 정보가 있는 하위 문의: Q7, L3)
   → evidence(나머지 하위 문의: Q8·Q9) → reply(분기④ 근거 있음? → Q10 L4 + Q11 대조)
   → compose(복합 문의면 T5 메일 구성, L5) → gloss(Q13, L7) → verify(Q14, L8) → 끝
@@ -23,6 +23,7 @@ from app.pipeline.compose import compose_mail
 from app.llm.embed import Embedder
 from app.llm.verify import verify_draft
 from app.pipeline.diagnose import add_diagnosis
+from app.pipeline.similar import add_similar_cases
 from app.pipeline.escalate import add_escalation_candidates
 from app.pipeline.evidence import add_evidence
 from app.pipeline.rules_step import apply_rules
@@ -103,6 +104,12 @@ def build_graph(conn: Connection, transport: Transport, embedder: Embedder, unde
         state = gs["state"]
         # 부서 회신 재처리는 직전 진단을 옮겨 적는다(C-160)
         each([s for s in state.sub_tickets if not s.dept_reply], lambda sub: add_diagnosis(conn, embedder, sub), "Q8a")
+        return {"state": state}
+
+    def similar(gs: GraphState) -> GraphState:  # Q8b: Q8a 바로 뒤(§4-7). 부서 회신 재처리는 직전 결과를 옮겨 적는다
+        state = gs["state"]
+        each([s for s in state.sub_tickets if not s.dept_reply],
+             lambda sub: add_similar_cases(conn, embedder, state.ticket_id, sub), "Q8b")
         return {"state": state}
 
     def escalate(gs: GraphState) -> GraphState:  # Q9a: 진단 뒤, 모든 하위 문의. 표시만 하고 상태는 그대로(AC-020-4)
@@ -213,7 +220,7 @@ def build_graph(conn: Connection, transport: Transport, embedder: Embedder, unde
         return "diagnose" if gs.get("run_status") == "SUCCESS" else END
 
     graph = StateGraph(GraphState)
-    order = [("understand", understand), ("rules", rules), ("diagnose", diagnose), ("escalate", escalate),
+    order = [("understand", understand), ("rules", rules), ("diagnose", diagnose), ("similar", similar), ("escalate", escalate),
              ("info_request", info_request), ("evidence", evidence),
              ("reply", reply), ("compose", compose), ("gloss", gloss), ("verify", verify)]
     for name, node in order:

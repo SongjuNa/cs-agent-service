@@ -358,12 +358,28 @@ class DeptMail(DeptReply):
     gloss: str | None
 
 
+class SimilarCase(Out):
+    case_id: str
+    cause: str | None
+    action: str | None
+    result: str | None
+    error_code: str | None = None
+    score: Num
+    method: str
+
+
+class SimilarCases(Out):
+    cases: list[SimilarCase]
+    notes: list[str]
+
+
 class SubTicket(Out):
     sub_ticket: SubTicketRow
     escalated_at_utc: datetime | None
     checks: list[CheckFlag]
     other_flags: list[str]
     diagnosis: Json | None  # 고장 진단 후보(FR-018). 고장 계열이 아니면 null
+    similar_cases: SimilarCases | None = None  # 유사 해결사례(FR-019, add-similar-cases 결정 4). 찾는 유형이 아니면 null
     escalation: Json | None  # 이관 후보(FR-020)
     evidence_rows: list[EvidenceRow]
     drafts: list[Draft]
@@ -828,3 +844,45 @@ class ProductDetail(Product):
 class RuleRows(Out):
     kind: Literal["priority", "routing", "required-info", "sla"]
     rows: list[Json]  # 칸이 종류마다 다르다(design 결정 3 표, 변경 add-api-response-models 결정 3)
+
+
+# ---- 해결사례 직접 검색 (변경 add-case-search) ----
+
+class CaseRow(Out):
+    case_id: str
+    ticket_id: str
+    category_code: str | None
+    product_code: str | None
+    product_family: str | None
+    error_code: str | None
+    symptom: str | None
+    resolution_result: str | None
+    case_summary: str | None
+    score: Num | None
+    same_error_code: bool
+
+
+class CaseRows(Out):
+    rows: list[CaseRow]
+    total: int
+    notes: list[str]
+
+
+class CaseDetail(Out):
+    case_id: str
+    ticket_id: str
+    category_code: str | None
+    product_code: str | None
+    product_family: str | None
+    error_code: str | None
+    symptom: str | None
+    initial_hypothesis: str | None
+    root_cause: str | None
+    diagnosis_method: str | None
+    action_taken: str | None
+    replacement_part: str | None
+    onsite_visit: str | None
+    resolution_result: str | None
+    time_to_resolve_hours: str | None
+    recurrence_prevention: str | None
+    case_summary: str | None

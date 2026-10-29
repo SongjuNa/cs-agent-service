@@ -47,8 +47,9 @@ class Diagnosis:
 class SymptomVectors:
     """증상 문장 벡터. 키 = sha256(모델 이름 + 줄바꿈 + 문장). 없는 키만 만들어 파일에 다시 쓴다."""
 
-    def __init__(self, path: Path | None = CACHE_FILE):
+    def __init__(self, path: Path | None = CACHE_FILE, step: str = "Q8a"):
         self.path = path
+        self.step = step  # 임베딩 호출 기록의 단계 이름(유사 해결사례 Q8b도 같은 방식을 쓴다)
         self._memory: dict[str, list[float]] | None = None
 
     @staticmethod
@@ -78,7 +79,7 @@ class SymptomVectors:
         keys = [self.key(model, t) for t in texts]
         missing = sorted({t for t, k in zip(texts, keys) if k not in memory})
         if missing:
-            for text, vector in zip(missing, embed_texts(embedder, "Q8a", missing, "document")):
+            for text, vector in zip(missing, embed_texts(embedder, self.step, missing, "document")):
                 memory[self.key(model, text)] = vector
             self._save()
         return [memory[k] for k in keys]

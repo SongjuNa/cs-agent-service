@@ -112,7 +112,7 @@ export function TicketPage({ ticketId, agent, onBack, navigate }: { ticketId: st
           : detail.processing ? processingPane
           : tab === "system" ? (
             <SystemTab detail={detail} locked={locked || busy} focus={focus} onWhy={setWhy} onSource={setSource}
-                       onAdjust={setAdjusting} onEdit={edit} />
+                       onAdjust={setAdjusting} onEdit={edit} onCases={navigate && ((sub) => navigate(casesLink(sub)))} />
           ) : (
             <SendTab detail={detail} agent={agent} kind={sendKind} onKind={setSendKind} locked={locked || busy}
                      canEscalate={canEscalate} escalateTitle={escalateTitle} onEscalate={() => setEscalating(true)}
@@ -141,4 +141,15 @@ function ruleLink(why: unknown): string | null {
   const tab = "rule_order" in rule ? null : "primary_dept" in rule ? "route" : undefined;
   if (tab === undefined) return null;
   return `/rules?${tab ? `tab=${tab}&` : ""}rule=${encodeURIComponent(rule.rule_id)}`;
+}
+
+/** [접수 이력에서 보기]: 그 문의의 에러 코드·제품으로 해결사례 검색을 연다(SCR-09 동작 표, 변경 add-case-search) */
+function casesLink(sub: SubTicket): string {
+  const p = new URLSearchParams();
+  const code = sub.fields.find((f) => f.field === "error_code");
+  const error = code?.value_norm ?? code?.value_raw;
+  if (error) p.set("error_code", error);
+  if (sub.sub_ticket.product_code) p.set("product_code", sub.sub_ticket.product_code);
+  if (sub.sub_ticket.category_code) p.set("category_code", sub.sub_ticket.category_code);
+  return `/history?${p}`;
 }
