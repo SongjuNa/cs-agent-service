@@ -71,7 +71,7 @@ export function Gallery() {
           {["FR_AT_RISK", "FR_BREACHED", "RES_AT_RISK", "RES_BREACHED"].map((a) => <AlertChip key={a} alert={a} />)}
         </div>
         <div className="ui-row">
-          {(["neu", "neg", "crit", "pos", "info", "brand", "outline", "muted"] as const).map((t) => <Chip key={t} tone={t}>{t}</Chip>)}
+          {(["neu", "neg", "crit", "pos", "info", "brand", "outline"] as const).map((t) => <Chip key={t} tone={t}>{t}</Chip>)}
         </div>
       </Card>
 

@@ -25,7 +25,7 @@
 .ui-btn--primary:hover:not(:disabled) { background: var(--color-brand-hover); }
 .ui-btn--ghost { border-color: transparent; background: transparent; color: var(--color-info); }
 .ui-btn--ghost:hover:not(:disabled) { background: var(--color-selected); }
-.ui-btn--danger { background: var(--color-surface); border-color: var(--color-neg); color: var(--color-neg); font-weight: var(--fw-semibold); }
+.ui-btn--danger { background: var(--color-danger-solid); border-color: var(--color-danger-solid); color: #fff; }
 
 /* 칩·배지 */
 .ui-chip {
@@ -41,13 +41,12 @@
   background: var(--color-neu-bg);
   color: var(--color-neu);
 }
-.ui-chip--neg { background: var(--color-neg-bg); color: var(--color-neg); box-shadow: inset 0 0 0 1px var(--color-neg); }
+.ui-chip--neg { background: var(--color-neg-bg); color: var(--color-neg); }
 .ui-chip--crit { background: var(--color-crit-bg); color: var(--color-crit); }
 .ui-chip--pos { background: var(--color-pos-bg); color: var(--color-pos); }
-.ui-chip--info { background: var(--color-info-bg); color: var(--color-info); }
-.ui-chip--muted { background: var(--color-neu-bg); color: var(--color-muted); }
+.ui-chip--info { background: var(--color-teal-bg); color: var(--color-teal-ink); }
 .ui-chip--brand { background: var(--color-selected); color: var(--color-brand); }
-.ui-chip--outline { background: transparent; box-shadow: inset 0 0 0 1px var(--color-neu); color: var(--color-neu); }
+.ui-chip--outline { background: transparent; border: 1px solid var(--color-line); color: var(--color-fg-sub); }
 .ui-chip__icon { font-size: var(--fs-xs); line-height: 1; }
 
 .ui-prio {
@@ -60,7 +59,7 @@
   font-weight: var(--fw-medium);
   font-variant-numeric: tabular-nums;
 }
-.ui-prio--p1 { background: var(--color-neg-bg); color: var(--color-neg); box-shadow: inset 0 0 0 1.5px var(--color-neg); font-weight: var(--fw-bold); }
+.ui-prio--p1 { background: var(--color-danger-solid); color: #fff; font-weight: var(--fw-bold); }
 .ui-prio--p2 { background: var(--color-crit-bg); color: var(--color-crit); }
 .ui-prio--p3 { background: var(--color-selected); color: var(--color-brand); }
 .ui-prio--p4 { background: var(--color-hover); color: var(--color-fg-sub); }
@@ -168,7 +167,7 @@
 /* 안내 띠·빈 상태 */
 .ui-banner { display: flex; gap: var(--sp-10); align-items: flex-start; padding: var(--sp-10) var(--sp-14); border-radius: var(--r-md); border: 1px solid var(--color-line); font-size: var(--fs-s); margin-bottom: var(--sp-12); }
 .ui-banner__body { flex: 1; min-width: 0; }
-.ui-banner--neg { background: var(--color-neg-bg); color: var(--color-neg); border-color: var(--color-neg); }
+.ui-banner--neg { background: var(--color-neg-bg); color: var(--color-neg); border-color: color-mix(in srgb, var(--color-neg) 30%, transparent); }
 .ui-banner--crit { background: var(--color-crit-bg); color: var(--color-crit); border-color: color-mix(in srgb, var(--color-crit) 30%, transparent); }
 .ui-banner--info { background: var(--color-info-bg); color: var(--color-info); border-color: color-mix(in srgb, var(--color-info) 30%, transparent); }
 .ui-banner--neu { background: var(--color-neu-bg); color: var(--color-neu); }

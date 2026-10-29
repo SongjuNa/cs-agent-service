@@ -1,5 +1,5 @@
 // 상태 배지와 같은 무리 (principles §4).
-// 상태 이름은 목업 STATUS, 경고 이름은 목업 WARN, 색은 화면 정의서 v2 부록 B-3(상태 6개·SLA 색)과 기술 명세서 §8-2를 따른다.
+// 상태 이름은 목업 STATUS, 경고 이름은 목업 WARN, 색은 목업 v1.42 칩 색(조장 결정 2026-10-29)이고, 뜻 나눔(통과·임박·위반·대기)은 기술 명세서 §8-2와 같다.
 import { Chip, type Tone } from "./Chip";
 
 const STATUS: Record<string, { label: string; tone: Tone; icon?: string }> = {
@@ -8,7 +8,7 @@ const STATUS: Record<string, { label: string; tone: Tone; icon?: string }> = {
   WAITING_CUSTOMER: { label: "고객 회신 대기", tone: "neu", icon: "⏸" }, // 해결 시계 멈춤(CP-1)
   ESCALATED: { label: "이관됨", tone: "brand", icon: "→" },
   RESOLVED: { label: "해결", tone: "pos", icon: "✓" },
-  CLOSED: { label: "종료", tone: "muted" },
+  CLOSED: { label: "종료", tone: "neu" },
 };
 
 /** 하위 문의 상태 6개 (CP-1, FR-025) */
