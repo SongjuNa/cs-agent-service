@@ -136,8 +136,7 @@ test.describe("시연 티켓 읽기", () => {
     await expect(card.getByRole("button", { name: "승인하고 발송" })).toBeEnabled();
   });
 
-  test("SCR-03-AC-19(일부): 초안 인용에 해결사례가 없다. 유사 해결사례 칸은 add-similar-cases 구현 뒤", async ({ page, request }) => {
-    test.info().annotations.push({ type: "일부", description: "similar_cases API가 아직 없어 ② 탭 '3건 이하·정답지 사례 없음'은 시험하지 않음" });
+  test("SCR-03-AC-19 (인용 쪽): 답변 초안 인용에 해결사례가 없다", async ({ page, request }) => {
     const d = await detail(request, DEMO_07, "TS_AUTO");
     await useSession(page, { dept: "TS_AUTO", agent: "leo" });
     await page.goto(`/tickets/${DEMO_07}`);
@@ -175,6 +174,19 @@ test.describe.serial("000017 사본 A: 발송 → 충돌 → 회신", () => {
   let id = "";
   test.beforeAll(async ({ request }) => { test.setTimeout(300_000); id = await intakeCopy(request, "CSV1-000017"); });
   test.beforeEach(async ({ page }) => useSession(page, { dept: "TS_LV", agent: "leo" }));
+
+  // add-similar-cases(Q8b) 뒤 처리한 사본이라 ② 탭에 비슷한 해결사례가 있다. 팀 정답지 사례는 /cases/{id}가 404라 200이면 정답지 밖이다.
+  test("SCR-03-AC-19: ② 탭 비슷한 해결사례가 3건 이하이고 팀 정답지 문의의 사례가 없으며, 초안 인용에 해결사례가 없다", async ({ page, request }) => {
+    await page.goto(`/tickets/${id}?tab=system`);
+    const block = page.getByTestId("judge-1").getByTestId("similar-cases");
+    await expect(block).toBeVisible();
+    const shown = (await block.locator("[data-case]").evaluateAll((els) => els.map((e) => e.getAttribute("data-case")))) as string[];
+    expect(shown.length).toBeGreaterThan(0);
+    expect(shown.length).toBeLessThanOrEqual(3);
+    for (const c of shown) expect((await request.get(api(`/cases/${c}`), { headers: H() })).status()).toBe(200);
+    const d = await detail(request, id);
+    for (const s of d.sub_tickets) for (const dr of s.drafts ?? []) expect(String(dr.body ?? "")).not.toMatch(/RC-\d{4}/);
+  });
 
   test("SCR-03-AC-8 + AC-10: 정보 요청 [승인하고 발송] → [발송]이면 '발송됨', 상태 '고객 회신 대기', 1차 응답 '보냄'. 다른 창에서 다시 보내면 P8 '이미 발송된 초안'", async ({ page, context }) => {
     const other = await context.newPage(); // 같은 초안을 연 두 번째 상담원 창(AC-10)
