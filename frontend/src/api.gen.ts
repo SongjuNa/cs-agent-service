@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/assist/ask": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask */
+        post: operations["ask_assist_ask_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/calls/note-draft": {
         parameters: {
             query?: never;
@@ -797,6 +814,47 @@ export interface components {
             /** Target H */
             target_h: number | null;
         };
+        /** AskIn */
+        AskIn: {
+            /**
+             * History
+             * @default []
+             */
+            history: components["schemas"]["HistoryItem"][];
+            /** Product Code */
+            product_code?: string | null;
+            /**
+             * Question
+             * @default
+             */
+            question: string;
+        };
+        /** AssistAnswer */
+        AssistAnswer: {
+            /** Answer */
+            answer: string;
+            /** Followups */
+            followups: string[];
+            /** Found */
+            found: boolean;
+            /** Notes */
+            notes: string[];
+            /** Sources */
+            sources: components["schemas"]["AssistSource"][];
+        };
+        /** AssistSource */
+        AssistSource: {
+            /** Chunk Id */
+            chunk_id: string;
+            /** Doc Id */
+            doc_id: string;
+            /** No */
+            no: number;
+            /** Section No */
+            section_no: string;
+            /** Title */
+            title: string;
+        };
         /** BodyIn */
         BodyIn: {
             /** Body */
@@ -1440,6 +1498,16 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** HistoryItem */
+        HistoryItem: {
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "user" | "assistant";
+            /** Text */
+            text: string;
         };
         /** Inbox */
         Inbox: {
@@ -2480,6 +2548,39 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    ask_assist_ask_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AskIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssistAnswer"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     note_draft_calls_note_draft_post: {
         parameters: {
             query?: never;
