@@ -3153,6 +3153,10 @@
             "title": "Language",
             "type": "string"
           },
+          "memo_count": {
+            "title": "Memo Count",
+            "type": "integer"
+          },
           "needs_info": {
             "title": "Needs Info",
             "type": "boolean"
@@ -3304,7 +3308,8 @@
           "reminder_sent",
           "turn",
           "next_action",
-          "review_depth"
+          "review_depth",
+          "memo_count"
         ],
         "title": "InboxRow",
         "type": "object"
@@ -3565,6 +3570,41 @@
         "title": "Message",
         "type": "object"
       },
+      "Note": {
+        "description": "내부 메모(add-internal-notes). 고객에게 보내지 않는다.",
+        "properties": {
+          "author": {
+            "title": "Author",
+            "type": "string"
+          },
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "created_at_utc": {
+            "format": "date-time",
+            "title": "Created At Utc",
+            "type": "string"
+          },
+          "note_id": {
+            "title": "Note Id",
+            "type": "integer"
+          },
+          "ticket_id": {
+            "title": "Ticket Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "note_id",
+          "ticket_id",
+          "body",
+          "author",
+          "created_at_utc"
+        ],
+        "title": "Note",
+        "type": "object"
+      },
       "NoteDraftIn": {
         "properties": {
           "language": {
@@ -3601,6 +3641,19 @@
           "utterances"
         ],
         "title": "NoteDraftIn",
+        "type": "object"
+      },
+      "NoteIn": {
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          }
+        },
+        "required": [
+          "body"
+        ],
+        "title": "NoteIn",
         "type": "object"
       },
       "PriorityIn": {
@@ -8753,6 +8806,114 @@
           }
         },
         "summary": "Get Ticket"
+      }
+    },
+    "/tickets/{ticket_id}/notes": {
+      "get": {
+        "description": "메모를 시각순으로(오래된 것이 위).",
+        "operationId": "list_notes_tickets__ticket_id__notes_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Note"
+                  },
+                  "title": "Response List Notes Tickets  Ticket Id  Notes Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Notes"
+      },
+      "post": {
+        "description": "메모 한 줄을 남긴다. 앞뒤 공백은 지우고, 비었거나 2000자를 넘으면 400.",
+        "operationId": "add_note_tickets__ticket_id__notes_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-agent-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Agent-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Note"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Note"
       }
     },
     "/tickets/{ticket_id}/replies": {

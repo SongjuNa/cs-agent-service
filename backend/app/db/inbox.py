@@ -122,6 +122,8 @@ def inbox(conn: Connection, query: InboxQuery, schema: str = "svc") -> dict[str,
         where.append("(ticket_id ILIKE %(q)s OR company_masked ILIKE %(q)s)")
         params["q"] = f"%{query.q.strip()}%"
 
+    # 내부 메모 표는 svc에만 있다(채점용 scoring 재생에는 메모가 없다)
+    memo_sql = ("(SELECT count(*) FROM svc.internal_note n WHERE n.ticket_id = s.ticket_id)" if schema == "svc" else "0")
     base = f"""
         WITH f AS MATERIALIZED (SELECT * FROM {schema}.inquiry_sla(%(as_of)s)),
         rows AS (
@@ -135,7 +137,8 @@ def inbox(conn: Connection, query: InboxQuery, schema: str = "svc") -> dict[str,
                  cardinality(s.missing_blocking_info) > 0 AS needs_info,
                  coalesce(d.has_unsent_draft, false) AS has_unsent_draft,
                  coalesce(r.reminder_sent, false) AS reminder_sent,
-                 coalesce(dr.dept_replied, false) AS dept_replied
+                 coalesce(dr.dept_replied, false) AS dept_replied,
+                 {memo_sql} AS memo_count
             FROM {schema}.sub_ticket s
             JOIN {schema}.ticket t ON t.ticket_id = s.ticket_id
             JOIN ref.customer c ON c.customer_id = t.customer_id

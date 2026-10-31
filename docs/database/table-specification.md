@@ -512,6 +512,20 @@ sla_setting은 다른 표와 연결되지 않는 설정값 3행이라 그림에 
 | prompt_version | TEXT | | | 예: l4_draft_v3 |
 | input_tokens, output_tokens, llm_calls | INTEGER | | | 비용 계산용 |
 
+### 4-12. internal_note 내부 메모 (변경 add-internal-notes, 2026-10-31)
+
+상담원끼리 남기는 메모. 고객에게 보내지 않고 언어 모델 입력·실행 로그에도 넣지 않는다. 넣기만 한다(수정·삭제 API 없음).
+
+| 열 | 형식 | 필수 | 연결 | 설명 |
+|---|---|---|---|---|
+| note_id | BIGSERIAL | 필수 | PK | 자동 번호 |
+| ticket_id | TEXT | 필수 | FK svc.ticket | 어느 티켓의 메모인가(하위 문의가 아니라 티켓 단위) |
+| body | TEXT | 필수 | | 앞뒤 공백을 뺀 글자 수 1~2000 |
+| author | TEXT | 필수 | | 남긴 상담원(API 머리 `X-Agent-Id`) |
+| created_at_utc | TIMESTAMPTZ | 필수 | | 남긴 시각 |
+
+색인: `(ticket_id, created_at_utc)`.
+
 ### 4-11. 함수와 뷰
 
 | 이름 | 하는 일 |

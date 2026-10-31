@@ -613,6 +613,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tickets/{ticket_id}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Notes
+         * @description 메모를 시각순으로(오래된 것이 위).
+         */
+        get: operations["list_notes_tickets__ticket_id__notes_get"];
+        put?: never;
+        /**
+         * Add Note
+         * @description 메모 한 줄을 남긴다. 앞뒤 공백은 지우고, 비었거나 2000자를 넘으면 400.
+         */
+        post: operations["add_note_tickets__ticket_id__notes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/tickets/{ticket_id}/replies": {
         parameters: {
             query?: never;
@@ -1589,6 +1613,8 @@ export interface components {
             inquiry_subject: string | null;
             /** Language */
             language: string;
+            /** Memo Count */
+            memo_count: number;
             /** Needs Info */
             needs_info: boolean;
             /** Next Action */
@@ -1701,6 +1727,25 @@ export interface components {
             /** Source Draft Id */
             source_draft_id: number | null;
         };
+        /**
+         * Note
+         * @description 내부 메모(add-internal-notes). 고객에게 보내지 않는다.
+         */
+        Note: {
+            /** Author */
+            author: string;
+            /** Body */
+            body: string;
+            /**
+             * Created At Utc
+             * Format: date-time
+             */
+            created_at_utc: string;
+            /** Note Id */
+            note_id: number;
+            /** Ticket Id */
+            ticket_id: string;
+        };
         /** NoteDraftIn */
         NoteDraftIn: {
             /** Language */
@@ -1709,6 +1754,11 @@ export interface components {
             product_code?: string | null;
             /** Utterances */
             utterances: components["schemas"]["UtteranceIn"][];
+        };
+        /** NoteIn */
+        NoteIn: {
+            /** Body */
+            body: string;
         };
         /** PriorityIn */
         PriorityIn: {
@@ -3615,6 +3665,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Detail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_notes_tickets__ticket_id__notes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Note"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_note_tickets__ticket_id__notes_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-agent-id"?: string | null;
+            };
+            path: {
+                ticket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoteIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Note"];
                 };
             };
             /** @description Validation Error */

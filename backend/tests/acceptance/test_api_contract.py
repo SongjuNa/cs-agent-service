@@ -30,7 +30,8 @@ def test_ac_contract_1_every_api_has_named_response():
     # + 기준정보 보기 4(add-reference-views: /ref/documents, /ref/documents/{doc_id}, /ref/products/{product_code}, /ref/rules/{kind})
     # + 해결사례 검색 2(add-case-search: /cases, /cases/{case_id})
     # + 상담원 도우미 1(add-agent-assistant: /assist/ask)
-    assert sum(len(ops) for ops in spec["paths"].values()) == 37
+    # + 내부 메모 2(add-internal-notes: GET·POST /tickets/{id}/notes)
+    assert sum(len(ops) for ops in spec["paths"].values()) == 39
 
 
 def test_ac_contract_2_frontend_copy_is_current():

@@ -60,8 +60,12 @@ const columnsFor = (sel: Set<string>, toggle: (id: string) => void, pageAll: boo
   { key: "channel", header: "채널", render: (r) => (
     <span className="inbox-chan">{label(CHANNEL, r.channel)}{r.status === "NEW" && <span className="inbox-new" title="새로 접수되어 아직 처리를 시작하지 않은 문의입니다">NEW</span>}</span>
   ) },
-  { key: "subject", header: "문의", render: (r) => r.inquiry_subject
-    ? <span className="inbox-subject" title={r.inquiry_subject}>{r.inquiry_subject}</span> : <span className="sub">—</span> },
+  { key: "subject", header: "문의", render: (r) => (
+    <>
+      {r.inquiry_subject ? <span className="inbox-subject" title={r.inquiry_subject}>{r.inquiry_subject}</span> : <span className="sub">—</span>}
+      {r.memo_count > 0 && <span className="inbox-memo" title={`내부 메모 ${r.memo_count}건`}>메모 {r.memo_count}</span>}
+    </>
+  ) },
   { key: "received", header: "접수 시각", sortKey: "received_at", render: (r) => <span className="sub">{time(r.received_at_utc)}</span> },
   { key: "company", header: "고객사·등급", render: (r) => (
     <span className="inbox-co">

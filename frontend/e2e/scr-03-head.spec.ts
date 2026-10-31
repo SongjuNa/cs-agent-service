@@ -95,3 +95,29 @@ test("SCR-03-AC-25: 초안을 고치는 중에도 ⑤ 검증이 지적한 문장
   const after = (await card.locator(".ui-mk__ov mark").allInnerTexts()).join("");
   expect(after.includes(quote.slice(0, 20))).toBe(false);
 });
+
+test("SCR-03-AC-26 (최신 목업): 내부 메모를 남기면 남긴 사람과 함께 목록에 보이고, 접수함 줄에 '메모 n'이 붙으며, 초안에는 섞이지 않는다", async ({ page, request }) => {
+  const list = await (await request.get("http://localhost:8000/tickets?dept=TS_LV&size=200&include_closed=true")).json();
+  let id = "";
+  for (const r of list.rows) {
+    const d = await (await request.get(`http://localhost:8000/tickets/${r.ticket_id}`)).json();
+    if (!d.processing && d.run) { id = r.ticket_id; break; }
+  }
+  expect(id).not.toBe("");
+  const text = `시험 메모 ${Date.now()}`;
+  await useSession(page, { dept: "TS_LV", agent: "leo" });
+  await page.goto(`/tickets/${id}`);
+  const memo = page.getByRole("region", { name: "내부 메모" });
+  await expect(memo).toContainText("고객에게 보이지 않습니다");
+  await expect(memo.getByRole("button", { name: "메모 남기기" })).toBeDisabled(); // 비어 있으면 꺼짐
+  await memo.getByRole("textbox", { name: "내부 메모" }).fill(text);
+  await memo.getByRole("button", { name: "메모 남기기" }).click();
+  await expect(memo.getByTestId("memo-list")).toContainText(text);
+  await expect(memo.getByTestId("memo-list")).toContainText("leo");
+  await expect(memo.getByRole("textbox", { name: "내부 메모" })).toHaveValue(""); // 남기면 입력칸이 비워짐
+  // 고객에게 가는 초안·원문 칸에는 섞이지 않는다
+  await expect(page.getByRole("region", { name: "보낼 것" })).not.toContainText(text);
+  // 접수함 줄에 메모 개수가 붙는다
+  await page.goto(`/inbox?q=${id}&include_closed=true&m=0`);
+  await expect(page.locator("table.ui-table tbody tr.is-link").first().locator(".inbox-memo")).toContainText(/메모 \d+/);
+});

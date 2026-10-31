@@ -10,6 +10,7 @@ import { useDepartments } from "../../app/queries";
 import { inboxOrder } from "../inbox/inboxQuery";
 import { AlertBand, HeadCard, NowStrip } from "./HeadCard";
 import { HistoryTab } from "./HistoryTab";
+import { MemoCard } from "./MemoCard";
 import { FailPopup, SourcePopup, WhyPopup, type SourceTarget } from "./Popups";
 import { SendTab } from "./SendTab";
 import { SystemTab } from "./SystemTab";
@@ -129,10 +130,13 @@ export function TicketPage({ ticketId, agent, onBack, navigate }: { ticketId: st
       <AlertBand detail={detail} onShowSend={() => { scrollToSection("send"); setSendKind("INFO_REQUEST"); }} />
       <div className="tk-body">
         <div className="tk-cols">
-          <section id="tk-sec-customer" className="tk-sec" aria-label="고객이 보낸 것">
-            <h2 className="tk-sec__h">고객이 보낸 것</h2>
-            <CustomerTab detail={detail} />
-          </section>
+          <div className="tk-leftcol">
+            <section id="tk-sec-customer" className="tk-sec" aria-label="고객이 보낸 것">
+              <h2 className="tk-sec__h">고객이 보낸 것</h2>
+              <CustomerTab detail={detail} />
+            </section>
+            <MemoCard ticketId={ticketId} agent={agent} />
+          </div>
           <section id="tk-sec-send" className="tk-sec" aria-label="보낼 것">
             <h2 className="tk-sec__h">보낼 것</h2>
             {detail.processing ? processingPane : (
