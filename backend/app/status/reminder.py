@@ -2,7 +2,7 @@
 
 WAITING_CUSTOMER이고 마지막 정보 요청 발송 + 126시간이 지나도록 고객 회신이 없으면, 고정 문안 + 막는 항목 라벨로
 PROGRESS_NOTICE(REMINDER)를 바로 SENT(보낸 쪽 SYSTEM)로 쓴다. 상태와 1차 응답 시각은 그대로, 문의당 한 번.
-고객에게 가는 글 중 상담원 승인 없이 나가는 유일한 예외다(D32). 이 모듈은 언어 모델 호출 계층을 import하지 않는다.
+고객에게 가는 글 중 상담원 승인 없이 나가는 예외다(D32). 다른 하나는 자동 발송(status/autosend.py, 변경 add-auto-send). 이 모듈은 언어 모델 호출 계층을 import하지 않는다.
 """
 
 from __future__ import annotations

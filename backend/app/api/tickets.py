@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from datetime import datetime
 
@@ -20,8 +21,10 @@ from app.db.store import IntakeError, create_ticket, save_outcome, start_run, ti
 from app.pipeline.graph import RunOutcome, run_ticket
 from app.pipeline.reprocess import keep_agent_edits, reextract, reuse, with_dept_reply
 from app.pipeline.runlog import RunLog
+from app.status.autosend import auto_send_ticket
 
 router = APIRouter()
+log = logging.getLogger(__name__)
 
 
 class TicketIn(BaseModel):
@@ -74,6 +77,11 @@ def process_ticket(connect: Callable, clients: Clients, ticket_id: str, trigger:
             outcome = RunOutcome(None, "FAILED", error_type=getattr(exc, "error_type", "UNKNOWN"), message=str(exc),
                                  runlog=runlog)
         save_outcome(conn, run_id, ticket_id, outcome)
+        if outcome.run_status in ("SUCCESS", "PARTIAL"):  # 자동 발송(변경 add-auto-send): 실패해도 처리 결과는 그대로
+            try:
+                auto_send_ticket(conn, ticket_id)
+            except Exception:  # noqa: BLE001
+                log.exception("자동 발송 검토 실패: %s", ticket_id)
 
 
 def reprocess_reply(connect: Callable, clients: Clients, ticket_id: str, reply_id: int, target_ids: list[str]) -> None:

@@ -1,0 +1,15 @@
+/* SCR-12 자동 처리 규칙 */
+.auto { display: flex; flex-direction: column; gap: var(--sp-14); max-width: 900px; }
+.auto-card { display: flex; flex-direction: column; gap: var(--sp-10); padding: var(--sp-14) var(--sp-16); }
+.auto-card h3 { margin: 0; font-size: var(--fs-s); }
+.auto-row { display: flex; align-items: flex-start; gap: var(--sp-12); }
+.auto-grow { flex: 1; min-width: 0; }
+.auto-note { margin: 2px 0 0; font-size: var(--fs-xs); color: var(--color-fg-sub); line-height: 1.55; }
+.auto-stat { margin: 0; font-size: var(--fs-s); }
+.auto-sub { font-size: var(--fs-xs); font-weight: var(--fw-regular, 400); color: var(--color-fg-sub); }
+.auto-sw { display: inline-flex; align-items: center; gap: var(--sp-8); font-size: var(--fs-s); font-weight: var(--fw-semibold); white-space: nowrap; }
+.auto-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--sp-14); align-items: start; }
+@media (max-width: 900px) { .auto-grid { grid-template-columns: minmax(0, 1fr); } }
+.auto-rule { display: flex; align-items: center; gap: var(--sp-10); padding: var(--sp-8) 0; border-bottom: 1px solid var(--color-line); font-size: var(--fs-s); }
+.auto-rule.is-locked { color: var(--color-fg-sub); }
+.auto-criteria { margin: 0; padding-left: 18px; line-height: 1.9; font-size: var(--fs-s); }

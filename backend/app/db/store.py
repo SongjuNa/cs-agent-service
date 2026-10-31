@@ -1,7 +1,7 @@
 """접수와 처리 결과 저장 (기술 명세서 v1.4 §2-4, §6-2, §7, 테이블 정의서 v1.3).
 
 - 원문은 그대로 저장하고 메시지에 가린 곳 수(mask_count)만 남긴다. 실행 기록(agent_step)에는 가린 글만 넣는다.
-- 고객에게 가는 글은 DRAFT로만 저장한다(CLAUDE.md 규칙 3). SENT는 승인 API(send_draft)만 쓴다.
+- 고객에게 가는 글은 DRAFT로만 저장한다(CLAUDE.md 규칙 3). SENT는 send_draft만 쓴다: 상담원 승인 API, 그리고 자동 발송(status/autosend.py, auto=True)뿐이다.
 - 고객 회신 재처리(reply_id)는 새 제공 항목만 넣고, 이전 초안을 밀어내고, 조정값을 지킨다(FR-032, FR-011 예외 3행).
 """
 
@@ -644,12 +644,13 @@ DEPT_MAIL_TRANSITION = ("IN_PROGRESS", "DEPT_MAIL_SENT")  # 예외 부서 메일
 
 
 def send_draft(conn: Connection, draft: dict[str, Any], final_body: str, agent_id: str, override: bool,
-               expected_version: int | None = None) -> tuple[int, str | None]:
+               expected_version: int | None = None, auto: bool = False) -> tuple[int, str | None]:
     """SENT 행을 새로 쓰고 초안을 APPROVED로, 처음이면 1차 응답 시각(FR-031 처리 3·5), 상태 전이(처리 4).
 
     (SENT 행 번호, 전이가 거부됐을 때의 안내)를 돌려준다.
     - 다른 사람이 먼저 바꿨으면(version 다름) ConcurrentChange, 아무것도 쓰지 않는다(FR-025 예외 2행).
     - 전이표에 없는 전이면 발송 기록은 남기고 상태는 그대로, 실행 로그를 남긴다(FR-031 예외 3행).
+    - auto면 보내는 쪽이 SYSTEM, 이름 AI_AUTO(변경 add-auto-send, 자동 발송). 상담원 발송과 같은 전이·기록을 쓴다.
     """
     now = _now()
     _, mask_count = mask_text(final_body)
@@ -665,7 +666,7 @@ def send_draft(conn: Connection, draft: dict[str, Any], final_body: str, agent_i
             """INSERT INTO svc.ticket_message (ticket_id, sub_ticket_id, sender, message_type, message_status, sent_at_utc,
                    language, body, source_draft_id, edited_yn, sent_by_name, override_check, mask_count)
                VALUES (%s, %s, %s, %s, 'SENT', %s, %s, %s, %s, %s, %s, %s, %s) RETURNING message_id""",
-            (draft["ticket_id"], draft["sub_ticket_id"], "DEPT" if dept else "AGENT", draft["message_type"], now, draft["language"], final_body,
+            (draft["ticket_id"], draft["sub_ticket_id"], "DEPT" if dept else ("SYSTEM" if auto else "AGENT"), draft["message_type"], now, draft["language"], final_body,
              draft["message_id"], final_body != draft["body"], agent_id, override, mask_count),
         ).fetchone()
         conn.execute("UPDATE svc.ticket_message SET message_status = 'APPROVED' WHERE message_id = %s", (draft["message_id"],))

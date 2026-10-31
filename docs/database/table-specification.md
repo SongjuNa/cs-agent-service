@@ -15,13 +15,13 @@
 |---|---|---|---|---|
 | ref | 기준정보·규칙표(ref/*.csv 12개) 23개 + 문서 목록(document) + 문서 검색 청크(doc_chunk) | 25 | 적재 작업만 쓴다. 서비스와 채점은 읽기만 | §2 |
 | gold | 운영진 정답지 원본: tickets.csv 4,000건, resolution_cases.csv 800건 | 2 + 뷰 1 | 서비스는 `v_inputs`(입력 열)만 읽는다 | §3 |
-| svc | 서비스 표 | 11 + 함수 2 + 뷰 2 | 서비스 | §4 |
+| svc | 서비스 표(처음 11개 + 최신 목업 반영으로 4개: internal_note, assignment_history, auto_setting, auto_review) | 15 + 함수 2 + 뷰 2 | 서비스 | §4 |
 | scoring | svc와 같은 모양. 채점 배치 전용 | 11 | 채점 배치(개발 작업)만 | §5 |
 | eval | 팀 정답지, 채점 결과, 자체 검사, 상담원 기록 | 8 | 채점 배치, 서비스(self_check), 여유 시 기능 | §6 |
 
 **정답지 격리(D30).** 학습용·검증용·평가용 구분(data_split)은 쓰지 않는다. 운영진 데이터 4,000건은 서비스 이력·시연·팀 정답지의 재료로 모두 쓴다. 대신 **팀 정답지(`eval.gold_set`)에 들어간 문의는 svc의 시연 이력, 유사 사례 색인(FR-019), few-shot 예시에 넣지 않는다.** 거르는 방법은 하나로 통일한다: `eval.gold_set.source_ticket_id`와 맞대 본다. 서비스는 gold의 정답 열을 읽지 않고, 입력 열만 `gold.v_inputs`로 읽는다.
 
-**고객 메시지 승인(D32).** 고객에게 나가는 메시지의 발송 행(SENT)은 상담원 승인 API와 126시간 리마인드 스케줄러 두 곳만 쓴다. 자동 발송은 없으므로 자동 발송 전이와 보류 열도 두지 않는다.
+**고객 메시지 승인(D32, 변경 add-auto-send로 바뀜).** 고객에게 나가는 메시지의 발송 행(SENT)은 상담원 승인 API, 126시간 리마인드 스케줄러, **자동 발송**(§4-14, 검증을 통과한 간단한 문의의 최종 답변을 SYSTEM이 AI_AUTO 이름으로 보냄) 세 곳이 쓴다. 자동 발송 전용 전이와 보류 열은 두지 않고 상담원 발송과 같은 전이를 행위자만 AI_AUTO로 쓴다.
 
 **여유 시 기능 표.** eval의 agent_feedback(FR-043)·prompt_example(FR-046)과 ticket_message.notice_transition의 진행 안내 4값(FR-048)은 여유 시 기능용이다. 표는 지금 만들어 두고 MVP 코드는 쓰지 않는다(기술 명세서 T41).
 
@@ -542,6 +542,31 @@ sla_setting은 다른 표와 연결되지 않는 설정값 3행이라 그림에 
 | changed_at_utc | TIMESTAMPTZ | 필수 | | 바꾼 시각 |
 
 색인: `(sub_ticket_id, changed_at_utc)`.
+
+### 4-14. auto_setting 자동 처리 설정 / auto_review 자동 발송 사후 검수 (변경 add-auto-send, 2026-10-31)
+
+**규칙 3·D32 변경.** 검증을 통과한 간단한 문의의 최종 답변을 상담원 승인 없이 보낸다. 판정은 코드(`rules/autosend.py`)가 하고, 아래 두 표는 설정과 검수 기록만 둔다.
+
+`auto_setting` (설정, 지금은 `rules` 한 행)
+
+| 열 | 형식 | 필수 | 연결 | 설명 |
+|---|---|---|---|---|
+| key | TEXT | 필수 | PK | 설정 이름. 지금은 `rules` |
+| value | JSONB | 필수 | | `{enabled, cats{유형:bool}, channels{채널:bool}}`. 행이 없으면 코드 기본값(켜짐 여부는 환경 변수 AUTO_SEND_DEFAULT) |
+| updated_by | TEXT | 필수 | | 바꾼 상담원 |
+| updated_at_utc | TIMESTAMPTZ | 필수 | | 바꾼 시각 |
+
+항상 사람이 확인하는 유형(DEFECT·INSTALL·RETURN·WARRANTY·QUOTE·ORDER_LEAD)은 설정에 있어도 코드가 무시하고 저장 요청은 거부한다.
+
+`auto_review` (사후 검수, 넣기만 한다)
+
+| 열 | 형식 | 필수 | 연결 | 설명 |
+|---|---|---|---|---|
+| message_id | BIGINT | 필수 | PK, FK svc.ticket_message | 자동 발송된 SENT 메시지. 행이 있으면 검수 완료 |
+| reviewed_by | TEXT | 필수 | | 검수한 상담원 |
+| reviewed_at_utc | TIMESTAMPTZ | 필수 | | 검수한 시각 |
+
+`ticket_message` 제약 변경: `ticket_message_kind_combo`에 "FINAL_REPLY, SENT, 보낸 쪽 SYSTEM, 이름 AI_AUTO, notice_transition 없음"을 허용하는 절을 더했다(svc·scoring 모두). 자동 발송 메시지는 이 조합으로 식별한다. 상태 전이는 상담원 발송과 같은 `FINAL_REPLY_SENT`를 행위자 `AI_AUTO`로 쓴다(`transition()`은 행위자를 기록만 한다).
 
 ### 4-11. 함수와 뷰
 

@@ -21,6 +21,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auto-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Rules
+         * @description 자동 처리 설정과 지금까지 자동 발송한 건수.
+         */
+        get: operations["get_rules_auto_rules_get"];
+        /**
+         * Put Rules
+         * @description 설정을 저장한다. 항상 사람이 확인하는 유형을 자동 대상으로 바꾸려 하면 400.
+         */
+        put: operations["put_rules_auto_rules_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/calls/note-draft": {
         parameters: {
             query?: never;
@@ -548,6 +572,26 @@ export interface paths {
         patch: operations["patch_sub_ticket_sub_tickets__sub_ticket_id__patch"];
         trace?: never;
     };
+    "/sub-tickets/{sub_ticket_id}/auto-review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post Review
+         * @description 자동 발송된 문의의 사후 검수를 끝냈다고 기록한다(한 번만).
+         */
+        post: operations["post_review_sub_tickets__sub_ticket_id__auto_review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/sub-tickets/{sub_ticket_id}/dept-mail": {
         parameters: {
             query?: never;
@@ -959,6 +1003,72 @@ export interface components {
             section_no: string;
             /** Title */
             title: string;
+        };
+        /** AutoReviewed */
+        AutoReviewed: {
+            /** Message Id */
+            message_id: number;
+            /**
+             * Reviewed At Utc
+             * Format: date-time
+             */
+            reviewed_at_utc: string;
+            /** Reviewed By */
+            reviewed_by: string;
+            /** Sub Ticket Id */
+            sub_ticket_id: string;
+        };
+        /** AutoRules */
+        AutoRules: {
+            /** Always Human */
+            always_human: string[];
+            /** Auto Cats */
+            auto_cats: string[];
+            /** Category Names */
+            category_names: {
+                [key: string]: string;
+            };
+            /** Cats */
+            cats: {
+                [key: string]: boolean;
+            };
+            /** Channel List */
+            channel_list: string[];
+            /** Channels */
+            channels: {
+                [key: string]: boolean;
+            };
+            /** Enabled */
+            enabled: boolean;
+            stats: components["schemas"]["AutoStats"];
+        };
+        /** AutoRulesIn */
+        AutoRulesIn: {
+            /**
+             * Cats
+             * @default {}
+             */
+            cats: {
+                [key: string]: boolean;
+            };
+            /**
+             * Channels
+             * @default {}
+             */
+            channels: {
+                [key: string]: boolean;
+            };
+            /** Enabled */
+            enabled: boolean;
+        };
+        /** AutoStats */
+        AutoStats: {
+            /** Auto Pending */
+            auto_pending: number;
+            /** Auto Total */
+            auto_total: number;
+            /** Total */
+            total: number;
         };
         /** BodyIn */
         BodyIn: {
@@ -2874,6 +2984,61 @@ export interface operations {
             };
         };
     };
+    get_rules_auto_rules_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutoRules"];
+                };
+            };
+        };
+    };
+    put_rules_auto_rules_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-agent-id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutoRulesIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutoRules"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     note_draft_calls_note_draft_post: {
         parameters: {
             query?: never;
@@ -3710,6 +3875,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EditAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_review_sub_tickets__sub_ticket_id__auto_review_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-agent-id"?: string | null;
+            };
+            path: {
+                sub_ticket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutoReviewed"];
                 };
             };
             /** @description Validation Error */

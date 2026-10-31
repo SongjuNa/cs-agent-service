@@ -684,6 +684,152 @@
         "title": "AssistSource",
         "type": "object"
       },
+      "AutoReviewed": {
+        "properties": {
+          "message_id": {
+            "title": "Message Id",
+            "type": "integer"
+          },
+          "reviewed_at_utc": {
+            "format": "date-time",
+            "title": "Reviewed At Utc",
+            "type": "string"
+          },
+          "reviewed_by": {
+            "title": "Reviewed By",
+            "type": "string"
+          },
+          "sub_ticket_id": {
+            "title": "Sub Ticket Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sub_ticket_id",
+          "message_id",
+          "reviewed_by",
+          "reviewed_at_utc"
+        ],
+        "title": "AutoReviewed",
+        "type": "object"
+      },
+      "AutoRules": {
+        "properties": {
+          "always_human": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Always Human",
+            "type": "array"
+          },
+          "auto_cats": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Auto Cats",
+            "type": "array"
+          },
+          "category_names": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Category Names",
+            "type": "object"
+          },
+          "cats": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Cats",
+            "type": "object"
+          },
+          "channel_list": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Channel List",
+            "type": "array"
+          },
+          "channels": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Channels",
+            "type": "object"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/AutoStats"
+          }
+        },
+        "required": [
+          "enabled",
+          "cats",
+          "channels",
+          "always_human",
+          "auto_cats",
+          "channel_list",
+          "category_names",
+          "stats"
+        ],
+        "title": "AutoRules",
+        "type": "object"
+      },
+      "AutoRulesIn": {
+        "properties": {
+          "cats": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "default": {},
+            "title": "Cats",
+            "type": "object"
+          },
+          "channels": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "default": {},
+            "title": "Channels",
+            "type": "object"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "AutoRulesIn",
+        "type": "object"
+      },
+      "AutoStats": {
+        "properties": {
+          "auto_pending": {
+            "title": "Auto Pending",
+            "type": "integer"
+          },
+          "auto_total": {
+            "title": "Auto Total",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "auto_total",
+          "auto_pending",
+          "total"
+        ],
+        "title": "AutoStats",
+        "type": "object"
+      },
       "BodyIn": {
         "properties": {
           "body": {
@@ -7365,6 +7511,80 @@
         "summary": "Ask"
       }
     },
+    "/auto-rules": {
+      "get": {
+        "description": "자동 처리 설정과 지금까지 자동 발송한 건수.",
+        "operationId": "get_rules_auto_rules_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutoRules"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Rules"
+      },
+      "put": {
+        "description": "설정을 저장한다. 항상 사람이 확인하는 유형을 자동 대상으로 바꾸려 하면 400.",
+        "operationId": "put_rules_auto_rules_put",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-agent-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Agent-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutoRulesIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutoRules"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Rules"
+      }
+    },
     "/calls/note-draft": {
       "post": {
         "description": "[메모 다시 만들기]: 앞 응답의 받아쓴 글로 L10 → 값 대조만 다시 한다(§12-5).",
@@ -8752,6 +8972,62 @@
           }
         },
         "summary": "Patch Sub Ticket"
+      }
+    },
+    "/sub-tickets/{sub_ticket_id}/auto-review": {
+      "post": {
+        "description": "자동 발송된 문의의 사후 검수를 끝냈다고 기록한다(한 번만).",
+        "operationId": "post_review_sub_tickets__sub_ticket_id__auto_review_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sub_ticket_id",
+            "required": true,
+            "schema": {
+              "title": "Sub Ticket Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-agent-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Agent-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutoReviewed"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Review"
       }
     },
     "/sub-tickets/{sub_ticket_id}/dept-mail": {
