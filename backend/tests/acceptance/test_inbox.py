@@ -97,17 +97,22 @@ def ts_lv(c, **kw):
 
 
 def test_ac_029_1_ts_lv_snapshot(snapshot):
-    """AC-029-1: 스냅샷 TS_LV → 67건, 맨 위는 경고가 있고 남은 시간이 가장 적다."""
+    """AC-029-1: 스냅샷 TS_LV → 67건. 기본 정렬은 내 차례 묶음이 먼저이고(add-inbox-turn-depth), 묶음 안에서
+    맨 위는 경고가 있고 남은 시간이 가장 적다."""
     got = ts_lv(snapshot)
     rows = got["rows"]
     assert got["counts"]["total"] == len(rows) == 67
-    alerted = [r for r in rows if r["alerts"]]
-    top = rows[0]
-    assert top["alerts"] and top["remaining_h"] == min(r["remaining_h"] for r in alerted)
-    # 경고 줄이 모두 위, 그 안에서 남은 시간 오름차순(FR-027 처리 5)
-    assert rows[:len(alerted)] == alerted
-    assert [r["remaining_h"] for r in alerted] == sorted(r["remaining_h"] for r in alerted)
-    assert got["counts"]["alert"] == len(alerted)
+    assert got["counts"]["alert"] == sum(bool(r["alerts"]) for r in rows)
+    mine = [r for r in rows if r["turn"] == "ME"]
+    assert rows[:len(mine)] == mine  # 내 차례 묶음이 맨 위
+    for turn in ("ME", "DEPT", "CUSTOMER", "DONE"):
+        group = [r for r in rows if r["turn"] == turn]
+        alerted = [r for r in group if r["alerts"]]
+        if not alerted:
+            continue
+        # 묶음 안에서 경고 줄이 위, 그 안에서 남은 시간 오름차순(FR-027 처리 5)
+        assert group[:len(alerted)] == alerted
+        assert [r["remaining_h"] for r in alerted] == sorted(r["remaining_h"] for r in alerted)
 
 
 def test_escalated_rows_join_inbox(snapshot):
@@ -163,7 +168,9 @@ def test_sort_page_and_no_target(snapshot):
     snapshot.execute("UPDATE scoring.sub_ticket SET sla_resolution_target_h = NULL, sla_first_response_target_h = NULL "
                      "WHERE sub_ticket_id = %s", (target,))
     rows = ts_lv(snapshot)["rows"]
-    assert rows[-1]["sub_ticket_id"] == target and rows[-1]["remaining_h"] is None
+    # 기본 정렬은 내 차례 묶음이 먼저라(add-inbox-turn-depth), SLA 미정 줄은 자기 묶음의 맨 아래다
+    group = [r for r in rows if r["turn"] == next(x["turn"] for x in rows if x["sub_ticket_id"] == target)]
+    assert group[-1]["sub_ticket_id"] == target and group[-1]["remaining_h"] is None
 
 
 
@@ -180,3 +187,33 @@ def test_counts_new_escalated_breach_risk(snapshot):
     assert c["escalated"] == sum(r["status"] == "ESCALATED" for r in rows)
     assert all("country" in r and "inquiry_subject" in r for r in rows)
     assert any(r["country"] for r in rows)  # 문의 제목은 채점용 재생 데이터에 비어 있어 칸이 있는지만 본다
+
+
+def test_inbox_turn_sql_matches_rules(snapshot):
+    """add-inbox-turn-depth: SQL로 옮긴 규칙이 app/rules/turn.py의 순수 함수와 모든 줄에서 같다. 기본 정렬은 내 차례 묶음이 먼저다."""
+    from app.rules.turn import TURN_RANK, depth_of, turn_of
+
+    got = ts_lv(snapshot, include_closed=True)
+    rows = got["rows"]
+    assert rows
+    for r in rows:
+        assert (r["turn"], r["next_action"]) == turn_of(r["status"], r["needs_info"], r["has_unsent_draft"], r["dept_replied"]), r["sub_ticket_id"]
+        assert r["review_depth"] == depth_of(r["priority"], r["urgency_flag"], r["needs_info"]), r["sub_ticket_id"]
+    ranks = [TURN_RANK[r["turn"]] for r in rows]
+    assert ranks == sorted(ranks)  # ME → DEPT·CUSTOMER → DONE
+    assert got["counts"]["turn_me"] == sum(r["turn"] == "ME" for r in rows)
+
+
+def test_inbox_assignee_turn_depth_filters(snapshot):
+    """담당·차례·검토 모드 필터와 counts.mine."""
+    allrows = ts_lv(snapshot)["rows"]
+    name = next(r["assignee_masked"] for r in allrows if r["assignee_masked"])
+    mine = ts_lv(snapshot, assignee=name, me=name)
+    assert mine["rows"] and all(r["assignee_masked"] == name for r in mine["rows"])
+    assert mine["counts"]["mine"] == mine["counts"]["total"] == len(mine["rows"])
+    team = ts_lv(snapshot, me=name)
+    assert team["counts"]["mine"] == len(mine["rows"]) and team["counts"]["total"] > team["counts"]["mine"]
+    me_rows = ts_lv(snapshot, turn=["ME"])["rows"]
+    assert me_rows and all(r["turn"] == "ME" for r in me_rows)
+    deep = ts_lv(snapshot, depth=["DEEP"])
+    assert deep["counts"]["deep"] == len(deep["rows"]) and all(r["review_depth"] == "DEEP" for r in deep["rows"])

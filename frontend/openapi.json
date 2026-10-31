@@ -2843,12 +2843,20 @@
             "title": "Breach",
             "type": "integer"
           },
+          "deep": {
+            "title": "Deep",
+            "type": "integer"
+          },
           "escalated": {
             "title": "Escalated",
             "type": "integer"
           },
           "has_draft": {
             "title": "Has Draft",
+            "type": "integer"
+          },
+          "mine": {
+            "title": "Mine",
             "type": "integer"
           },
           "needs_info": {
@@ -2867,6 +2875,10 @@
             "title": "Total",
             "type": "integer"
           },
+          "turn_me": {
+            "title": "Turn Me",
+            "type": "integer"
+          },
           "waiting": {
             "title": "Waiting",
             "type": "integer"
@@ -2881,7 +2893,10 @@
           "new",
           "escalated",
           "breach",
-          "risk"
+          "risk",
+          "mine",
+          "turn_me",
+          "deep"
         ],
         "title": "InboxCounts",
         "type": "object"
@@ -3015,6 +3030,10 @@
             "title": "Needs Info",
             "type": "boolean"
           },
+          "next_action": {
+            "title": "Next Action",
+            "type": "string"
+          },
           "priority": {
             "anyOf": [
               {
@@ -3096,6 +3115,10 @@
             ],
             "title": "Res Status"
           },
+          "review_depth": {
+            "title": "Review Depth",
+            "type": "string"
+          },
           "seq": {
             "title": "Seq",
             "type": "integer"
@@ -3110,6 +3133,10 @@
           },
           "ticket_id": {
             "title": "Ticket Id",
+            "type": "string"
+          },
+          "turn": {
+            "title": "Turn",
             "type": "string"
           },
           "urgency_flag": {
@@ -3147,7 +3174,10 @@
           "alerts",
           "needs_info",
           "has_unsent_draft",
-          "reminder_sent"
+          "reminder_sent",
+          "turn",
+          "next_action",
+          "review_depth"
         ],
         "title": "InboxRow",
         "type": "object"
@@ -8153,7 +8183,7 @@
     },
     "/tickets": {
       "get": {
-        "description": "접수함(FR-029, §8-1). 여러 값은 쉼표로(status=NEW,IN_PROGRESS).",
+        "description": "접수함(FR-029, §8-1). 여러 값은 쉼표로(status=NEW,IN_PROGRESS).\n\nassignee: 담당 상담원 이름, turn: ME·DEPT·CUSTOMER·DONE, depth: DEEP·NORMAL·QUICK,\nme: counts.mine을 셀 상담원 이름(변경 add-inbox-turn-depth).",
         "operationId": "list_tickets_tickets_get",
         "parameters": [
           {
@@ -8345,6 +8375,70 @@
                 }
               ],
               "title": "As Of"
+            }
+          },
+          {
+            "in": "query",
+            "name": "assignee",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Assignee"
+            }
+          },
+          {
+            "in": "query",
+            "name": "turn",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Turn"
+            }
+          },
+          {
+            "in": "query",
+            "name": "depth",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Depth"
+            }
+          },
+          {
+            "in": "query",
+            "name": "me",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Me"
             }
           }
         ],

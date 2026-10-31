@@ -36,11 +36,15 @@
 
 목업 문구 그대로 "조건은 팀 제안안이라 조장이 확정하면 이 규칙만 고치면 된다".
 
-- **DEEP**: `urgency_flag`가 NONE이 아님, 또는 `priority = P1`, 또는 이관 후보가 있음(`ref` 라우팅 규칙에 이 문의 유형·제품군의 `ESCALATION` 행이 있음).
+- **DEEP**: `urgency_flag`가 SAFETY·SITE_DOWN(목업 `isUrgent`), 또는 `priority = P1`. 목업의 "이관 후보 있음"은 고장 진단(실행 기록)의 RMA·출동 필요 값에 의존해 1차에서 뺐다(2차).
 - **QUICK**: DEEP이 아니고, 막는 정보 누락 없고, `priority`가 P3·P4.
 - **NORMAL**: 그 밖.
 - 목업은 "검토 표시 ①②③ 걸림", "AI 분류 신뢰도 낮음"도 DEEP 조건으로 쓴다. 서버에서 이 값이 어디에 저장되는지(실행 기록 단계인지)는 확인하지 못했다. 1차에는 넣지 않고, 확인 뒤 같은 함수에 조건만 더한다.
 - 규칙 코드는 `backend/app/rules/turn.py`의 순수 함수(`turn_of`, `depth_of`)로 두고, SQL에서 한 번에 계산하지 않고 줄을 읽은 뒤 파이썬에서 붙인다(규칙을 시험하기 쉽게).
+
+### 4-1. SQL과 규칙 함수
+
+필터·정렬·쪽 나누기가 SQL에서 일어나서 같은 규칙을 `db/inbox.py`의 `TURN_SQL` 등으로 한 번 더 적었다. 두 쪽이 같은지는 `test_inbox_turn_sql_matches_rules`가 모든 줄에서 비교한다. 규칙을 고칠 때는 두 곳을 함께 고친다.
 
 ### 5. 시험
 

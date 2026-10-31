@@ -565,6 +565,9 @@ export interface paths {
         /**
          * List Tickets
          * @description 접수함(FR-029, §8-1). 여러 값은 쉼표로(status=NEW,IN_PROGRESS).
+         *
+         *     assignee: 담당 상담원 이름, turn: ME·DEPT·CUSTOMER·DONE, depth: DEEP·NORMAL·QUICK,
+         *     me: counts.mine을 셀 상담원 이름(변경 add-inbox-turn-depth).
          */
         get: operations["list_tickets_tickets_get"];
         put?: never;
@@ -1463,10 +1466,14 @@ export interface components {
             alert: number;
             /** Breach */
             breach: number;
+            /** Deep */
+            deep: number;
             /** Escalated */
             escalated: number;
             /** Has Draft */
             has_draft: number;
+            /** Mine */
+            mine: number;
             /** Needs Info */
             needs_info: number;
             /** New */
@@ -1475,6 +1482,8 @@ export interface components {
             risk: number;
             /** Total */
             total: number;
+            /** Turn Me */
+            turn_me: number;
             /** Waiting */
             waiting: number;
         };
@@ -1514,6 +1523,8 @@ export interface components {
             language: string;
             /** Needs Info */
             needs_info: boolean;
+            /** Next Action */
+            next_action: string;
             /** Priority */
             priority: string | null;
             /** Priority Adjusted */
@@ -1533,6 +1544,8 @@ export interface components {
             reminder_sent: boolean;
             /** Res Status */
             res_status: string | null;
+            /** Review Depth */
+            review_depth: string;
             /** Seq */
             seq: number;
             /** Status */
@@ -1541,6 +1554,8 @@ export interface components {
             sub_ticket_id: string;
             /** Ticket Id */
             ticket_id: string;
+            /** Turn */
+            turn: string;
             /** Urgency Flag */
             urgency_flag: string;
         };
@@ -3407,6 +3422,10 @@ export interface operations {
                 size?: number;
                 sort?: string | null;
                 as_of?: string | null;
+                assignee?: string | null;
+                turn?: string | null;
+                depth?: string | null;
+                me?: string | null;
             };
             header?: never;
             path?: never;
