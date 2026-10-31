@@ -64,9 +64,10 @@ def excluded_ids(conn: Connection) -> list[str]:
     return sorted(set(TEAM_GOLD_5) | {r[0] for r in rows})
 
 
-def read_demo(conn: Connection) -> list[tuple[Gold, dict]]:
+def read_demo(conn: Connection, statuses: tuple[str, ...] = OPEN) -> list[tuple[Gold, dict]]:
+    """정답지에서 이 상태인 문의를 읽는다. 처음에는 미해결(OPEN)만, 변경 add-dashboard-history는 해결·종료도 쓴다."""
     out = []
-    for r in conn.execute(DEMO_SQL, (list(OPEN), excluded_ids(conn))).fetchall():
+    for r in conn.execute(DEMO_SQL, (list(statuses), excluded_ids(conn))).fetchall():
         g = Gold(*r[:23])
         (body_language, locale, contact, subject, product, urgency, error_code, fw, rule, adjusted, routing, dept,
          escalated_to, required, provided, missing, blocking, info_message, final_reply) = r[23:]
@@ -130,17 +131,19 @@ def replay_one(conn: Connection, g: Gold, x: dict) -> None:
                  (g.first_response, sub_id))
 
 
-def replay(conn: Connection) -> dict[str, int]:
-    """svc에 없는 미해결 문의만 넣는다. 호출하는 쪽 트랜잭션 안에서 돈다."""
+def replay(conn: Connection, statuses: tuple[str, ...] = OPEN, limit: int | None = None) -> dict[str, int]:
+    """svc에 없는 문의만 넣는다(기본은 미해결). 호출하는 쪽 트랜잭션 안에서 돈다.
+
+    limit이 있으면 그 건수까지만 넣는다(많은 건을 나눠 넣을 때). 돌려주는 값: target = 정답지에서 읽은 건수,
+    skipped = 이미 svc에 있어 건너뛴 건수, added = 이번에 넣은 건수.
+    """
     have = {r[0] for r in conn.execute("SELECT ticket_id FROM svc.ticket").fetchall()}
-    rows = read_demo(conn)
-    added = 0
-    for g, x in rows:
-        if g.ticket_id in have:
-            continue
+    rows = read_demo(conn, statuses)
+    pending = [(g, x) for g, x in rows if g.ticket_id not in have]
+    for g, x in pending[:limit]:
         replay_one(conn, g, x)
-        added += 1
-    return {"target": len(rows), "added": added, "skipped": len(rows) - added}
+    added = len(pending) if limit is None else min(limit, len(pending))
+    return {"target": len(rows), "added": added, "skipped": len(rows) - len(pending)}
 
 
 def main() -> None:
