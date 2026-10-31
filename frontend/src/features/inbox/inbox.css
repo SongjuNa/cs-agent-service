@@ -27,7 +27,7 @@
 .inbox-card .sub { color: var(--color-fg-sub); }
 .inbox-card .neg-t { color: var(--color-neg); }
 .inbox-co { display: inline-flex; align-items: center; gap: var(--sp-6); }
-.inbox-co__name { max-width: 170px; overflow: hidden; text-overflow: ellipsis; }
+.inbox-co__name { max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
 .inbox-chips { display: inline-flex; gap: var(--sp-4); }
 .inbox-p1dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--color-danger-solid); margin-right: var(--sp-6); vertical-align: middle; }
 
@@ -63,10 +63,10 @@
 .inbox-newchip svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; }
 .inbox-chan { display: flex; margin-top: 2px; font-size: var(--fs-xs); color: var(--color-fg-sub); }
 .inbox-sub2 { display: block; margin-top: 2px; font-size: var(--fs-xs); color: var(--color-fg-sub); }
-.inbox-subject { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; max-width: 340px; font-weight: var(--fw-medium); }
+.inbox-subject { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; max-width: 280px; font-weight: var(--fw-medium); }
 .inbox-co { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
 .inbox-co__meta { display: inline-flex; gap: var(--sp-6); font-size: var(--fs-xs); }
 .inbox-tier { font-weight: var(--fw-bold); letter-spacing: 0.02em; }
 .inbox-chips { flex-wrap: wrap; }
-.inbox-chips { flex-wrap: wrap; align-items: center; max-width: 250px; }
+.inbox-chips { flex-wrap: wrap; align-items: center; max-width: 150px; }
 .inbox-more { font-size: var(--fs-xs); color: var(--color-fg-sub); }

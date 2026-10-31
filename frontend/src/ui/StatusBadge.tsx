@@ -57,6 +57,14 @@ export function PriorityBadge({ priority, adjusted = false }: { priority: string
 }
 
 /** 남은 시간 표시(FR-029 출력): "36.2h", 넘었으면 "−12.5h", 대기 중 "멈춤", 값 없음 "SLA 미정" */
+/** 기한까지 남은(넘긴) 시간을 말로: "6일 10시간 초과", "2시간 남음", "37시간 12분 남음"(목업 fmtLeft) */
+export function formatLeft(hours: number): string {
+  const a = Math.abs(hours);
+  const min = Math.round((a % 1) * 60) % 60;
+  const span = a >= 48 ? `${Math.floor(a / 24)}일 ${Math.floor(a % 24)}시간` : a >= 1 ? `${Math.floor(a)}시간${min ? ` ${min}분` : ""}` : `${Math.max(1, Math.round(a * 60))}분`;
+  return `${span} ${hours < 0 ? "초과" : "남음"}`;
+}
+
 export function formatRemaining(hours: number | null | undefined, paused = false): string {
   if (paused) return "멈춤";
   if (hours === null || hours === undefined) return "SLA 미정";

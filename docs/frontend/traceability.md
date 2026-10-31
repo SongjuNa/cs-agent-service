@@ -10,7 +10,7 @@
 |---|---|---|---|---|
 | SCR-00 공통 틀 | [SCR-00](screens/SCR-00-shell.md) | 7 | 7 | |
 | SCR-01 접수 시뮬레이터 | [SCR-01](screens/SCR-01-intake-simulator.md) | 6 | 6 | |
-| SCR-02 접수함 | [SCR-02](screens/SCR-02-inbox.md) | 14 | 14 | |
+| SCR-02 접수함 | [SCR-02](screens/SCR-02-inbox.md) | 15 | 15 | |
 | SCR-03 티켓 상세 | [SCR-03](screens/SCR-03-ticket-detail.md) | 29 | 29 | AC-22~29는 `scr-03-head.spec.ts`. AC-29(번역)는 번역 호출만 흉내 냄(Gemini) |
 | SCR-04 나의 업무 현황 | [SCR-04](screens/SCR-04-my-work.md) | 11 | 11 | |
 | SCR-05 전화 상담 | [SCR-05](screens/SCR-05-phone.md) | 6 | 6 | |

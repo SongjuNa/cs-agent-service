@@ -27,6 +27,8 @@ export interface DataTableProps<Row> {
   faded?: (row: Row) => boolean;
   /** 강조할 행(예: 「왜?」에서 연 규칙 행) */
   marked?: (row: Row) => boolean;
+  /** 지금 가장 급한 행(왼쪽에 붉은 줄) */
+  hot?: (row: Row) => boolean;
   caption?: string;
   /** 이전 행과 묶음이 바뀌는 행 앞에 묶음 머리 줄을 넣는다(없으면 null). 접수함 "내가 처리할 문의" 등 */
   groupHeader?: (row: Row, prev: Row | undefined) => ReactNode | null;
@@ -40,7 +42,7 @@ export function nextSort(current: string | undefined, key: string): string | und
 }
 
 export function DataTable<Row>({
-  columns, rows, rowKey, onRowClick, sort, onSortChange, loading = false, stale = false, empty, faded, marked, caption, groupHeader,
+  columns, rows, rowKey, onRowClick, sort, onSortChange, loading = false, stale = false, empty, faded, marked, hot, caption, groupHeader,
 }: DataTableProps<Row>) {
   const arrow = (key?: string) => (key && sort === key ? " ▲" : key && sort === `-${key}` ? " ▼" : "");
   const ariaSort = (key?: string) => (key && sort === key ? "ascending" : key && sort === `-${key}` ? "descending" : undefined);
@@ -78,7 +80,7 @@ export function DataTable<Row>({
                   <tr className="ui-table__group"><td colSpan={columns.length}>{groupHeader(row, rows?.[i - 1])}</td></tr>
                 )}
                 <tr
-                  className={[onRowClick && "is-link", faded?.(row) && "is-faded", marked?.(row) && "is-marked"].filter(Boolean).join(" ") || undefined}
+                  className={[onRowClick && "is-link", faded?.(row) && "is-faded", marked?.(row) && "is-marked", hot?.(row) && "is-hot"].filter(Boolean).join(" ") || undefined}
                   aria-current={marked?.(row) ? "true" : undefined}
                   onClick={onRowClick ? () => onRowClick(row) : undefined}
                   tabIndex={onRowClick ? 0 : undefined}
