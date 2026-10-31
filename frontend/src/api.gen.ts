@@ -817,6 +817,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tickets/{ticket_id}/translate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Translate */
+        post: operations["translate_tickets__ticket_id__translate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2705,6 +2722,8 @@ export interface components {
         };
         /** Ticket */
         Ticket: {
+            /** Body Ko */
+            body_ko: string | null;
             /** Body Language */
             body_language: string | null;
             /** Body Language Uncertain */
@@ -2815,6 +2834,15 @@ export interface components {
             escalated: number;
             /** Sent */
             sent: number;
+        };
+        /** Translated */
+        Translated: {
+            /** Body Ko */
+            body_ko: string;
+            /** Cached */
+            cached: boolean;
+            /** Ticket Id */
+            ticket_id: string;
         };
         /** Usage */
         Usage: {
@@ -4434,6 +4462,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TimelineItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    translate_tickets__ticket_id__translate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Translated"];
                 };
             };
             /** @description Validation Error */

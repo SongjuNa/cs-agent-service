@@ -48,7 +48,7 @@ def ticket_detail(conn: Connection, ticket_id: str, agent_dept: str | None = Non
     ticket = _row(conn, """
         SELECT t.ticket_id, t.received_at_utc, t.channel, t.language, t.body_language, t.body_language_uncertain,
                t.customer_id, t.customer_tier, c.company_masked, c.country, t.source, t.source_ticket_id, t.multi_yn,
-               t.inquiry_subject, t.inquiry_body, t.contact_name, t.contact_email, t.contact_phone,
+               t.inquiry_subject, t.inquiry_body, t.body_ko, t.contact_name, t.contact_email, t.contact_phone,
                EXISTS (SELECT 1 FROM eval.gold_set g
                        WHERE t.source_ticket_id IN (g.source_ticket_id, g.gold_set_id)) AS gold_set
           FROM svc.ticket t JOIN ref.customer c ON c.customer_id = t.customer_id

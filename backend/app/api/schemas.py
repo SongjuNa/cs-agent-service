@@ -161,11 +161,18 @@ class Ticket(Out):
     multi_yn: bool
     inquiry_subject: str | None
     inquiry_body: str
+    body_ko: str | None  # 원문의 한국어 번역(검토용), 아직 번역하지 않았으면 null (add-body-translation)
     contact_name: str | None
     contact_email: str | None
     contact_phone: str | None
     gold_set: bool
     category_code: str | None
+
+
+class Translated(Out):
+    ticket_id: str
+    body_ko: str
+    cached: bool  # 저장돼 있던 번역을 돌려줌(모델을 부르지 않음)
 
 
 class Run(Out):
