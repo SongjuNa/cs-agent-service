@@ -45,3 +45,21 @@
 .mw-today h3 { margin: 0 0 var(--sp-6); font-size: var(--fs-b); font-weight: var(--fw-semibold); }
 .mw-today__n { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-6) var(--sp-20); font-size: var(--fs-s); color: var(--color-fg-sub); }
 .mw-today__n b { margin-left: var(--sp-4); color: var(--color-fg); font-variant-numeric: tabular-nums; }
+
+/* 최신 목업: 지금 처리할 건 + 가장 급한 내 문의 */
+.mw-now { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: var(--sp-14); align-items: start; }
+@media (max-width: 1000px) { .mw-now { grid-template-columns: minmax(0, 1fr); } }
+.mw-now__h { display: flex; align-items: center; gap: var(--sp-10); padding: var(--sp-12) var(--sp-16); border-bottom: 1px solid var(--color-line); font-size: var(--fs-s); }
+.mw-now__h .tk-link { margin-left: auto; }
+.mw-now ul { margin: 0; padding: 0; list-style: none; }
+.mw-now li + li { border-top: 1px solid var(--color-line); }
+.mw-now li button, .mw-now__top button { display: flex; align-items: center; gap: var(--sp-10); width: 100%; padding: var(--sp-10) var(--sp-16); border: 0; background: none; color: var(--color-fg); font: inherit; font-size: var(--fs-s); text-align: left; cursor: pointer; }
+.mw-now li button:hover, .mw-now__top button:hover { background: var(--color-filter-bg); }
+.mw-now__id { font-weight: var(--fw-semibold); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mw-now__t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mw-now__a { color: var(--color-brand); font-weight: var(--fw-semibold); white-space: nowrap; }
+.mw-now__empty { margin: 0; padding: var(--sp-16); font-size: var(--fs-s); color: var(--color-fg-sub); }
+.mw-now__top { border-color: var(--color-brand); }
+.mw-now__top > b { display: block; padding: var(--sp-12) var(--sp-16) 0; font-size: var(--fs-s); }
+.mw-now__top button { flex-direction: column; align-items: flex-start; gap: var(--sp-4); }
+.mw-now .mw-sub { white-space: nowrap; }
