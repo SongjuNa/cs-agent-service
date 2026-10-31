@@ -5,7 +5,7 @@
 .shell-mono { font-variant-numeric: tabular-nums; }
 
 /* 머리 막대 */
-.shell-top { position: sticky; top: 0; z-index: 50; height: var(--h-shell-top); display: flex; align-items: center; gap: var(--sp-12); padding: 0 var(--sp-16); background: var(--color-side); color: var(--color-side-fg); }
+.shell-top { overflow: hidden; position: sticky; top: 0; z-index: 50; height: var(--h-shell-top); display: flex; align-items: center; gap: var(--sp-12); padding: 0 var(--sp-16); background: var(--color-side); color: var(--color-side-fg); }
 .shell-logo { display: flex; align-items: center; width: 224px; height: 36px; flex: none; }
 .shell-wordmark { height: 36px; width: auto; display: block; }
 .shell-gnav { display: flex; align-self: stretch; margin-left: var(--sp-12); }
@@ -71,3 +71,31 @@
 .shell-crumb__seg { color: var(--color-fg); text-decoration: none; }
 a.shell-crumb__seg:hover { color: var(--color-brand); text-decoration: underline; }
 .shell-crumb__part:last-child .shell-crumb__seg { font-weight: var(--fw-semibold); }
+
+/* 머리 막대의 별과 날짜 칩(변경 add-shell-look, 목업 StarField·chip-btn) */
+.shell-stars { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+.shell-top > :not(.shell-stars) { position: relative; z-index: 1; }
+.shell-top { overflow: visible; }
+.shell-datechip { display: inline-flex; align-items: center; height: 34px; padding: 0 var(--sp-14); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: var(--r-pill); font-size: var(--fs-s); font-weight: var(--fw-medium); white-space: nowrap; }
+
+/* 프로필 카드: 사진 자리, 접속 상태, 숫자 3칸(목업 .agent-card) */
+.shell-prof { margin: var(--sp-6) 0 var(--sp-10); padding: var(--sp-12); border: 1px solid var(--color-line); border-radius: var(--r-lg); background: var(--color-surface); gap: var(--sp-8); }
+.shell-prof__top { padding: 0; }
+.shell-prof__avwrap { position: relative; flex: none; display: inline-flex; }
+.shell-prof__av { background: var(--color-brand); color: #fff; overflow: hidden; }
+.shell-prof__av svg { width: 100%; height: 100%; display: block; }
+.shell-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+.shell-dot--ok { background: var(--color-pos); } .shell-dot--warn { background: var(--color-crit); } .shell-dot--off { background: var(--color-fg-faint); }
+.shell-dot--on-av { position: absolute; right: -1px; bottom: -1px; width: 12px; height: 12px; border: 2px solid var(--color-surface); }
+.shell-prof__body { padding: 0; display: flex; flex-direction: column; gap: var(--sp-8); }
+.shell-prof__sel { height: 32px; width: 100%; padding: 0 var(--sp-8); border: 1px solid var(--color-line); border-radius: var(--r-sm); background: var(--color-surface); color: var(--color-fg); font: inherit; font-size: var(--fs-s); }
+.shell-prof__live { display: flex; align-items: center; gap: var(--sp-6); font-size: var(--fs-xs); color: var(--color-fg-sub); white-space: nowrap; }
+.shell-prof__live.is-on { color: var(--color-pos); font-weight: var(--fw-semibold); }
+.shell-prof__hours { font-size: var(--fs-xs); color: var(--color-fg-sub); white-space: nowrap; }
+.shell-prof__stats { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--color-line); border-radius: var(--r-lg); overflow: hidden; }
+.shell-prof__stats > div { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: var(--sp-8) 2px; }
+.shell-prof__stats > div + div { border-left: 1px solid var(--color-line); }
+.shell-prof__stats b { font-size: 17px; font-variant-numeric: tabular-nums; }
+.shell-prof__stats b.is-bad { color: var(--color-neg); }
+.shell-prof__stats span { font-size: 10.5px; color: var(--color-fg-sub); white-space: nowrap; }
+.shell.is-collapsed .shell-prof__body { display: none; }

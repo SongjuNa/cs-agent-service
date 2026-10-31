@@ -5,7 +5,7 @@ import { AssistantDock } from "../features/assistant/AssistantDock";
 import { Banner, Field } from "../ui";
 import { Bell } from "./Bell";
 import { Icon, Wordmark } from "./icons";
-import { useAgents, useDepartments, useInboxCounts } from "./queries";
+import { useAgents, useDepartments, useInboxCounts, useMyStats } from "./queries";
 import { useSession } from "./session";
 import "./shell.css";
 
@@ -60,6 +60,7 @@ export function AppShell({ active, crumbs, navigate, children }: {
   return (
     <div className={collapsed ? "shell is-collapsed" : "shell"}>
       <header className="shell-top">
+        <StarField />
         <a className="shell-logo" href="/my" onClick={go("/my")} aria-label="나의 업무 현황"><Wordmark /></a>
         <nav className="shell-gnav" aria-label="대메뉴">
           {MENU.map((g) => (
@@ -69,6 +70,7 @@ export function AppShell({ active, crumbs, navigate, children }: {
           ))}
         </nav>
         <div className="shell-spacer" />
+        <span className="shell-datechip" title={asOf ? "기준 시각(스냅샷)의 날짜" : "오늘"}>{dayLabel(asOf)}</span>
         <Bell onOpen={(id) => navigate(`/tickets/${encodeURIComponent(id)}`)} />
       </header>
 
@@ -115,6 +117,49 @@ export function AppShell({ active, crumbs, navigate, children }: {
   );
 }
 
+const WEEK = ["일", "월", "화", "수", "목", "금", "토"];
+/** 상단의 날짜 칩("9월 30일 (수)"). 스냅샷이면 그 시각의 UTC 날짜, 아니면 오늘 */
+function dayLabel(asOf: string | null): string {
+  if (asOf) { const d = new Date(asOf); return `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일 (${WEEK[d.getUTCDay()]})`; } // 스냅샷은 UTC 날짜 그대로
+  const d = new Date();
+  return `${d.getMonth() + 1}월 ${d.getDate()}일 (${WEEK[d.getDay()]})`;
+}
+
+/** 상단 막대 뒤에서 반짝이는 별(목업 StarField). 움직임을 줄이는 설정이면 멈춘 채로 그린다 */
+function StarField() {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const c = ref.current;
+    const x = c?.getContext("2d");
+    if (!c || !x) return;
+    let w = 0, h = 0, raf = 0;
+    const stars = Array.from({ length: 70 }, () => ({ x: Math.random(), y: Math.random(), s: 1 + Math.random() * 3, p: Math.random() * 6.28, v: 0.4 + Math.random() * 1.2, sq: Math.random() < 0.5 }));
+    const fit = () => { const r = c.getBoundingClientRect(); const d = window.devicePixelRatio || 1; w = r.width; h = r.height; c.width = w * d; c.height = h * d; x.setTransform(d, 0, 0, d, 0, 0); };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(c);
+    const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const draw = (t: number) => {
+      x.clearRect(0, 0, w, h);
+      for (const s of stars) {
+        const a = still ? 0.35 : 0.12 + 0.5 * (0.5 + 0.5 * Math.sin((t / 1000) * s.v + s.p));
+        x.strokeStyle = x.fillStyle = `rgba(160,190,255,${a})`;
+        if (s.sq) { x.lineWidth = 1; x.strokeRect(s.x * w, s.y * h, s.s * 2, s.s * 2); } else x.fillRect(s.x * w, s.y * h, s.s, s.s);
+      }
+      if (!still) raf = requestAnimationFrame(draw);
+    };
+    raf = requestAnimationFrame(draw);
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); };
+  }, []);
+  return <canvas ref={ref} className="shell-stars" aria-hidden="true" />;
+}
+
+type Presence = "online" | "away" | "offline";
+const PRESENCE: Record<Presence, [string, string]> = { online: ["온라인", "ok"], away: ["자리 비움", "warn"], offline: ["오프라인", "off"] };
+const readPresence = (): Presence => {
+  try { const v = localStorage.getItem("cs-presence") as Presence; return v in PRESENCE ? v : "online"; } catch { return "online"; }
+};
+
 /** 왼쪽 위 프로필. 누르면 부서·상담원·기준 시각을 고르는 창(목업 openMe) */
 function Profile() {
   const s = useSession();
@@ -124,6 +169,10 @@ function Profile() {
   const box = useRef<HTMLDivElement>(null);
   const deptName = depts.data?.find((d) => d.dept_code === s.dept)?.dept_name_ko;
   const me = agents.data?.find((a) => a.name === s.agent);
+  const stats = useMyStats(s.dept, s.asOf, s.agent);
+  const [pres, setPres] = useState<Presence>(readPresence); // 저장하지 않는 목업 요소(N-00-01): 이 브라우저에만 기억한다
+  const changePresence = (v: Presence) => { setPres(v); try { localStorage.setItem("cs-presence", v); } catch { /* 저장 불가 환경 */ } };
+  const synced = new Date((s.asOf ? new Date(s.asOf).getTime() : Date.now()) + 9 * 3600e3).toISOString().slice(11, 16);
 
   // 명단에 없는 상담원이 기억돼 있으면 지운다(SCR-00 입력 검증)
   useEffect(() => {
@@ -145,7 +194,12 @@ function Profile() {
   return (
     <div className="shell-prof shell-pop-anchor" ref={box}>
       <button type="button" className="shell-prof__top" title="부서·상담원 바꾸기" aria-expanded={open} onClick={() => setOpen(!open)}>
-        <span className="shell-prof__av" aria-hidden="true">{s.agent ? s.agent.slice(0, 1).toUpperCase() : "?"}</span>
+        <span className="shell-prof__avwrap">
+          <span className="shell-prof__av" aria-hidden="true">
+            <svg viewBox="0 0 48 48"><circle cx="24" cy="18" r="8.5" fill="#fff" opacity=".92" /><path d="M7 46c1.2-10 8.4-15.5 17-15.5S39.8 36 41 46z" fill="#fff" opacity=".92" /></svg>
+          </span>
+          <i className={`shell-dot shell-dot--${PRESENCE[pres][1]} shell-dot--on-av`} />
+        </span>
         <span className="shell-prof__id shell-nav__label">
           <b>{s.agent || "상담원을 고르세요"}</b>
           <span>{deptName ?? (s.dept || "부서를 고르세요")}</span>
@@ -153,6 +207,20 @@ function Profile() {
         </span>
       </button>
       <div className="shell-prof__body shell-nav__label">
+        <select className="shell-prof__sel" value={pres} aria-label="접속 상태" onChange={(e) => changePresence(e.target.value as Presence)}>
+          {(Object.keys(PRESENCE) as Presence[]).map((k) => <option key={k} value={k}>{PRESENCE[k][0]}</option>)}
+        </select>
+        <span className={pres !== "offline" ? "shell-prof__live is-on" : "shell-prof__live"}>
+          <i className={`shell-dot shell-dot--${pres !== "offline" ? "ok" : "off"}`} />{pres !== "offline" ? `연결 중 · ${synced} 동기화` : "연결 끊김"}
+        </span>
+        <span className="shell-prof__hours">09:00-18:00 KST{pres === "online" ? " · 채팅 가능" : " · 채팅 불가"}</span>
+        {s.agent && (
+          <div className="shell-prof__stats" data-testid="prof-stats">
+            <div><b>{stats.open ?? "–"}</b><span>미해결</span></div>
+            <div><b className={stats.alert ? "is-bad" : undefined}>{stats.alert ?? "–"}</b><span>기한 위험</span></div>
+            <div><b>{stats.today ?? "–"}</b><span>오늘 처리</span></div>
+          </div>
+        )}
         <span className={s.mode === "snapshot" ? "shell-prof__asof is-snap" : "shell-prof__asof"}>
           기준 시각: {s.mode === "snapshot" ? "스냅샷 2026-09-30 23:59 UTC" : "실제 시각"}
         </span>

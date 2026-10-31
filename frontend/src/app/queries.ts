@@ -42,3 +42,26 @@ export function useWorkload(dept: string, agent: string, asOf: string | null) {
     refetchInterval: REFRESH_MS,
   });
 }
+
+/** 왼쪽 프로필 카드의 숫자(변경 add-shell-look): 내 담당 미해결·경고가 있는 건, 오늘 내가 처리한 건수 */
+export function useMyStats(dept: string, asOf: string | null, agent: string) {
+  const mine = useQuery({
+    queryKey: ["my-stats", { dept, asOf, agent }],
+    queryFn: () => {
+      const q = new URLSearchParams({ dept, page: "1", size: "1", assignee: agent, me: agent });
+      if (asOf) q.set("as_of", asOf);
+      return api.inbox(q);
+    },
+    select: (d) => ({ open: d.counts.total, alert: d.counts.alert }),
+    enabled: !!dept && !!agent,
+    refetchInterval: REFRESH_MS,
+  });
+  const today = useQuery({
+    queryKey: ["my-performance", { agent, asOf, span: 1 }],
+    queryFn: () => { const p = new URLSearchParams({ days: "1" }); if (asOf) p.set("as_of", asOf); return api.performance(p); },
+    select: (d) => d.daily[d.daily.length - 1]?.n ?? 0,
+    enabled: !!agent,
+    refetchInterval: REFRESH_MS,
+  });
+  return { open: mine.data?.open, alert: mine.data?.alert, today: today.data };
+}
