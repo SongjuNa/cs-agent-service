@@ -47,12 +47,14 @@ export function AppShell({ active, crumbs, navigate, children }: {
   navigate: (path: string) => void;
   children: ReactNode;
 }) {
-  const { dept, asOf } = useSession();
+  const { dept, asOf, setAgent, setDept } = useSession();
   const counts = useInboxCounts(dept, asOf);
   const [collapsed, setCollapsed] = useState(false);
   const group = MENU.find((g) => g.items.some((i) => i.key === active))?.key;
 
   const go = (path: string) => (e: React.MouseEvent) => { e.preventDefault(); navigate(path); };
+  // 로그인이 없어(D23) 로그아웃은 고른 부서·상담원을 비우는 것이다
+  const logout = () => { setAgent(""); setDept(""); navigate("/my"); };
 
   return (
     <div className={collapsed ? "shell is-collapsed" : "shell"}>
@@ -67,8 +69,12 @@ export function AppShell({ active, crumbs, navigate, children }: {
           ))}
         </nav>
         <div className="shell-spacer" />
-        <span className="shell-datechip" title={asOf ? "기준 시각(스냅샷)의 날짜" : "오늘"}>{dayLabel(asOf)}</span>
         <Bell onOpen={(id) => navigate(`/tickets/${encodeURIComponent(id)}`)} />
+        <span className="shell-datechip" title={asOf ? "기준 시각(스냅샷)의 날짜" : "오늘"}>{dayLabel(asOf)}</span>
+        <HelpButton />
+        <SessionTimer onExpire={logout} />
+        <button type="button" className="shell-icon-btn" aria-label="설정" title="부서·상담원 설정" onClick={() => window.dispatchEvent(new Event("cs-open-prof"))}><Icon name="sliders" /></button>
+        <button type="button" className="shell-logout" onClick={logout}><Icon name="logout" />로그아웃</button>
       </header>
 
       <div className="shell-frame">
@@ -113,6 +119,40 @@ export function AppShell({ active, crumbs, navigate, children }: {
         </main>
       </div>
       <AssistantDock />
+    </div>
+  );
+}
+
+const SESSION_SEC = 30 * 60;
+/** 목업의 세션 남은 시간과 [연장]. 로그인이 없어 0이 되면 로그아웃(부서·상담원 비움)한다 */
+function SessionTimer({ onExpire }: { onExpire: () => void }) {
+  const [end, setEnd] = useState(() => Date.now() + SESSION_SEC * 1000);
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => { const i = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(i); }, []);
+  const left = Math.max(0, Math.round((end - now) / 1000));
+  useEffect(() => { if (left === 0) { onExpire(); setEnd(Date.now() + SESSION_SEC * 1000); } }, [left]); // eslint-disable-line react-hooks/exhaustive-deps
+  const mm = String(Math.floor(left / 60)).padStart(2, "0"), ss = String(left % 60).padStart(2, "0");
+  return (
+    <span className={left <= 300 ? "shell-session is-low" : "shell-session"} title="세션 남은 시간">
+      <Icon name="timer" />세션 <b className="shell-mono">{mm}:{ss}</b>
+      <button type="button" onClick={() => setEnd(Date.now() + SESSION_SEC * 1000)}>연장</button>
+    </span>
+  );
+}
+
+function HelpButton() {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+  return (
+    <div className="shell-pop-anchor" ref={box}>
+      <button type="button" className="shell-icon-btn" aria-label="도움말" aria-expanded={open} onClick={() => setOpen(!open)}><Icon name="help" /></button>
+      {open && <div className="shell-pop" role="dialog" aria-label="도움말"><h4>도움말</h4><div className="shell-pop__empty">도움말은 아직 연결되지 않았습니다.</div></div>}
     </div>
   );
 }
@@ -178,6 +218,12 @@ function Profile() {
   useEffect(() => {
     if (agents.data && s.agent && !agents.data.some((a) => a.name === s.agent)) s.setAgent("");
   }, [agents.data, s]);
+
+  useEffect(() => {
+    const show = () => setOpen(true);
+    window.addEventListener("cs-open-prof", show);
+    return () => window.removeEventListener("cs-open-prof", show);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
