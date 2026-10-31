@@ -206,3 +206,15 @@
 .tk-now__scope i { width: 6px; height: 6px; border-radius: 50%; background: var(--color-info); }
 .tk-stats { padding-top: var(--sp-10); border-top: 1px solid var(--color-line); }
 .tk-stat__v { font-size: var(--fs-m); }
+.tk-aichips { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-8); margin: 0 0 var(--sp-12); }
+.tk-aichips__cap { font-weight: var(--fw-bold); color: var(--color-brand); font-size: var(--fs-s); margin-right: var(--sp-4); }
+.tk-aichip { display: inline-flex; align-items: center; gap: var(--sp-8); height: 32px; padding: 0 var(--sp-12); border: 1px solid var(--color-line); border-radius: var(--r-pill); background: var(--color-surface); color: var(--color-fg); font: inherit; font-size: var(--fs-s); cursor: pointer; }
+.tk-aichip:disabled { cursor: default; }
+.tk-aichip:not(:disabled):hover { border-color: var(--color-brand); }
+.tk-aichip span { color: var(--color-fg-sub); }
+.tk-aichip b { font-weight: var(--fw-semibold); }
+.tk-aichip--warn { border-color: var(--color-crit); background: var(--color-crit-bg, var(--color-surface)); }
+.tk-aichip--bad { border-color: var(--color-neg); color: var(--color-neg); }
+.tk-aichips__more { margin-left: auto; display: inline-flex; align-items: center; gap: var(--sp-4); border: 0; background: none; color: var(--color-brand); font: inherit; font-size: var(--fs-s); cursor: pointer; }
+.tk-aichips__chev { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; transform: rotate(90deg); }
+.tk-aichips__chev.is-open { transform: rotate(-90deg); }

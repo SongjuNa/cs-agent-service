@@ -42,7 +42,7 @@ test("SCR-03-AC-23: 접수함에서 열면 'n / 전체'가 보이고, 다음 문
   await expect(page).toHaveURL(new RegExp(`/tickets/${ids[1]}$`));
 });
 
-test("SCR-03-AC-24: 탭 없이 '고객이 보낸 것'과 '보낼 것'이 나란히 있고, 그 아래에 '시스템이 판단한 것'과 '이력'이 순서대로 있다", async ({ page, request }) => {
+test("SCR-03-AC-24: 탭 없이 '고객 문의 원문'과 '답변 초안'이 나란히 있고, 그 아래에 '시스템이 판단한 것'과 '이력'이 순서대로 있다", async ({ page, request }) => {
   const list = await (await request.get("http://localhost:8000/tickets?dept=TS_LV&size=200&include_closed=true")).json();
   let id = "";
   for (const r of list.rows) {
@@ -52,11 +52,11 @@ test("SCR-03-AC-24: 탭 없이 '고객이 보낸 것'과 '보낼 것'이 나란�
   expect(id).not.toBe("");
   await useSession(page, { dept: "TS_LV" });
   await page.goto(`/tickets/${id}`);
-  const customer = page.getByRole("region", { name: "고객이 보낸 것" });
-  const send = page.getByRole("region", { name: "보낼 것" });
+  const customer = page.getByRole("region", { name: "고객 문의 원문" });
+  const send = page.getByRole("region", { name: "답변 초안" });
   await expect(customer).toBeVisible();
   await expect(send).toBeVisible();
-  await expect(page.getByRole("tab", { name: /^고객이 보낸 것/ })).toHaveCount(0);
+  await expect(page.getByRole("tab", { name: /^고객 문의 원문/ })).toHaveCount(0);
   const [c, s, sys, hist] = await Promise.all([customer.boundingBox(), send.boundingBox(),
     page.getByRole("region", { name: "시스템이 판단한 것" }).boundingBox(), page.getByRole("region", { name: "이력" }).boundingBox()]);
   expect(c!.x).toBeLessThan(s!.x); // 왼쪽 읽기, 오른쪽 쓰기
@@ -117,7 +117,7 @@ test("SCR-03-AC-26 (최신 목업): 내부 메모를 남기면 남긴 사람과 
   await expect(memo.getByTestId("memo-list")).toContainText("leo");
   await expect(memo.getByRole("textbox", { name: "내부 메모" })).toHaveValue(""); // 남기면 입력칸이 비워짐
   // 고객에게 가는 초안·원문 칸에는 섞이지 않는다
-  await expect(page.getByRole("region", { name: "보낼 것" })).not.toContainText(text);
+  await expect(page.getByRole("region", { name: "답변 초안" })).not.toContainText(text);
   // 접수함 줄에 메모 개수가 붙는다
   await page.goto(`/inbox?q=${id}&include_closed=true&m=0`);
   await expect(page.locator("table.ui-table tbody tr.is-link").first().locator(".inbox-memo")).toContainText(/메모 \d+/);

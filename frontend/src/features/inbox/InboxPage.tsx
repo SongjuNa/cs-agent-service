@@ -13,6 +13,7 @@ import {
 } from "../../ui";
 import { BulkAdjustPopup } from "./BulkAdjustPopup";
 import { ALL_ALERTS, hasFilters, rememberInboxOrder, rememberInboxUrl, SIZE, useInbox } from "./inboxQuery";
+import { OpenTabs } from "../ticket/openTabs";
 import "./inbox.css";
 
 const FAIL = "목록을 불러오지 못함. 새로고침"; // FR-029 예외 4행
@@ -243,6 +244,7 @@ export function InboxPage({ onOpen, flash, navigate }: {
 
   return (
     <>
+      <OpenTabs current={null} navigate={navigate} />
       {head}
       {flash && <Banner tone="neg">{flash}</Banner>}
       {inbox.isError && (

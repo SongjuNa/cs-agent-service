@@ -8,7 +8,9 @@ import { AdjustPopup, EscalatePopup, ReplyPopup } from "./ActionPopups";
 import { CustomerTab } from "./CustomerTab";
 import { useDepartments } from "../../app/queries";
 import { inboxOrder } from "../inbox/inboxQuery";
+import { AiChips } from "./AiChips";
 import { AlertBand, HeadCard, NowStrip } from "./HeadCard";
+import { OpenTabs, rememberOpenTab } from "./openTabs";
 import { HistoryTab } from "./HistoryTab";
 import { MemoCard } from "./MemoCard";
 import { FailPopup, SourcePopup, WhyPopup, type SourceTarget } from "./Popups";
@@ -62,6 +64,9 @@ export function TicketPage({ ticketId, agent, onBack, navigate }: { ticketId: st
   useEffect(() => {
     if (loaded && wanted.current) { const k = wanted.current; wanted.current = null; setTimeout(() => scrollToSection(k)); }
   }, [loaded]);
+  // 열어 둔 문의 탭 막대(변경 add-ticket-look): 불러온 문의를 요약과 함께 기억한다
+  const tabSum = query.data ? (query.data.sub_tickets.find((x) => x.sub_ticket.summary_ko)?.sub_ticket.summary_ko ?? query.data.ticket.inquiry_subject ?? "") : null;
+  useEffect(() => { if (tabSum !== null) rememberOpenTab(ticketId, tabSum.slice(0, 40)); }, [ticketId, tabSum]);
   const [sendKind, setSendKind] = useState<Draft["message_type"] | null>(null);
   const [focus, setFocus] = useState<string | null>(null);
   const [why, setWhy] = useState<EvidenceRow | null>(null);
@@ -127,24 +132,27 @@ export function TicketPage({ ticketId, agent, onBack, navigate }: { ticketId: st
       {stale && (
         <Banner tone="neg" action={<Button size="sm" onClick={() => void query.refetch()}>새로고침</Button>}>불러오지 못함. 새로고침</Banner>
       )}
+      {navigate && <OpenTabs current={ticketId} navigate={navigate} />}
       <HeadCard detail={detail} onBack={() => onBack()} onReprocess={reprocess} busy={busy}
-                nav={navigate ? { ids: order, index, go: goTo } : undefined} />
+                nav={navigate ? { ids: order, index, go: goTo } : undefined}
+                onEvidence={() => scrollToSection("system")}
+                escalate={subs.some((x) => x.writer === "CS") ? { disabled: locked || busy || !canEscalate, title: escalateTitle, onClick: () => setEscalating(true) } : undefined} />
+      <AiChips detail={detail} onJump={jump} />
       <NowStrip detail={detail} deptName={(code) => depts.data?.find((d) => d.dept_code === code)?.dept_name_ko ?? code ?? "담당 부서"} />
       <AlertBand detail={detail} onShowSend={() => { scrollToSection("send"); setSendKind("INFO_REQUEST"); }} />
       <div className="tk-body">
         <div className="tk-cols">
           <div className="tk-leftcol">
-            <section id="tk-sec-customer" className="tk-sec" aria-label="고객이 보낸 것">
-              <h2 className="tk-sec__h">고객이 보낸 것</h2>
+            <section id="tk-sec-customer" className="tk-sec" aria-label="고객 문의 원문">
+              <h2 className="tk-sec__h">고객 문의 원문</h2>
               <CustomerTab detail={detail} />
             </section>
             <MemoCard ticketId={ticketId} agent={agent} />
           </div>
-          <section id="tk-sec-send" className="tk-sec" aria-label="보낼 것">
-            <h2 className="tk-sec__h">보낼 것</h2>
+          <section id="tk-sec-send" className="tk-sec" aria-label="답변 초안">
+            <h2 className="tk-sec__h">답변 초안</h2>
             {detail.processing ? processingPane : (
-              <SendTab detail={detail} agent={agent} kind={sendKind} onKind={setSendKind} locked={locked || busy}
-                       canEscalate={canEscalate} escalateTitle={escalateTitle} onEscalate={() => setEscalating(true)}
+              <SendTab detail={detail} agent={agent} kind={sendKind} onKind={setSendKind}
                        onSource={setSource} onJump={jump} onFail={setFail} refresh={refresh} />
             )}
           </section>

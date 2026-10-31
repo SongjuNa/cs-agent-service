@@ -49,8 +49,11 @@ function resolutionText(sub: SubTicket): { value: ReactNode; sub: string } {
 
 export interface InboxNav { ids: string[]; index: number; go: (ticketId: string) => void }
 
-export function HeadCard({ detail, onBack, onReprocess, busy, nav }: {
+export function HeadCard({ detail, onBack, onReprocess, busy, nav, onEvidence, escalate }: {
   detail: Detail; onBack: () => void; onReprocess: () => void; busy: boolean; nav?: InboxNav;
+  onEvidence?: () => void;
+  /** [이관]: 부서 작성 영역만 있는 문의면 undefined(버튼 없음) */
+  escalate?: { disabled: boolean; title: string; onClick: () => void };
 }) {
   const depts = useDepartments();
   const { ticket, run, summary } = detail;
@@ -92,6 +95,8 @@ export function HeadCard({ detail, onBack, onReprocess, busy, nav }: {
               <button type="button" disabled={nav.index >= nav.ids.length - 1} aria-label="다음 문의 (j)" title="다음 문의 · j" onClick={() => nav.go(nav.ids[nav.index + 1])}>›</button>
             </span>
           )}
+          {onEvidence && <Button onClick={onEvidence} title="AI가 어떻게 판단했는지 아래 근거로 이동">근거 전체</Button>}
+          {escalate && <Button disabled={escalate.disabled} title={escalate.title} onClick={escalate.onClick}>이관</Button>}
           {(detail.can_reprocess || detail.can_retry) && (
             <Button onClick={onReprocess} busy={busy}>{detail.can_retry ? "다시 시도" : "다시 처리"}</Button>
           )}
