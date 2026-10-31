@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { api, ApiError, type Detail, type SubTicket } from "../../api";
 import { CATEGORY, CHANNEL, DEPTH, DEPTH_HINT, label, NEXT_HINT, STATUS } from "../../app/labels";
 import { useDepartments } from "../../app/queries";
+import { Icon } from "../../app/icons";
 import { Button, Chip, PriorityBadge } from "../../ui";
 
 const num = (v: number | string | null | undefined): number | null => (v === null || v === undefined ? null : Number(v));
@@ -72,7 +73,9 @@ export function HeadCard({ detail, onBack, onReprocess, busy, nav }: {
   return (
     <section className="tk-head" aria-label="티켓 요약">
       <div className="tk-head__top">
+        <button type="button" className="tk-backcircle" aria-label="접수함으로" title="접수함으로" onClick={onBack}><Icon name="back" /></button>
         <h1 className="tk-head__id">{ticket.ticket_id}</h1>
+        <Chip tone={detail.processing ? "info" : "brand"}>{label(STATUS, summary?.status ?? rep?.sub_ticket.status)}</Chip>
         <span className="tk-head__ttl">{[kinds.join(" + ") || "유형 미정", products.join(", ") || "제품 미확인"].join(", ")}</span>
         <span className="tk-head__chips">
           {subs.length > 1 && <Chip tone="brand">복합 문의 {subs.length}건</Chip>}
@@ -92,7 +95,6 @@ export function HeadCard({ detail, onBack, onReprocess, busy, nav }: {
           {(detail.can_reprocess || detail.can_retry) && (
             <Button onClick={onReprocess} busy={busy}>{detail.can_retry ? "다시 시도" : "다시 처리"}</Button>
           )}
-          <Button className="tk-back" onClick={onBack}>접수함으로</Button>
         </span>
       </div>
       <p className="tk-recv">
@@ -101,7 +103,7 @@ export function HeadCard({ detail, onBack, onReprocess, busy, nav }: {
       {subs.some((x) => x.sub_ticket.summary_ko) && (
         <div className="tk-sum" data-testid="ai-summary">
           <span className="tk-sum__k">AI 요약</span>
-          <ul>
+          <ul className="tk-sum__list">
             {subs.filter((x) => x.sub_ticket.summary_ko).map((x) => (
               <li key={x.sub_ticket.sub_ticket_id}>{subs.length > 1 ? <b>문의 {x.sub_ticket.seq} · </b> : null}{x.sub_ticket.summary_ko}</li>
             ))}
@@ -163,6 +165,7 @@ export function NowStrip({ detail, deptName }: { detail: Detail; deptName: (code
           검토 모드 · {DEPTH[rep.review_depth]}
         </span>
       )}
+      <span className="tk-now__scope"><i />AI 처리 범위: {detail.sub_tickets.some((x) => x.auto_state !== "NONE") ? "접수·분석·초안·발송" : "접수·분석·초안"}</span>
     </section>
   );
 }
