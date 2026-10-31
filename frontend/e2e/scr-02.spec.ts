@@ -192,3 +192,35 @@ test("SCR-02-AC-12: 상담원을 고르면 '내 담당'만 보이고 '팀 전체
   await page.locator("table.ui-table thead th", { hasText: "접수 시각" }).click();
   await expect(page.locator("tr.ui-table__group")).toHaveCount(0);
 });
+
+test("SCR-02-AC-13 (최신 목업): 행을 골라 [담당자 변경…] → [변경]하면 담당이 바뀌고 안내 띠가 나오며, 이력에 '담당 변경'이 남는다", async ({ page, request }) => {
+  // 시연 데이터를 건드리지 않도록 처리가 끝난 시험용 접수본(TS_LV)을 고르고, 시험이 끝나면 원래 담당으로 되돌린다
+  const list = await (await request.get("http://localhost:8000/tickets?dept=TS_LV&size=200&include_closed=true")).json();
+  let row: { sub_ticket_id: string; ticket_id: string; assignee_masked: string } | null = null;
+  for (const r of list.rows) {
+    const d = await (await request.get(`http://localhost:8000/tickets/${r.ticket_id}`)).json();
+    if (!d.processing && d.run && r.assignee_masked && r.assigned_dept === "TS_LV" && r.status !== "CLOSED" && r.status !== "RESOLVED") { row = r; break; }
+  }
+  expect(row, "처리가 끝난 TS_LV 접수본").not.toBeNull();
+  const original = row!.assignee_masked;
+  const agents: { name: string; dept: string }[] = await (await request.get("http://localhost:8000/ref/agents?dept=TS_LV")).json();
+  const to = agents.find((a) => a.name !== original)!.name;
+  await useSession(page, { dept: "TS_LV", agent: "leo" });
+  try {
+    await page.goto(`/inbox?q=${row!.ticket_id}&m=0&include_closed=true`);
+    const tr = page.locator("table.ui-table tbody tr.is-link").filter({ hasText: row!.ticket_id }).first();
+    await tr.getByRole("checkbox").check();
+    const bar = page.getByRole("region", { name: "선택한 문의 일괄 처리" });
+    await expect(bar.getByRole("button", { name: "변경", exact: true })).toBeDisabled(); // 상담원을 고르기 전에는 꺼짐
+    await bar.getByRole("combobox", { name: "넘길 상담원" }).selectOption(to);
+    await bar.getByRole("button", { name: "변경", exact: true }).click();
+    await expect(page.getByRole("status").filter({ hasText: `${to}에게 넘겼습니다` })).toBeVisible();
+    await expect(page.getByText("건 선택")).toHaveCount(0); // 선택이 풀린다
+    const after = await (await request.get(`http://localhost:8000/tickets?dept=TS_LV&q=${row!.ticket_id}&include_closed=true`)).json();
+    expect(after.rows.find((r: { sub_ticket_id: string }) => r.sub_ticket_id === row!.sub_ticket_id).assignee_masked).toBe(to);
+    const events = (await (await request.get(`http://localhost:8000/tickets/${row!.ticket_id}/timeline`)).json()).filter((e: { kind: string }) => e.kind === "ASSIGNEE");
+    expect(events.at(-1)).toMatchObject({ from_assignee: original, to_assignee: to, changed_by: "leo" });
+  } finally {
+    await request.post("http://localhost:8000/sub-tickets/assign", { headers: { "X-Agent-Id": "leo" }, data: { sub_ticket_ids: [row!.sub_ticket_id], assignee: original } });
+  }
+});

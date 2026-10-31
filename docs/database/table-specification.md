@@ -526,6 +526,21 @@ sla_setting은 다른 표와 연결되지 않는 설정값 3행이라 그림에 
 
 색인: `(ticket_id, created_at_utc)`.
 
+### 4-13. assignment_history 담당 변경 이력 (변경 add-reassign, 2026-10-31)
+
+상담원이 손으로 담당을 바꾼 기록. 접수 때 자동 배정은 남기지 않는다. 넣기만 한다.
+
+| 열 | 형식 | 필수 | 연결 | 설명 |
+|---|---|---|---|---|
+| assign_id | BIGSERIAL | 필수 | PK | 자동 번호 |
+| sub_ticket_id | TEXT | 필수 | FK svc.sub_ticket | 어느 문의의 담당인가 |
+| from_assignee | TEXT | | | 바꾸기 전 담당(없었으면 비움) |
+| to_assignee | TEXT | 필수 | | 바꾼 뒤 담당(명단 이름). from과 같으면 거부 |
+| changed_by | TEXT | 필수 | | 바꾼 상담원(API 머리 `X-Agent-Id`) |
+| changed_at_utc | TIMESTAMPTZ | 필수 | | 바꾼 시각 |
+
+색인: `(sub_ticket_id, changed_at_utc)`.
+
 ### 4-11. 함수와 뷰
 
 | 이름 | 하는 일 |

@@ -10,8 +10,8 @@ from typing import Any
 
 from psycopg import Connection
 
-# 같은 시각이면 상태 변경 → 메시지 → 조정 → 경고 순(구현 선택)
-ORDER = {"STATUS": 0, "MESSAGE": 1, "PRIORITY": 2, "ALERT_RAISED": 3, "ALERT_CLEARED": 4}
+# 같은 시각이면 상태 변경 → 메시지 → 우선순위 조정 → 담당 변경 → 경고 순(구현 선택)
+ORDER = {"STATUS": 0, "MESSAGE": 1, "PRIORITY": 2, "ASSIGNEE": 3, "ALERT_RAISED": 4, "ALERT_CLEARED": 5}
 
 SQL = """
 SELECT 'STATUS' AS kind, h.changed_at_utc AS at, s.seq, h.history_id AS id,
@@ -34,6 +34,11 @@ SELECT 'PRIORITY', p.adjusted_at_utc, s.seq, p.adjust_id,
                           'to_fr_target_h', p.to_fr_target_h, 'to_res_target_h', p.to_res_target_h,
                           'reason_kind', p.reason_kind, 'reason', p.reason, 'adjusted_by', p.adjusted_by)
   FROM svc.priority_adjustment p JOIN svc.sub_ticket s ON s.sub_ticket_id = p.sub_ticket_id
+ WHERE s.ticket_id = %(t)s
+UNION ALL
+SELECT 'ASSIGNEE', h.changed_at_utc, s.seq, h.assign_id,
+       jsonb_build_object('from_assignee', h.from_assignee, 'to_assignee', h.to_assignee, 'changed_by', h.changed_by)
+  FROM svc.assignment_history h JOIN svc.sub_ticket s ON s.sub_ticket_id = h.sub_ticket_id
  WHERE s.ticket_id = %(t)s
 UNION ALL
 SELECT 'ALERT_RAISED', a.raised_at_utc, s.seq, a.alert_id,

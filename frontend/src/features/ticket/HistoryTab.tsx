@@ -18,6 +18,8 @@ function line(item: TimelineItem): { chip: string; tone: Tone; text: string; who
       return { chip: "상태", tone: "neu", text: `${label(STATUS, item.from_status as string)} → ${label(STATUS, item.to_status as string)} (${item.event_kind})`, who: WHO[String(item.changed_by)] ?? String(item.changed_by ?? "") };
     case "PRIORITY":
       return { chip: "조정", tone: "brand", text: `우선순위 ${item.from_priority} → ${item.to_priority}, SLA ${item.from_fr_target_h}/${item.from_res_target_h} h → ${item.to_fr_target_h}/${item.to_res_target_h} h (${item.reason})`, who: String(item.adjusted_by ?? "") };
+    case "ASSIGNEE":
+      return { chip: "담당", tone: "outline", text: `담당 변경 ${item.from_assignee ?? "없음"} → ${item.to_assignee}`, who: String(item.changed_by ?? "") };
     case "ALERT_RAISED":
       return { chip: "경고", tone: String(item.alert_type).endsWith("BREACHED") ? "neg" : "crit", text: `경고: ${label(ALERT, item.alert_type as string)}` };
     case "ALERT_CLEARED":

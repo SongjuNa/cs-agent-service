@@ -781,6 +781,21 @@ COMMENT ON TABLE svc.internal_note IS '내부 메모. 상담원끼리만 보며 
 CREATE INDEX internal_note_ticket ON svc.internal_note (ticket_id, created_at_utc);
 
 -- ---------------------------------------------------------------------
+-- 4-13. assignment_history 담당 변경 이력 (변경 add-reassign, 최신 목업 "담당 변경")
+-- ---------------------------------------------------------------------
+CREATE TABLE svc.assignment_history (
+  assign_id       bigserial PRIMARY KEY,
+  sub_ticket_id   text NOT NULL REFERENCES svc.sub_ticket (sub_ticket_id),
+  from_assignee   text,                                            -- 바꾸기 전 담당(없었으면 NULL)
+  to_assignee     text NOT NULL,                                   -- 바꾼 뒤 담당(명단 이름)
+  changed_by      text NOT NULL,                                   -- 바꾼 상담원(X-Agent-Id)
+  changed_at_utc  timestamptz NOT NULL DEFAULT now(),
+  CHECK (from_assignee IS DISTINCT FROM to_assignee)
+);
+COMMENT ON TABLE svc.assignment_history IS '담당 변경 이력. 자동 배정(접수 때)은 남기지 않고, 상담원이 손으로 바꾼 것만 남긴다. 넣기만 한다';
+CREATE INDEX assignment_history_sub ON svc.assignment_history (sub_ticket_id, changed_at_utc);
+
+-- ---------------------------------------------------------------------
 -- 4-10. agent_run 실행 / agent_step 노드 실행 (FR-036, 보존 90일 T31)
 -- ---------------------------------------------------------------------
 CREATE TABLE svc.agent_run (

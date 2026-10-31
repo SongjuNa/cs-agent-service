@@ -1,8 +1,9 @@
 // SCR-02 접수함 (FR-029). 목업 v1.42 viewInbox 배치: 화면 머리 → [요약 칸막이 탭 → 필터 판 → 표 → 쪽 넘김] 카드 하나.
 // 필터·정렬·쪽은 주소 쿼리에 둬 상세에서 돌아와도 그대로다(SCR-02-AC-8).
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import type { Inbox, InboxRow } from "../../api";
-import { useDepartments, useInboxCounts } from "../../app/queries";
+import { api, ApiError, type Inbox, type InboxRow } from "../../api";
+import { useAgents, useDepartments, useInboxCounts } from "../../app/queries";
 import { ALERT, CATEGORY, CHANNEL, DEPTH, NEXT_ACTION, STATUS, TURN_GROUP, label } from "../../app/labels";
 import { useSession } from "../../app/session";
 import { Icon } from "../../app/icons";
@@ -135,6 +136,10 @@ export function InboxPage({ onOpen, flash, navigate }: {
   const inbox = useInbox(search, dept, asOf, agent);
   const counts = useInboxCounts(dept, asOf, search.get("include_closed") === "true", agent);
   const [picked, setPicked] = useState<Set<string>>(new Set());
+  const qc = useQueryClient();
+  const agentList = useAgents();
+  const [to, setTo] = useState("");
+  const [notice, setNotice] = useState<{ tone: "info" | "neg"; text: string } | null>(null);
   const last = useRef<Inbox | undefined>(undefined);
   if (inbox.data) last.current = inbox.data;
   const data = inbox.data ?? last.current;
@@ -146,6 +151,20 @@ export function InboxPage({ onOpen, flash, navigate }: {
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
+
+  /** 선택한 문의의 담당을 바꾼다(변경 add-reassign). 건너뛴 문의는 사유와 함께 알린다 */
+  async function reassign(subIds: string[], name: string) {
+    try {
+      const res = await api.assign(subIds, name);
+      const skipped = res.skipped.length ? ` · ${res.skipped.length}건은 바꾸지 못함(${[...new Set(res.skipped.map((s) => s.reason))].join(", ")})` : "";
+      setNotice({ tone: res.moved.length ? "info" : "neg", text: res.moved.length ? `${res.moved.length}건을 ${name === agent ? "내가 맡았습니다" : `${name}에게 넘겼습니다`}${skipped}` : `바뀐 문의가 없습니다${skipped}` });
+      setPicked(new Set()); setTo("");
+      void qc.invalidateQueries({ queryKey: ["inbox"] }); void qc.invalidateQueries({ queryKey: ["inbox-counts"] });
+      void qc.invalidateQueries({ queryKey: ["mywork-now"] }); void qc.invalidateQueries({ queryKey: ["workload"] });
+    } catch (e) {
+      setNotice({ tone: "neg", text: e instanceof ApiError ? e.message : "담당을 바꾸지 못했습니다. 다시 시도하세요" });
+    }
+  }
 
   function update(change: (q: URLSearchParams) => void, keepPage = false) {
     const q = new URLSearchParams(search);
@@ -224,9 +243,18 @@ export function InboxPage({ onOpen, flash, navigate }: {
       {inbox.isError && (
         <Banner tone="neg" action={<Button size="sm" onClick={() => void inbox.refetch()}>새로고침</Button>}>{FAIL}</Banner>
       )}
+      {notice && <Banner tone={notice.tone} action={<Button size="sm" variant="ghost" onClick={() => setNotice(null)}>닫기</Button>}>{notice.text}</Banner>}
       {chosen.length > 0 && (
         <div className="inbox-bulk" role="region" aria-label="선택한 문의 일괄 처리">
           <b>{chosen.length}건 선택</b>
+          {agent && chosen.some((r) => r.assignee_masked !== agent) && (
+            <Button size="sm" onClick={() => void reassign(chosen.map((r) => r.sub_ticket_id), agent)}>내가 맡기</Button>
+          )}
+          <select className="inbox-bulk__select" aria-label="넘길 상담원" value={to} onChange={(e) => setTo(e.target.value)}>
+            <option value="">담당자 변경…</option>
+            {(agentList.data ?? []).filter((a) => a.dept === dept).map((a) => <option key={a.name} value={a.name}>{a.name}{a.name === agent ? " (나)" : ""}</option>)}
+          </select>
+          <Button size="sm" disabled={!to} onClick={() => void reassign(chosen.map((r) => r.sub_ticket_id), to)}>변경</Button>
           <Button size="sm" onClick={() => exportCsv(chosen)}>내보내기 (CSV)</Button>
           <span className="inbox-bulk__grow" />
           <Button variant="ghost" size="sm" onClick={() => setPicked(new Set())}>선택 해제</Button>

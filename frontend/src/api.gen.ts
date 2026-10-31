@@ -471,6 +471,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/sub-tickets/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Assign Many */
+        post: operations["assign_many_sub_tickets_assign_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/sub-tickets/{sub_ticket_id}": {
         parameters: {
             query?: never;
@@ -852,6 +869,30 @@ export interface components {
              * @default
              */
             question: string;
+        };
+        /** AssignIn */
+        AssignIn: {
+            /** Assignee */
+            assignee: string;
+            /** Sub Ticket Ids */
+            sub_ticket_ids: string[];
+        };
+        /**
+         * AssignResult
+         * @description 담당 변경 결과(add-reassign). 바뀐 문의와, 건너뛴 문의(사유와 함께).
+         */
+        AssignResult: {
+            /** Moved */
+            moved: string[];
+            /** Skipped */
+            skipped: components["schemas"]["AssignSkip"][];
+        };
+        /** AssignSkip */
+        AssignSkip: {
+            /** Reason */
+            reason: string;
+            /** Sub Ticket Id */
+            sub_ticket_id: string;
         };
         /** AssistAnswer */
         AssistAnswer: {
@@ -3329,6 +3370,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Steps"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    assign_many_sub_tickets_assign_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-agent-id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssignResult"];
                 };
             };
             /** @description Validation Error */

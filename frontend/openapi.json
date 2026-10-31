@@ -545,6 +545,70 @@
         "title": "AskIn",
         "type": "object"
       },
+      "AssignIn": {
+        "properties": {
+          "assignee": {
+            "title": "Assignee",
+            "type": "string"
+          },
+          "sub_ticket_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sub Ticket Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "sub_ticket_ids",
+          "assignee"
+        ],
+        "title": "AssignIn",
+        "type": "object"
+      },
+      "AssignResult": {
+        "description": "담당 변경 결과(add-reassign). 바뀐 문의와, 건너뛴 문의(사유와 함께).",
+        "properties": {
+          "moved": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Moved",
+            "type": "array"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/AssignSkip"
+            },
+            "title": "Skipped",
+            "type": "array"
+          }
+        },
+        "required": [
+          "moved",
+          "skipped"
+        ],
+        "title": "AssignResult",
+        "type": "object"
+      },
+      "AssignSkip": {
+        "properties": {
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "sub_ticket_id": {
+            "title": "Sub Ticket Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sub_ticket_id",
+          "reason"
+        ],
+        "title": "AssignSkip",
+        "type": "object"
+      },
       "AssistAnswer": {
         "properties": {
           "answer": {
@@ -8004,6 +8068,62 @@
           }
         },
         "summary": "Get Steps"
+      }
+    },
+    "/sub-tickets/assign": {
+      "post": {
+        "operationId": "assign_many_sub_tickets_assign_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-agent-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Agent-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Assign Many"
       }
     },
     "/sub-tickets/{sub_ticket_id}": {
