@@ -13,13 +13,14 @@ export function useAgents() {
 }
 
 /** 부서의 접수함 건수만(요약 버튼, 왼쪽 메뉴 접수함 옆 수). 필터를 걸지 않은 값 */
-export function useInboxCounts(dept: string, asOf: string | null, includeClosed = false) {
+export function useInboxCounts(dept: string, asOf: string | null, includeClosed = false, me = "") {
   return useQuery({
-    queryKey: ["inbox-counts", { dept, asOf, includeClosed }],
+    queryKey: ["inbox-counts", { dept, asOf, includeClosed, me }],
     queryFn: () => {
       const q = new URLSearchParams({ dept, page: "1", size: "1" });
       if (asOf) q.set("as_of", asOf);
       if (includeClosed) q.set("include_closed", "true");
+      if (me) q.set("me", me);
       return api.inbox(q);
     },
     select: (d) => d.counts,

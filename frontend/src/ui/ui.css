@@ -216,3 +216,6 @@
 .ui-tabs--seg .ui-tab:hover:not(:disabled) { background: var(--color-seg-hover); color: var(--color-fg); }
 .ui-tabs--seg .ui-tab[aria-selected="true"] { background: var(--color-seg-on); color: var(--color-brand); font-weight: var(--fw-semibold); }
 .ui-tabs--seg .ui-tab__count { background: none; color: inherit; font-weight: var(--fw-semibold); padding: 0; }
+
+.ui-table__group td { padding: var(--sp-8) var(--sp-16); background: var(--color-filter-bg); border-top: 1px solid var(--color-line); font-size: var(--fs-s); color: var(--color-fg); }
+.ui-table__group td .sub { margin-left: var(--sp-6); color: var(--color-fg-sub); }

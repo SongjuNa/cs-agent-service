@@ -10,7 +10,7 @@
 |---|---|---|---|---|
 | SCR-00 공통 틀 | [SCR-00](screens/SCR-00-shell.md) | 5 | 5 | |
 | SCR-01 접수 시뮬레이터 | [SCR-01](screens/SCR-01-intake-simulator.md) | 6 | 6 | |
-| SCR-02 접수함 | [SCR-02](screens/SCR-02-inbox.md) | 11 | 11 | |
+| SCR-02 접수함 | [SCR-02](screens/SCR-02-inbox.md) | 12 | 12 | |
 | SCR-03 티켓 상세 | [SCR-03](screens/SCR-03-ticket-detail.md) | 21 | 21 | |
 | SCR-04 나의 업무 현황 | [SCR-04](screens/SCR-04-my-work.md) | 8 | 8 | |
 | SCR-05 전화 상담 | [SCR-05](screens/SCR-05-phone.md) | 6 | 6 | |
@@ -18,7 +18,7 @@
 | SCR-07 고객 관리 | [SCR-07](screens/SCR-07-customers.md) | 4 | 4 | |
 | SCR-08 기준정보 보기 | [SCR-08](screens/SCR-08-reference.md) | 4 | 4 | |
 | SCR-09 접수 이력 | [SCR-09](screens/SCR-09-case-search.md) | 3 | 3 | |
-| 합계 | | 74 | 68 | SCR-06 6개 |
+| 합계 | | 75 | 69 | SCR-06 6개 |
 
 - 목(흉내 낸 응답)은 오류·빈 상태 시험에만 썼다: SCR-01-AC-4, SCR-02-AC-7, SCR-03-AC-5·7·12·20, SCR-05-AC-6, SCR-08-AC-1("색인 없음" 문서가 시연 DB에 없음).
 - AC가 아닌 화면 시험 2개: SCR-08 「왜?」 → [규칙표에서 보기], SCR-09 티켓 상세 → [접수 이력에서 보기].

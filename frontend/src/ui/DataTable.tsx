@@ -1,5 +1,5 @@
 // 표 (principles §4). 목업 table / th.sortable / td.r 와 화면 명세의 공통 상태(로딩·빈 목록·읽기 실패)를 한곳에 둔다.
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { EmptyState } from "./Feedback";
 
 export interface Column<Row> {
@@ -28,6 +28,8 @@ export interface DataTableProps<Row> {
   /** 강조할 행(예: 「왜?」에서 연 규칙 행) */
   marked?: (row: Row) => boolean;
   caption?: string;
+  /** 이전 행과 묶음이 바뀌는 행 앞에 묶음 머리 줄을 넣는다(없으면 null). 접수함 "내가 처리할 문의" 등 */
+  groupHeader?: (row: Row, prev: Row | undefined) => ReactNode | null;
 }
 
 /** 머리를 누를 때마다 오름 → 내림 → 기본 순으로 바뀐다(화면 명세 SCR-02) */
@@ -38,7 +40,7 @@ export function nextSort(current: string | undefined, key: string): string | und
 }
 
 export function DataTable<Row>({
-  columns, rows, rowKey, onRowClick, sort, onSortChange, loading = false, stale = false, empty, faded, marked, caption,
+  columns, rows, rowKey, onRowClick, sort, onSortChange, loading = false, stale = false, empty, faded, marked, caption, groupHeader,
 }: DataTableProps<Row>) {
   const arrow = (key?: string) => (key && sort === key ? " ▲" : key && sort === `-${key}` ? " ▼" : "");
   const ariaSort = (key?: string) => (key && sort === key ? "ascending" : key && sort === `-${key}` ? "descending" : undefined);
@@ -70,9 +72,12 @@ export function DataTable<Row>({
                   {columns.map((c) => <td key={c.key}><span className="ui-skeleton" /></td>)}
                 </tr>
               ))
-            : (rows ?? []).map((row) => (
+            : (rows ?? []).map((row, i) => (
+                <Fragment key={rowKey(row)}>
+                {groupHeader?.(row, rows?.[i - 1]) != null && (
+                  <tr className="ui-table__group"><td colSpan={columns.length}>{groupHeader(row, rows?.[i - 1])}</td></tr>
+                )}
                 <tr
-                  key={rowKey(row)}
                   className={[onRowClick && "is-link", faded?.(row) && "is-faded", marked?.(row) && "is-marked"].filter(Boolean).join(" ") || undefined}
                   aria-current={marked?.(row) ? "true" : undefined}
                   onClick={onRowClick ? () => onRowClick(row) : undefined}
@@ -85,6 +90,7 @@ export function DataTable<Row>({
                     </td>
                   ))}
                 </tr>
+                </Fragment>
               ))}
         </tbody>
       </table>

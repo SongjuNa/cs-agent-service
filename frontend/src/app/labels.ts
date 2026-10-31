@@ -45,3 +45,12 @@ export const URGENCY: Record<string, string> = {
 
 export const label = (map: Record<string, string>, code: string | null | undefined): string =>
   code ? map[code] ?? code : "—";
+
+/** 접수함 줄의 "다음 행동"(서버 next_action 코드, 변경 add-inbox-turn-depth). 목업 actionOf 문구 */
+export const NEXT_ACTION: Record<string, string> = {
+  DONE: "처리 완료", WAIT_DEPT: "부서 회신 대기", WAIT_CUSTOMER: "고객 회신 대기", SEND_INFO_REQUEST: "정보 요청 보내기",
+  CHECK_DEPT_REPLY: "부서 회신 확인 후 발송", APPROVE_DRAFT: "초안 승인 후 발송", WRITE_ANSWER: "답변 작성",
+};
+/** 묶음 머리(서버 turn 코드 → 목업 GROUP) */
+export const TURN_GROUP: Record<string, string> = { ME: "내가 처리할 문의", DEPT: "기다리는 문의 · 부서·고객 회신", CUSTOMER: "기다리는 문의 · 부서·고객 회신", DONE: "처리 완료" };
+export const DEPTH: Record<string, string> = { DEEP: "상세 검토", NORMAL: "일반 확인", QUICK: "빠른 확인" };

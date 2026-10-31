@@ -31,9 +31,13 @@ export function hasFilters(search: URLSearchParams): boolean {
 }
 
 /** 주소 쿼리 → GET /tickets 쿼리. 부서·기준 시각·쪽 크기를 더하고, 빈 값은 보내지 않는다 */
-export function requestQuery(search: URLSearchParams, dept: string, asOf: string | null): URLSearchParams {
+export function requestQuery(search: URLSearchParams, dept: string, asOf: string | null, agent = ""): URLSearchParams {
   const q = new URLSearchParams();
-  for (const [k, v] of search) if (v.trim()) q.set(k, v.trim());
+  for (const [k, v] of search) if (k !== "m" && v.trim()) q.set(k, v.trim()); // m은 화면의 보기 범위(주소에만 둔다)
+  if (agent) {
+    q.set("me", agent);
+    if (search.get("m") !== "0") q.set("assignee", agent); // 처음 열면 내 담당만, m=0이면 팀 전체
+  }
   q.set("dept", dept);
   q.set("size", String(SIZE));
   if (!q.has("page")) q.set("page", "1");
@@ -41,8 +45,8 @@ export function requestQuery(search: URLSearchParams, dept: string, asOf: string
   return q;
 }
 
-export function useInbox(search: URLSearchParams, dept: string, asOf: string | null) {
-  const query = requestQuery(search, dept, asOf);
+export function useInbox(search: URLSearchParams, dept: string, asOf: string | null, agent = "") {
+  const query = requestQuery(search, dept, asOf, agent);
   return useQuery({
     queryKey: ["inbox", query.toString()],
     queryFn: () => api.inbox(query),
