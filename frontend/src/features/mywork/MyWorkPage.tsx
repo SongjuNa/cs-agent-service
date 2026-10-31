@@ -2,7 +2,8 @@
 // 배치는 목업 v1.42 `viewHome`: 머리 → 인사말 → 숫자 칸 4개 → 탭 → 탭별 표. 탭은 주소(?tab=)에 남긴다.
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
-import { api, type WorkRow, type Workload } from "../../api";
+import { api, type InboxRow, type WorkRow, type Workload } from "../../api";
+import { ALERT, DEPTH, NEXT_ACTION, label } from "../../app/labels";
 import { useDepartments } from "../../app/queries";
 import { useSession } from "../../app/session";
 import { AlertChip, Banner, Button, DataTable, EmptyState, PageHeader, Pager, PriorityBadge, StatusBadge, Tabs, formatRemaining, type Column } from "../../ui";
@@ -86,6 +87,23 @@ export function MyWorkPage({ onOpen, navigate }: { onOpen: (id: string) => void;
     refetchInterval: REFRESH_MS,
   });
 
+  // 최신 목업: "새 문의" 타일과 "지금 처리할 건"은 접수함 API(내 담당 + 내 차례)에서 온다(변경 add-inbox-turn-depth의 값)
+  const nowQ = useQuery({
+    queryKey: ["mywork-now", { dept, agent, scope: effective, asOf }],
+    queryFn: () => {
+      const base = new URLSearchParams({ dept, size: "8", turn: "ME" });
+      if (asOf) base.set("as_of", asOf);
+      if (effective === "mine") { base.set("assignee", agent); base.set("me", agent); }
+      const counts = new URLSearchParams({ dept, size: "1" });
+      if (asOf) counts.set("as_of", asOf);
+      if (effective === "mine") { counts.set("assignee", agent); counts.set("me", agent); }
+      return Promise.all([api.inbox(base), api.inbox(counts)]).then(([list, all]) => ({ rows: list.rows, turnMe: list.counts.total, counts: all.counts }));
+    },
+    enabled: ready,
+    placeholderData: keepPreviousData,
+    refetchInterval: REFRESH_MS,
+  });
+
   function setTab(t: Area) {
     const url = new URL(window.location.href);
     url.searchParams.set("tab", t);
@@ -129,14 +147,59 @@ export function MyWorkPage({ onOpen, navigate }: { onOpen: (id: string) => void;
       } />
       {q.isError && <Banner tone="neg" action={<Button size="sm" onClick={() => void q.refetch()}>새로고침</Button>}>{FAIL}</Banner>}
       {!data ? <div className="mw-skeleton" aria-busy="true" /> : (
-        <Body data={data} agent={agent ?? ""} stale={q.isError} tab={tab} setTab={setTab}
+        <Body data={data} agent={agent ?? ""} stale={q.isError} tab={tab} setTab={setTab} now={nowQ.data} mine={effective === "mine"}
               page={page} setPage={setPage} onOpen={onOpen} navigate={navigate} />
       )}
     </div>
   );
 }
 
-function Body({ data, agent, stale, tab, setTab, page, setPage, onOpen, navigate }: {
+type Now = { rows: InboxRow[]; turnMe: number; counts: { new: number } };
+
+/** 최신 목업 "지금 처리할 건"과 "가장 급한 내 문의". 접수함의 내 차례 묶음 앞부분이다 */
+function NowList({ now, mine, onOpen, navigate }: { now: Now; mine: boolean; onOpen: (id: string) => void; navigate: (path: string) => void }) {
+  const scope = mine ? "" : "?m=0";
+  const top = now.rows[0];
+  return (
+    <div className="mw-now">
+      <section className="ui-card mw-now__list" aria-label="지금 처리할 건" data-testid="now-list">
+        <header className="mw-now__h">
+          <b>지금 처리할 건</b><span className="mw-sub">{now.turnMe}건</span>
+          <button type="button" className="tk-link" onClick={() => navigate(`/inbox${scope}`)}>접수함에서 모두 보기</button>
+        </header>
+        {now.rows.length === 0 ? <p className="mw-now__empty">지금 처리할 일이 없습니다</p> : (
+          <ul>
+            {now.rows.map((r) => (
+              <li key={r.sub_ticket_id}>
+                <button type="button" onClick={() => onOpen(r.ticket_id)}>
+                  <span className="mw-now__id">{r.ticket_id}{r.inquiry_count > 1 ? ` #${r.seq}` : ""}</span>
+                  <span className="mw-now__t" title={r.inquiry_subject ?? undefined}>{r.inquiry_subject ?? r.product_code ?? "—"}</span>
+                  {r.priority && <PriorityBadge priority={r.priority} adjusted={!!r.priority_adjusted} />}
+                  <span className="mw-now__a">→ {label(NEXT_ACTION, r.next_action)}</span>
+                  <span className="mw-sub">{DEPTH[r.review_depth]}</span>
+                  {r.alerts.map((a) => <AlertChip key={a} alert={a} />)}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      {top && top.alerts.length > 0 && (
+        <section className="ui-card mw-now__top" aria-label="가장 급한 내 문의" data-testid="most-urgent">
+          <b>가장 급한 내 문의</b>
+          <button type="button" onClick={() => onOpen(top.ticket_id)}>
+            <span className="mw-now__id">{top.ticket_id}</span>
+            <span>{top.inquiry_subject ?? top.product_code ?? ""}</span>
+            <span className="mw-sub">{top.alerts.map((a) => label(ALERT, a)).join(" · ")}</span>
+          </button>
+        </section>
+      )}
+    </div>
+  );
+}
+
+function Body({ data, agent, stale, tab, setTab, page, setPage, onOpen, navigate, now, mine }: {
+  now?: Now; mine: boolean;
   data: Workload; agent: string; stale: boolean; tab: Area; setTab: (t: Area) => void;
   page: number; setPage: (p: number) => void; onOpen: (id: string) => void; navigate: (path: string) => void;
 }) {
@@ -167,7 +230,13 @@ function Body({ data, agent, stale, tab, setTab, page, setPage, onOpen, navigate
         {tile("risks", "기한 위험·위반", breached ? `해결 기한 지남 ${breached}` : "기한 안", () => setTab("risks"), breached > 0)}
         {tile("waiting_customer", "고객 회신 대기", `리마인드 발송 ${reminded}`, () => navigate("/inbox?status=WAITING_CUSTOMER"))}
         {tile("waiting_escalation", "이관 회신 대기", "전문 부서 회신 전", () => setTab("waiting_escalation"))}
+        {now && (
+          <button type="button" className="mw-k" data-tile="new" onClick={() => navigate(`/inbox?status=NEW${mine ? "" : "&m=0"}`)}>
+            <span>새 문의</span><b>{now.counts.new}</b><em>아직 처리를 시작하지 않음</em>
+          </button>
+        )}
       </div>
+      {now && <NowList now={now} mine={mine} onOpen={onOpen} navigate={navigate} />}
 
       <section className="ui-card mw-card">
         <Tabs label="나의 업무 현황" value={tab} onChange={(k) => setTab(k as Area)}

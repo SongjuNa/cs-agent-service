@@ -182,3 +182,23 @@ test("SCR-04-AC-8: 이름·부서를 고르지 않으면 '상단에서 이름과
   await expect(page.locator("table.ui-table")).toHaveCount(0);
   await expect(page.getByTestId("today")).toHaveCount(0);
 });
+
+test("SCR-04-AC-9 (최신 목업): '새 문의' 타일, '지금 처리할 건', '가장 급한 내 문의'가 접수함 API의 내 담당·내 차례 값과 같다", async ({ page, request }) => {
+  const url = (extra: string) => `http://localhost:8000/tickets?dept=TS_LV&as_of=${SNAPSHOT}&${extra}`;
+  const team = await (await request.get(url("size=200"))).json();
+  const name: string = team.rows.find((r: { assignee_masked: string | null; turn: string }) => r.assignee_masked && r.turn === "ME").assignee_masked;
+  const mineList = await (await request.get(url(`size=8&turn=ME&assignee=${name}&me=${name}`))).json();
+  const mineAll = await (await request.get(url(`size=1&assignee=${name}&me=${name}`))).json();
+  await useSession(page, { dept: "TS_LV", agent: name, snapshot: true });
+  await page.goto("/my");
+  await expect(page.getByTestId("now-list")).toBeVisible();
+  await expect(page.getByTestId("now-list")).toContainText(`${mineList.counts.total}건`);
+  await expect(page.getByTestId("now-list").locator("li")).toHaveCount(mineList.rows.length);
+  await expect(page.locator('[data-tile="new"] b')).toHaveText(String(mineAll.counts.new));
+  const first = mineList.rows[0];
+  await expect(page.getByTestId("now-list").locator("li").first()).toContainText(first.ticket_id);
+  if (first.alerts.length) await expect(page.getByTestId("most-urgent")).toContainText(first.ticket_id);
+  // 줄을 누르면 그 문의 상세가 열린다
+  await page.getByTestId("now-list").locator("li").first().getByRole("button").click();
+  await expect(page).toHaveURL(new RegExp(`/tickets/${first.ticket_id}$`));
+});
