@@ -99,8 +99,12 @@ test("SCR-02-AC-8: 2쪽을 보다가 상세로 갔다가 [접수함으로]를 �
   await useSession(page, { dept: "TS_LV", snapshot: true });
   await page.goto("/inbox?sort=-received_at");
   await expect(rows(page).first()).toBeVisible();
+  const firstOnPage1 = await rows(page).first().locator(".ui-tid").innerText();
   await page.getByRole("button", { name: "2", exact: true }).click();
   await expect(page).toHaveURL(/page=2/);
+  // 응답이 느리면 화면이 이전 목록(1쪽)을 흐리게 남겨 두므로, 2쪽의 새 목록이 올 때까지 기다린 뒤 첫 줄을 읽는다
+  await expect(rows(page).first().locator(".ui-tid")).not.toHaveText(firstOnPage1);
+  await expect(page.locator("table.ui-table--stale")).toHaveCount(0);
   const firstOnPage2 = await rows(page).first().locator(".ui-tid").innerText();
   await rows(page).first().click();
   await expect(page).toHaveURL(/\/tickets\//);
@@ -154,8 +158,8 @@ test("SCR-02-AC-11: 요약 탭에 회신 대기·이관이 있고, 새 문의 �
   // 회신 대기 탭 → 모든 행이 고객 회신 대기
   await page.getByRole("tab", { name: /^회신 대기/ }).click();
   await expect(page).toHaveURL(/status=WAITING_CUSTOMER/);
-  await expect(rows(page).first()).toBeVisible();
-  for (const v of await column(page, "처리 상태")) expect(v).toMatch(/^고객 회신 대기|^회신 대기/);
+  // 응답이 느리면 이전 목록이 남아 있으므로, 모든 줄이 고객 회신 대기가 될 때까지 기다린다
+  await expect.poll(async () => { const v = await column(page, "처리 상태"); return v.length > 0 && v.every((t) => /^고객 회신 대기|^회신 대기/.test(t.trim())); }).toBe(true);
   // 새 문의 칩 → status=NEW, 다시 누르면 풀린다
   await page.getByRole("tab", { name: /^전체/ }).click();
   const chip = page.getByRole("button", { name: /^새 문의/ });
