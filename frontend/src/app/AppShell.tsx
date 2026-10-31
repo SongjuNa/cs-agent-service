@@ -34,7 +34,10 @@ export const MENU: MenuGroup[] = [
     { key: "depts", label: "부서 관리", path: "/depts", ready: true },
     { key: "etc", label: "기타 관리", path: "/etc", ready: true },
   ] },
-  { key: "ops", label: "대시보드", items: [{ key: "ops", label: "운영 대시보드", path: "/dashboard" }] },
+  { key: "ops", label: "대시보드", items: [
+    { key: "ops", label: "운영 대시보드", path: "/dashboard" },
+    { key: "assign", label: "문의 배정 관리", path: "/admin/assign", ready: true },
+  ] },
 ];
 
 export interface Crumb { label: string; path?: string }

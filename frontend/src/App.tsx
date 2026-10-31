@@ -10,10 +10,11 @@ import { CustomerPage, CustomersPage } from "./features/customers/CustomersPage"
 import { PhonePage } from "./features/phone/PhonePage";
 import { DocsPage, KnowledgePage } from "./features/reference/ReferencePages";
 import { MyWorkPage } from "./features/mywork/MyWorkPage";
+import { AssignPage } from "./features/assign/AssignPage";
 import { TicketPage } from "./features/ticket/TicketPage";
 import { EmptyState, PageHeader } from "./ui";
 
-type Page = { kind: "inbox" } | { kind: "intake" } | { kind: "my" } | { kind: "phone" } | { kind: "customers" } | { kind: "history" } | { kind: "customer"; id: string } | { kind: "ref"; key: "docs" | "rules" | "products" | "depts" | "etc" } | { kind: "ticket"; id: string } | { kind: "menu"; key: string };
+type Page = { kind: "inbox" } | { kind: "intake" } | { kind: "assign" } | { kind: "my" } | { kind: "phone" } | { kind: "customers" } | { kind: "history" } | { kind: "customer"; id: string } | { kind: "ref"; key: "docs" | "rules" | "products" | "depts" | "etc" } | { kind: "ticket"; id: string } | { kind: "menu"; key: string };
 
 // 목업 메뉴 중 목업 화면으로만 두는 것 (docs/frontend/screens/README "명세를 쓰지 않은 목업 화면").
 // 운영 대시보드는 보여 줄 화면을 정하기 전이라 목업 화면으로 둔다(2026-10-29 조장 결정)
@@ -32,6 +33,7 @@ function pageFromPath(): Page {
   const m = path.match(/^\/tickets\/([^/]+)$/);
   if (m) return { kind: "ticket", id: decodeURIComponent(m[1]) };
   if (path === "/intake") return { kind: "intake" };
+  if (path === "/admin/assign") return { kind: "assign" };
   if (path === "/my") return { kind: "my" };
   if (path === "/phone") return { kind: "phone" };
   const c = path.match(/^\/customers\/([^/]+)$/);
@@ -46,6 +48,7 @@ function pageFromPath(): Page {
 }
 
 function activeKey(page: Page): string {
+  if (page.kind === "assign") return "assign";
   if (page.kind === "my") return "home";
   if (page.kind === "phone") return "phone";
   if (page.kind === "customers" || page.kind === "customer") return "customers";
@@ -58,6 +61,7 @@ function activeKey(page: Page): string {
 function crumbsOf(page: Page): Crumb[] {
   if (page.kind === "ticket") return [{ label: "접수", path: "/my" }, { label: "접수함", path: lastInboxUrl() }, { label: page.id }];
   if (page.kind === "intake") return [{ label: "접수", path: "/my" }, { label: "접수함", path: "/inbox" }, { label: "접수 시뮬레이터" }];
+  if (page.kind === "assign") return [{ label: "대시보드" }, { label: "문의 배정 관리" }];
   if (page.kind === "my") return [{ label: "접수", path: "/my" }, { label: "나의 업무 현황" }];
   if (page.kind === "phone") return [{ label: "접수", path: "/my" }, { label: "전화 상담" }];
   if (page.kind === "customers") return [{ label: "접수", path: "/my" }, { label: "고객 관리" }];
@@ -100,6 +104,7 @@ export function App() {
   return (
     <AppShell active={activeKey(page)} crumbs={crumbsOf(page)} navigate={navigate}>
       {page.kind === "intake" ? <IntakePage onOpen={open} navigate={navigate} />
+        : page.kind === "assign" ? <AssignPage key={`${dept}|${mode}`} onOpen={open} />
         : page.kind === "phone" ? <PhonePage onOpen={open} />
         : page.kind === "history" ? <CaseSearchPage key={window.location.search} />
         : page.kind === "ref" ? (page.key === "docs" ? <DocsPage key={window.location.search} /> : <KnowledgePage key={`${page.key}${window.location.search}`} menu={page.key} />)
