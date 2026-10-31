@@ -42,9 +42,8 @@ function ManualEditor({ sub }: { sub: SubTicket }) {
   );
 }
 
-export function SendTab({ detail, agent, kind, onKind, locked, canEscalate, escalateTitle, onEscalate, onSource, onJump, onFail, refresh }: {
+export function SendTab({ detail, agent, kind, onKind, onSource, onJump, onFail, refresh }: {
   detail: Detail; agent: string; kind: Kind | null; onKind: (k: Kind) => void;
-  locked: boolean; canEscalate: boolean; escalateTitle: string; onEscalate: () => void;
   onSource: (t: SourceTarget) => void; onJump: (rowId: string) => void; onFail: (message: string) => void;
   refresh: () => Promise<unknown>;
 }) {
@@ -63,7 +62,6 @@ export function SendTab({ detail, agent, kind, onKind, locked, canEscalate, esca
         <>
           <div className="tk-pane__bar">
             고객에게 보낼 초안. 승인해야 발송됩니다
-            <Button size="sm" disabled={locked || !canEscalate} title={escalateTitle} onClick={onEscalate}>이관</Button>
           </div>
           <div className="tk-send-tabs">
             <Tabs label="보낼 글 종류" value={active} onChange={(k) => onKind(k as Kind)}

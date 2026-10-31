@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { api, ApiError, type Detail, type SubTicket } from "../../api";
 import { CATEGORY, CHANNEL, DEPTH, DEPTH_HINT, label, NEXT_HINT, STATUS } from "../../app/labels";
 import { useDepartments } from "../../app/queries";
+import { Icon } from "../../app/icons";
 import { Button, Chip, PriorityBadge } from "../../ui";
 
 const num = (v: number | string | null | undefined): number | null => (v === null || v === undefined ? null : Number(v));
@@ -48,8 +49,11 @@ function resolutionText(sub: SubTicket): { value: ReactNode; sub: string } {
 
 export interface InboxNav { ids: string[]; index: number; go: (ticketId: string) => void }
 
-export function HeadCard({ detail, onBack, onReprocess, busy, nav }: {
+export function HeadCard({ detail, onBack, onReprocess, busy, nav, onEvidence, escalate }: {
   detail: Detail; onBack: () => void; onReprocess: () => void; busy: boolean; nav?: InboxNav;
+  onEvidence?: () => void;
+  /** [이관]: 부서 작성 영역만 있는 문의면 undefined(버튼 없음) */
+  escalate?: { disabled: boolean; title: string; onClick: () => void };
 }) {
   const depts = useDepartments();
   const { ticket, run, summary } = detail;
@@ -72,7 +76,9 @@ export function HeadCard({ detail, onBack, onReprocess, busy, nav }: {
   return (
     <section className="tk-head" aria-label="티켓 요약">
       <div className="tk-head__top">
+        <button type="button" className="tk-backcircle" aria-label="접수함으로" title="접수함으로" onClick={onBack}><Icon name="back" /></button>
         <h1 className="tk-head__id">{ticket.ticket_id}</h1>
+        <Chip tone={detail.processing ? "info" : "brand"}>{label(STATUS, summary?.status ?? rep?.sub_ticket.status)}</Chip>
         <span className="tk-head__ttl">{[kinds.join(" + ") || "유형 미정", products.join(", ") || "제품 미확인"].join(", ")}</span>
         <span className="tk-head__chips">
           {subs.length > 1 && <Chip tone="brand">복합 문의 {subs.length}건</Chip>}
@@ -89,10 +95,11 @@ export function HeadCard({ detail, onBack, onReprocess, busy, nav }: {
               <button type="button" disabled={nav.index >= nav.ids.length - 1} aria-label="다음 문의 (j)" title="다음 문의 · j" onClick={() => nav.go(nav.ids[nav.index + 1])}>›</button>
             </span>
           )}
+          {onEvidence && <Button onClick={onEvidence} title="AI가 어떻게 판단했는지 아래 근거로 이동">근거 전체</Button>}
+          {escalate && <Button disabled={escalate.disabled} title={escalate.title} onClick={escalate.onClick}>이관</Button>}
           {(detail.can_reprocess || detail.can_retry) && (
             <Button onClick={onReprocess} busy={busy}>{detail.can_retry ? "다시 시도" : "다시 처리"}</Button>
           )}
-          <Button className="tk-back" onClick={onBack}>접수함으로</Button>
         </span>
       </div>
       <p className="tk-recv">
@@ -101,7 +108,7 @@ export function HeadCard({ detail, onBack, onReprocess, busy, nav }: {
       {subs.some((x) => x.sub_ticket.summary_ko) && (
         <div className="tk-sum" data-testid="ai-summary">
           <span className="tk-sum__k">AI 요약</span>
-          <ul>
+          <ul className="tk-sum__list">
             {subs.filter((x) => x.sub_ticket.summary_ko).map((x) => (
               <li key={x.sub_ticket.sub_ticket_id}>{subs.length > 1 ? <b>문의 {x.sub_ticket.seq} · </b> : null}{x.sub_ticket.summary_ko}</li>
             ))}
@@ -163,6 +170,7 @@ export function NowStrip({ detail, deptName }: { detail: Detail; deptName: (code
           검토 모드 · {DEPTH[rep.review_depth]}
         </span>
       )}
+      <span className="tk-now__scope"><i />AI 처리 범위: {detail.sub_tickets.some((x) => x.auto_state !== "NONE") ? "접수·분석·초안·발송" : "접수·분석·초안"}</span>
     </section>
   );
 }
