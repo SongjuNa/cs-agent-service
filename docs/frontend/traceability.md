@@ -47,7 +47,7 @@
 | FR-028 | 우선순위 조정·SLA 재계산 | SCR-03 P3 | `ticket/ActionPopups.tsx` | SCR-03-AC-13·14 | test_priority_override |
 | FR-033 | 이관 처리 | SCR-03 P4, 부서 회신 | `ticket/ActionPopups.tsx`, `ticket/DeptWriter.tsx` | SCR-03-AC-15·16 | test_escalation, test_dept_reply |
 | FR-032 | 고객 회신 입력 | SCR-03 P6 | `ticket/ActionPopups.tsx` | SCR-03-AC-17·18 | test_customer_reply |
-| FR-019 | 유사 해결사례 | SCR-03 ② "비슷한 해결사례", SCR-09 | `ticket/SystemTab.tsx`, `features/cases/CaseSearchPage.tsx` | SCR-03-AC-19, SCR-09 연결 시험 | test_similar_cases |
+| FR-019 | 유사 해결사례 | SCR-09 접수 이력(② 탭 블록은 ELLO로 대체해 뺌) | `features/cases/CaseSearchPage.tsx` | SCR-03-AC-19(블록 없음) | test_similar_cases |
 | R-06 (add-manual-draft) | 근거 없음 → 직접 작성 | SCR-03 ③ | `ticket/SendTab.tsx` | SCR-03-AC-20 | test_ticket_detail_full |
 | FR-047 | 나의 업무 현황 | SCR-04 | `features/mywork/MyWorkPage.tsx` | SCR-04-AC-1~8 | test_my_work |
 | FR-050 | 통화 받아쓰기·메모 초안 | SCR-05 | `features/phone/PhonePage.tsx` | SCR-05-AC-1~6 | test_call_transcription |

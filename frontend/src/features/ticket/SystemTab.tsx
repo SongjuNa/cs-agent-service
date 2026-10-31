@@ -106,35 +106,6 @@ function Fault({ c }: { c: FaultCandidate }) {
   );
 }
 
-/** 비슷한 해결사례 (FR-019, 변경 add-similar-cases 결정 4). 고장 진단 줄 바로 아래, 상담원 참고용 */
-function Similar({ sub, onCases }: { sub: SubTicket; onCases?: (sub: SubTicket) => void }) {
-  const sc = sub.similar_cases;
-  if (!sc) return null;
-  return (
-    <div className="tk-row" data-row="C-08b" data-testid="similar-cases">
-      <span className="tk-row__k">비슷한 해결사례</span>
-      <div className="tk-row__v">
-        <span className="tk-row__line">
-          {sc.cases.length ? `${sc.cases.length}건` : <span className="tk-muted">없음</span>}
-          {onCases && <button type="button" className="tk-link tk-link--b" onClick={() => onCases(sub)}>접수 이력에서 보기</button>}
-        </span>
-        <span className="tk-row__ev">참고용, 초안에는 쓰지 않음{sc.notes.map((n) => ` · ${n}`).join("")}</span>
-        {sc.cases.map((c) => (
-          <div key={c.case_id} className="tk-fault" data-case={c.case_id}>
-            <div className="tk-row__line">
-              <b>{c.case_id}</b>
-              <Chip tone="outline">{c.method === "ERROR_CODE" ? "같은 에러 코드" : "뜻 검색"} {Number(c.score).toFixed(2)}</Chip>
-              {c.error_code && <span className="tk-mono">{c.error_code}</span>}
-            </div>
-            <dl><dt>원인</dt><dd>{c.cause ?? "—"}</dd><dt>조치</dt><dd>{c.action ?? "—"}</dd><dt>결과</dt><dd>{c.result ?? "—"}</dd></dl>
-          </div>
-        ))}
-      </div>
-      <span />
-    </div>
-  );
-}
-
 /** 줄 값 아래에 펼쳐 보이는 것(근거 문장, 절·조회값, 진단·이관 후보) */
 function RowBody({ sub, row, onSource }: { sub: SubTicket; row: EvidenceRow; onSource: (t: SourceTarget) => void }) {
   if (row.id === "C-08" && sub.diagnosis) {
@@ -208,12 +179,11 @@ function RunList({ ticketId }: { ticketId: string }) {
   );
 }
 
-export function SystemTab({ detail, locked, focus, onWhy, onSource, onAdjust, onEdit, onCases }: {
+export function SystemTab({ detail, locked, focus, onWhy, onSource, onAdjust, onEdit }: {
   detail: Detail; locked: boolean; focus: string | null;
   onWhy: (row: EvidenceRow) => void; onSource: (t: SourceTarget) => void; onAdjust: (sub: SubTicket) => void;
   onEdit: (sub: SubTicket, data: Record<string, unknown>) => void;
   /** [접수 이력에서 보기]: 그 문의의 에러 코드·제품으로 해결사례 검색을 연다(SCR-09 동작 표) */
-  onCases?: (sub: SubTicket) => void;
 }) {
   const refs = useRef<Record<string, HTMLElement | null>>({});
   useEffect(() => { if (focus) refs.current[focus]?.scrollIntoView({ block: "center" }); }, [focus]);
@@ -275,10 +245,8 @@ export function SystemTab({ detail, locked, focus, onWhy, onSource, onAdjust, on
                 {/* 목업의 "왜?" 글자 링크 대신 일반 버튼(2026-10-29 조장 요청) */}
                 <Button size="sm" className="tk-why" onClick={() => onWhy(row)}>근거 보기</Button>
               </div>
-              {row.id === "C-08" && <Similar sub={sub} onCases={onCases} />}
               </Fragment>
             ))}
-            {!sub.evidence_rows.some((r) => r.id === "C-08") && <Similar sub={sub} onCases={onCases} />}
             <EditControls key={`${st.sub_ticket_id}-${sub.version}`} sub={sub} locked={locked || closed} onSave={(data) => onEdit(sub, data)} />
           </section>
         );

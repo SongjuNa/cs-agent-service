@@ -172,15 +172,11 @@ test.describe.serial("000017 사본 A: 발송 → 충돌 → 회신", () => {
   test.beforeAll(async ({ request }) => { test.setTimeout(300_000); id = await intakeCopy(request, "CSV1-000017"); });
   test.beforeEach(async ({ page }) => useSession(page, { dept: "TS_LV", agent: "leo" }));
 
-  // add-similar-cases(Q8b) 뒤 처리한 사본이라 ② 탭에 비슷한 해결사례가 있다. 팀 정답지 사례는 /cases/{id}가 404라 200이면 정답지 밖이다.
-  test("SCR-03-AC-19: ② 탭 비슷한 해결사례가 3건 이하이고 팀 정답지 문의의 사례가 없으며, 초안 인용에 해결사례가 없다", async ({ page, request }) => {
+  // 비슷한 해결사례는 상담원 도우미(ELLO)로 물어보게 되어 ② 탭에서 뺐다(add-ello-assistant). 초안 인용에도 해결사례는 없다.
+  test("SCR-03-AC-19: ② 탭에 비슷한 해결사례 블록이 없고, 초안 인용에 해결사례가 없다", async ({ page, request }) => {
     await page.goto(`/tickets/${id}?tab=system`);
-    const block = page.getByTestId("judge-1").getByTestId("similar-cases");
-    await expect(block).toBeVisible();
-    const shown = (await block.locator("[data-case]").evaluateAll((els) => els.map((e) => e.getAttribute("data-case")))) as string[];
-    expect(shown.length).toBeGreaterThan(0);
-    expect(shown.length).toBeLessThanOrEqual(3);
-    for (const c of shown) expect((await request.get(api(`/cases/${c}`), { headers: H() })).status()).toBe(200);
+    await expect(page.getByTestId("judge-1")).toBeVisible();
+    await expect(page.getByTestId("similar-cases")).toHaveCount(0);
     const d = await detail(request, id);
     for (const s of d.sub_tickets) for (const dr of s.drafts ?? []) expect(String(dr.body ?? "")).not.toMatch(/RC-\d{4}/);
   });
