@@ -1,5 +1,5 @@
 // 주소 나누기와 공통 틀(SCR-00). 화면은 AppShell 안에 그린다. 주소는 화면 정의서 v2 0-2절과 기존 경로를 그대로 쓴다.
-import { useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { AppShell, MENU, type Crumb } from "./app/AppShell";
 import { useSession } from "./app/session";
 import { InboxPage } from "./features/inbox/InboxPage";
@@ -16,11 +16,14 @@ import { AutoRulesPage } from "./features/autorules/AutoRulesPage";
 import { TicketPage } from "./features/ticket/TicketPage";
 import { EmptyState, PageHeader } from "./ui";
 
-type Page = { kind: "inbox" } | { kind: "intake" } | { kind: "assign" } | { kind: "ops" } | { kind: "auto" } | { kind: "my" } | { kind: "phone" } | { kind: "customers" } | { kind: "history" } | { kind: "customer"; id: string } | { kind: "ref"; key: "docs" | "rules" | "products" | "depts" | "etc" } | { kind: "ticket"; id: string } | { kind: "menu"; key: string };
+// 고객 포털 미리보기(SCR-13)는 상담원 틀 밖의 화면이라 따로 불러온다(문서·제품 데이터가 커서 처음 화면에는 싣지 않는다)
+const PortalPage = lazy(() => import("./features/portal/PortalPage").then((m) => ({ default: m.PortalPage })));
+
+type Page = { kind: "portal" } | { kind: "inbox" } | { kind: "intake" } | { kind: "assign" } | { kind: "ops" } | { kind: "auto" } | { kind: "my" } | { kind: "phone" } | { kind: "customers" } | { kind: "history" } | { kind: "customer"; id: string } | { kind: "ref"; key: "docs" | "rules" | "products" | "depts" | "etc" } | { kind: "ticket"; id: string } | { kind: "menu"; key: string };
 
 // 목업 메뉴 중 목업 화면으로만 두는 것 (docs/frontend/screens/README "명세를 쓰지 않은 목업 화면").
 // 운영 대시보드는 보여 줄 화면을 정하기 전이라 목업 화면으로 둔다(2026-10-29 조장 결정)
-const MOCK_ONLY = new Set(["notice", "sysnote", "chatbot", "portal"]);
+const MOCK_ONLY = new Set(["notice", "sysnote", "chatbot"]);
 const MOCK_REASON: Record<string, string> = {
   ops: "보여 줄 화면을 정하기 전이라 목업 화면으로 둡니다(2026-10-29 조장 결정).",
 };
@@ -34,6 +37,7 @@ function pageFromPath(): Page {
   const path = window.location.pathname;
   const m = path.match(/^\/tickets\/([^/]+)$/);
   if (m) return { kind: "ticket", id: decodeURIComponent(m[1]) };
+  if (path === "/portal") return { kind: "portal" };
   if (path === "/intake") return { kind: "intake" };
   if (path === "/admin/assign") return { kind: "assign" };
   if (path === "/dashboard") return { kind: "ops" };
@@ -52,6 +56,7 @@ function pageFromPath(): Page {
 }
 
 function activeKey(page: Page): string {
+  if (page.kind === "portal") return "portal";
   if (page.kind === "assign") return "assign";
   if (page.kind === "ops") return "ops";
   if (page.kind === "auto") return "auto";
@@ -65,6 +70,7 @@ function activeKey(page: Page): string {
 }
 
 function crumbsOf(page: Page): Crumb[] {
+  if (page.kind === "portal") return [{ label: "접수", path: "/inbox" }, { label: "고객 포털 미리보기" }];
   if (page.kind === "ticket") return [{ label: "접수", path: "/inbox" }, { label: "접수함", path: lastInboxUrl() }, { label: page.id }];
   if (page.kind === "intake") return [{ label: "접수", path: "/inbox" }, { label: "접수함", path: "/inbox" }, { label: "접수 시뮬레이터" }];
   if (page.kind === "assign") return [{ label: "대시보드" }, { label: "문의 배정 관리" }];
@@ -108,6 +114,8 @@ export function App() {
   }, []);
 
   const open = (id: string) => navigate(`/tickets/${encodeURIComponent(id)}`);
+
+  if (page.kind === "portal") return <Suspense fallback={null}><PortalPage onExit={() => navigate("/inbox")} /></Suspense>;
 
   return (
     <AppShell active={activeKey(page)} crumbs={crumbsOf(page)} navigate={navigate}>
