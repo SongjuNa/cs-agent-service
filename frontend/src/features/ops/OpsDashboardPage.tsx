@@ -3,6 +3,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { api, type DashboardSummary } from "../../api";
+import { Icon } from "../../app/icons";
 import { useDepartments } from "../../app/queries";
 import { useSession } from "../../app/session";
 import { Banner, Button, EmptyState, PageHeader } from "../../ui";
@@ -79,13 +80,49 @@ function Body({ d, days, setDays, stale, refetch, deptName, navigate }: {
 
       <div className="ops-grid">
         <section className="ui-card ops-card" aria-label="일별 접수 추이">
-          <header className="ops-card__h"><b>일별 접수 추이</b>
+          <header className="ops-card__h"><span className="ops-ic"><Icon name="trend" /></span><b>일별 접수 추이</b>
             <span className="ops-range" role="group" aria-label="기간">{RANGES.map(([n, l]) => <button key={n} type="button" aria-pressed={days === n} className={days === n ? "is-on" : ""} onClick={() => setDays(n)}>{l}</button>)}</span></header>
           <LineChart days={d.daily.map((x) => mmdd(x.date))} values={perDay} avg={avg} peak={peak} />
           <p className="ops-insight">하루 평균 <b>{avg.toFixed(0)}건</b>이 들어옵니다. 가장 많았던 날은 {d.daily[peak] ? mmdd(d.daily[peak].date) : "—"}({perDay[peak] ?? 0}건)입니다.</p>
         </section>
+        <section className="ui-card ops-card" aria-label="AI와 사람 처리 비중" data-testid="ops-auto-share">
+          <header className="ops-card__h"><span className="ops-ic"><Icon name="bot" /></span><b>AI와 사람이 나눠 처리한 비중</b></header>
+          <div className="ops-donut" role="img" aria-label={`AI 자동 ${d.auto.sent}건, 사람 ${d.auto.human}건`}>
+            <Donut part={d.auto.total ? d.auto.sent / d.auto.total : 0} label={autoRate !== null ? `${autoRate}%` : "—"} sub="AI가 끝냄" />
+            <ul>
+              <li><i className="ai" />AI 자동 발송<b>{d.auto.sent}건</b><span>{d.auto.total ? `${Math.round((d.auto.sent / d.auto.total) * 100)}%` : "—"}</span></li>
+              <li><i className="human" />상담원 처리<b>{d.auto.human}건</b><span>{d.auto.total ? `${Math.round((d.auto.human / d.auto.total) * 100)}%` : "—"}</span></li>
+            </ul>
+          </div>
+          <p className="ops-insight">{d.auto.total
+            ? <>최근 {d.days}일 보낸 최종 답변 중 <b>{autoRate}%</b>를 AI가 사람 승인 없이 보냈고(사후 검수 완료 {d.auto.reviewed}건), 나머지는 상담원이 확인했습니다. 고위험 유형은 항상 상담원이 확인합니다.</>
+            : "이 기간에 보낸 최종 답변이 없습니다."}</p>
+          <div className="ops-card__foot"><Button size="sm" onClick={() => navigate("/admin/auto")}>규칙 설정</Button></div>
+        </section>
+      </div>
+
+      <div className="ops-grid ops-grid--even">
+        <section className="ui-card ops-card" aria-label="부서별 병목">
+          <header className="ops-card__h"><span className="ops-ic"><Icon name="dept" /></span><b>부서별 병목</b><span className="ops-sub">미해결 많은 순</span></header>
+          <Bars rows={d.by_dept.slice(0, 7).map((x) => ({ key: x.dept, label: deptName(x.dept), n: x.open, bad: x.breach, tags: x.esc_late ? [`이관 지연 ${x.esc_late}`] : [], to: `/admin/assign?dept=${x.dept}` }))} max={deptMax} navigate={navigate} />
+          <p className="ops-insight">{d.by_dept[0] ? <><b>{deptName(d.by_dept[0].dept)}</b>에 미해결 {d.by_dept[0].open}건이 가장 많이 쌓여 있습니다. 이관 지연은 전문 부서로 넘긴 뒤 168시간이 지난 건입니다.</> : "미해결 문의가 없습니다."}</p>
+        </section>
+        <section className="ui-card ops-card" aria-label="상담원별 업무량">
+          <header className="ops-card__h"><span className="ops-ic"><Icon name="agents" /></span><b>상담원별 업무량</b><Button size="sm" onClick={() => navigate("/admin/assign")}>문의 배정 관리</Button></header>
+          <Bars rows={d.by_agent.slice(0, 8).map((x) => ({ key: x.agent, label: x.agent, n: x.open, bad: x.breach, tags: [...(x.risk ? [`임박 ${x.risk}`] : []), ...(x.open > loadAvg * 1.25 ? ["집중"] : [])], to: `/admin/assign?dept=${x.dept ?? ""}&who=${encodeURIComponent(x.agent)}` }))} max={agentMax} navigate={navigate} />
+          <p className="ops-insight">{heavy && heavy.open > loadAvg * 1.25 ? <><b>{heavy.agent}</b>에게 {heavy.open}건이 몰려 있습니다(평균 {loadAvg.toFixed(0)}건). 재배정을 검토하세요.</> : <>업무량이 고르게 나뉘어 있습니다(평균 {loadAvg.toFixed(0)}건).</>}</p>
+        </section>
+      </div>
+
+
+      <div className="ops-grid ops-grid--even">
+        <section className="ui-card ops-card" aria-label="처리 단계별 현황">
+          <header className="ops-card__h"><span className="ops-ic"><Icon name="flow" /></span><b>처리 단계별 현황</b><span className="ops-sub">지금 각 단계에 머무는 미해결 문의</span></header>
+          <Bars rows={d.stages.map((x) => ({ key: x.stage, label: STAGE_LABEL[x.stage][0], sub: STAGE_LABEL[x.stage][1], n: x.open, bad: x.breach, tags: [] }))} max={stageMax} navigate={navigate} />
+          <p className="ops-insight">{topStage && topStage.open > 0 ? <><b>{STAGE_LABEL[topStage.stage][0]}</b> 단계에 {topStage.open}건이 가장 많이 머뭅니다.</> : "쌓인 문의가 없습니다."}</p>
+          </section>
         <section className="ui-card ops-card" aria-label="나라별 먼저 볼 곳">
-          <header className="ops-card__h"><b>먼저 볼 나라</b><span className="ops-sub">안전 → 위반 → 이관 지연 순</span></header>
+          <header className="ops-card__h"><span className="ops-ic"><Icon name="globe" /></span><b>먼저 볼 나라</b><span className="ops-sub">안전 → 위반 → 이관 지연 순</span></header>
           <ol className="ops-rank">
             {d.by_country.slice(0, 5).map((c, i) => (
               <li key={c.country}><span className="ops-rank__n">{i + 1}</span><b>{c.country}</b>
@@ -96,37 +133,21 @@ function Body({ d, days, setDays, stale, refetch, deptName, navigate }: {
           <p className="ops-insight">나라별 건수는 고객의 국가 값을 코드로 센 것입니다.</p>
         </section>
       </div>
-
-      <div className="ops-grid">
-        <section className="ui-card ops-card" aria-label="부서별 병목">
-          <header className="ops-card__h"><b>부서별 병목</b><span className="ops-sub">미해결 많은 순</span></header>
-          <Bars rows={d.by_dept.slice(0, 7).map((x) => ({ key: x.dept, label: deptName(x.dept), n: x.open, bad: x.breach, tags: x.esc_late ? [`이관 지연 ${x.esc_late}`] : [], to: `/admin/assign?dept=${x.dept}` }))} max={deptMax} navigate={navigate} />
-          <p className="ops-insight">{d.by_dept[0] ? <><b>{deptName(d.by_dept[0].dept)}</b>에 미해결 {d.by_dept[0].open}건이 가장 많이 쌓여 있습니다. 이관 지연은 전문 부서로 넘긴 뒤 168시간이 지난 건입니다.</> : "미해결 문의가 없습니다."}</p>
-        </section>
-        <section className="ui-card ops-card" aria-label="상담원별 업무량">
-          <header className="ops-card__h"><b>상담원별 업무량</b><Button size="sm" onClick={() => navigate("/admin/assign")}>문의 배정 관리</Button></header>
-          <Bars rows={d.by_agent.slice(0, 8).map((x) => ({ key: x.agent, label: x.agent, n: x.open, bad: x.breach, tags: [...(x.risk ? [`임박 ${x.risk}`] : []), ...(x.open > loadAvg * 1.25 ? ["집중"] : [])], to: `/admin/assign?dept=${x.dept ?? ""}&who=${encodeURIComponent(x.agent)}` }))} max={agentMax} navigate={navigate} />
-          <p className="ops-insight">{heavy && heavy.open > loadAvg * 1.25 ? <><b>{heavy.agent}</b>에게 {heavy.open}건이 몰려 있습니다(평균 {loadAvg.toFixed(0)}건). 재배정을 검토하세요.</> : <>업무량이 고르게 나뉘어 있습니다(평균 {loadAvg.toFixed(0)}건).</>}</p>
-        </section>
-      </div>
-
-      <section className="ui-card ops-card" aria-label="AI와 사람 처리 비중" data-testid="ops-auto-share">
-        <header className="ops-card__h"><b>AI와 사람 처리 비중</b><span className="ops-sub">최근 {d.days}일 보낸 최종 답변</span></header>
-        <div className="ops-share" role="img" aria-label={`AI 자동 ${d.auto.sent}건, 사람 ${d.auto.human}건`}>
-          {d.auto.total > 0 ? (<><i className="ops-share__ai" style={{ width: `${(d.auto.sent / d.auto.total) * 100}%` }} /><i className="ops-share__human" style={{ width: `${(d.auto.human / d.auto.total) * 100}%` }} /></>) : null}
-        </div>
-        <p className="ops-insight">{d.auto.total
-          ? <>AI 자동 발송 <b>{d.auto.sent}건</b>({autoRate}%, 사후 검수 완료 {d.auto.reviewed}건), 사람이 보낸 답변 <b>{d.auto.human}건</b>입니다. 고위험 유형은 항상 사람이 확인합니다.</>
-          : "이 기간에 보낸 최종 답변이 없습니다."}</p>
-      </section>
-
-      <section className="ui-card ops-card" aria-label="처리 단계별 현황">
-        <header className="ops-card__h"><b>처리 단계별 현황</b><span className="ops-sub">지금 각 단계에 머무는 미해결 문의</span></header>
-        <Bars rows={d.stages.map((x) => ({ key: x.stage, label: STAGE_LABEL[x.stage][0], sub: STAGE_LABEL[x.stage][1], n: x.open, bad: x.breach, tags: [] }))} max={stageMax} navigate={navigate} />
-        <p className="ops-insight">{topStage && topStage.open > 0 ? <><b>{STAGE_LABEL[topStage.stage][0]}</b> 단계에 {topStage.open}건이 가장 많이 머뭅니다.</> : "쌓인 문의가 없습니다."}</p>
-      </section>
       {d.by_dept.length === 0 && <EmptyState title="집계할 미해결 문의가 없습니다" />}
     </div>
+  );
+}
+
+/** 도넛: part(0~1)만큼을 강조색으로 칠한다. 가운데에 퍼센트 */
+function Donut({ part, label, sub }: { part: number; label: string; sub: string }) {
+  const R = 46, C = 2 * Math.PI * R;
+  return (
+    <svg viewBox="0 0 120 120" className="ops-donut__svg">
+      <circle cx="60" cy="60" r={R} className="ops-donut__bg" />
+      {part > 0 && <circle cx="60" cy="60" r={R} className="ops-donut__fg" strokeDasharray={`${C * part} ${C}`} transform="rotate(-90 60 60)" />}
+      <text x="60" y="58" textAnchor="middle" className="ops-donut__n">{label}</text>
+      <text x="60" y="76" textAnchor="middle" className="ops-donut__s">{sub}</text>
+    </svg>
   );
 }
 

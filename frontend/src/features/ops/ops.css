@@ -14,8 +14,7 @@
 .ops-kpi.is-link { cursor: pointer; }
 .ops-kpi.is-link:hover { border-color: var(--color-brand); }
 .ops-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--sp-14); align-items: start; }
-.ops-grid:nth-of-type(2) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-@media (max-width: 1100px) { .ops-grid, .ops-grid:nth-of-type(2) { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 1100px) { .ops-grid { grid-template-columns: minmax(0, 1fr); } }
 .ops-card { display: flex; flex-direction: column; gap: var(--sp-10); padding: var(--sp-14) var(--sp-16); }
 .ops-card__h { display: flex; align-items: center; gap: var(--sp-10); font-size: var(--fs-s); }
 .ops-card__h .ui-btn, .ops-range { margin-left: auto; }
@@ -56,6 +55,23 @@
 .ops-legend i { display: inline-block; width: 10px; height: 10px; margin-right: 4px; border-radius: 3px; vertical-align: -1px; }
 .ops-legend .all { background: var(--color-brand); }
 .ops-legend .bad { background: var(--color-neg); }
-.ops-share { display: flex; height: 14px; overflow: hidden; border-radius: var(--r-lg); background: var(--color-line); }
-.ops-share__ai { background: var(--color-brand); }
-.ops-share__human { background: var(--color-fg-sub); }
+
+/* 최신 목업 모양(변경 add-ops-look): 카드 머리의 색 아이콘, 도넛 */
+.ops-ic { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: var(--r-md); background: var(--color-info-bg); color: var(--color-brand); flex: none; }
+.ops-ic svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+.ops-grid--even { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+@media (max-width: 1100px) { .ops-grid--even { grid-template-columns: minmax(0, 1fr); } }
+.ops-donut { display: flex; align-items: center; gap: var(--sp-20, 20px); }
+.ops-donut__svg { width: 132px; height: 132px; flex: none; }
+.ops-donut__bg { fill: none; stroke: var(--color-line); stroke-width: 14; }
+.ops-donut__fg { fill: none; stroke: var(--color-brand); stroke-width: 14; }
+.ops-donut__n { font-size: 22px; font-weight: 700; fill: var(--color-fg); }
+.ops-donut__s { font-size: 9px; fill: var(--color-fg-sub); }
+.ops-donut ul { flex: 1; margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--sp-8); font-size: var(--fs-s); }
+.ops-donut li { display: flex; align-items: center; gap: var(--sp-8); }
+.ops-donut li i { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+.ops-donut li i.ai { background: var(--color-brand); }
+.ops-donut li i.human { background: var(--color-line); }
+.ops-donut li b { margin-left: auto; font-variant-numeric: tabular-nums; }
+.ops-donut li span { width: 40px; text-align: right; color: var(--color-fg-sub); }
+.ops-card__foot { display: flex; justify-content: flex-end; }

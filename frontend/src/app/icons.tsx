@@ -24,6 +24,12 @@ const PATHS: Record<string, string> = {
   crumbHome: "<path d=\"M12 3.2 2.5 11.1l1.3 1.5L5 11.6V21h5.2v-6h3.6v6H19v-9.4l1.2 1 1.3-1.5z\"></path>",
   back: "<path d=\"M19 12H5m6-6-6 6 6 6\"></path>",
   filter: "<path d=\"M4 6h16M7 12h10M10 18h4\"></path>",
+  trend: "<path d=\"M3 17l6-6 4 4 8-8\"></path><path d=\"M15 7h6v6\"></path>",
+  bot: "<rect x=\"4\" y=\"8\" width=\"16\" height=\"11\" rx=\"2\"></rect><path d=\"M12 4v4M9 13h.01M15 13h.01M9 16.5h6\"></path>",
+  dept: "<path d=\"M4 21V5l8-2v18\"></path><path d=\"M12 9h8v12M4 21h16M8 8v.01M8 12v.01M8 16v.01M16 13v.01M16 17v.01\"></path>",
+  agents: "<circle cx=\"9\" cy=\"8\" r=\"3.5\"></circle><path d=\"M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5\"></path><path d=\"M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.7c1.9.7 3 2.3 3.4 5.3\"></path>",
+  flow: "<rect x=\"3\" y=\"4\" width=\"6\" height=\"5\" rx=\"1\"></rect><rect x=\"15\" y=\"4\" width=\"6\" height=\"5\" rx=\"1\"></rect><rect x=\"9\" y=\"15\" width=\"6\" height=\"5\" rx=\"1\"></rect><path d=\"M6 9v3h12V9M12 12v3\"></path>",
+  globe: "<circle cx=\"12\" cy=\"12\" r=\"9\"></circle><path d=\"M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18\"></path>",
   chev: "<path d=\"m9 6 6 6-6 6\"></path>",
   search: "<circle cx=\"11\" cy=\"11\" r=\"7\"></circle><path d=\"m20 20-3.5-3.5\"></path>",
 };
