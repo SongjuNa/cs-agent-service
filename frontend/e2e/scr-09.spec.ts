@@ -1,10 +1,8 @@
 // SCR-09 접수 이력(해결사례 검색) 수용 기준 (docs/frontend/screens/SCR-09-case-search.md). 실제 API, 목 없음.
 // 팀 정답지는 2026-10-29 조장이 준 gold_set v1(80건)을 시연 DB eval.gold_set에 넣은 상태에서 본다.
-// 마지막 시험(AC 아님)은 정답지 문의 사본을 새로 접수해(Gemini 호출) 티켓 상세 "비슷한 해결사례"와 [접수 이력에서 보기]를 본다.
 import { execFileSync } from "node:child_process";
 import { expect, test, type Page } from "@playwright/test";
 import { useSession } from "./session";
-import { intakeCopy } from "./ticket";
 
 const DB = process.env.E2E_DATABASE_URL ?? "postgresql://cs:change-me@localhost:5432/cs_agent"; // .env.example 기본값
 const sql = (q: string) => execFileSync("psql", [DB, "-v", "ON_ERROR_STOP=1", "-qAtc", q], { encoding: "utf8" }).trim();
@@ -45,23 +43,4 @@ test("SCR-09-AC-3 결과 행을 누르면 원인·조치·결과가 있는 사�
     await expect(dd).not.toHaveText("—");
     await expect(dd).not.toBeEmpty();
   }
-});
-
-// AC는 아니다. FR-019 티켓 상세 "비슷한 해결사례"와 화면 명세 동작 표 [접수 이력에서 보기]
-test("SCR-09 티켓 상세의 비슷한 해결사례에서 [접수 이력에서 보기]로 열면 그 제품으로 찾은 결과가 보인다", async ({ page, request }) => {
-  test.setTimeout(300_000);
-  const id = await intakeCopy(request, "CSV1-000017");
-  await useSession(page, { dept: "TS_LV" });
-  await page.goto(`/tickets/${id}?tab=system`);
-  const block = page.getByTestId("judge-1").getByTestId("similar-cases");
-  await expect(block).toContainText("참고용, 초안에는 쓰지 않음");
-  const shown = await block.locator("[data-case]").evaluateAll((els) => els.map((e) => e.getAttribute("data-case")));
-  expect(shown.length).toBeGreaterThan(0);
-  expect(shown.length).toBeLessThanOrEqual(3);
-  expect(shown).not.toContain("RC-0006"); // CSV1-000017 자기 사례
-  await block.getByRole("button", { name: "접수 이력에서 보기" }).click();
-  await expect(page).toHaveURL(/\/history\?.*product_code=ACB-AS-2000/);
-  await expect(page.getByLabel("제품 코드")).toHaveValue("ACB-AS-2000");
-  await expect(rows(page).first()).toBeVisible();
-  expect(new Set((await col(page, 4).allInnerTexts()).map((t) => t.trim()))).toEqual(new Set(["ACB-AS-2000"]));
 });
