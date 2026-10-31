@@ -8,3 +8,4 @@ export { DataTable, nextSort, type Column, type DataTableProps } from "./DataTab
 export { Modal, type ModalProps } from "./Modal";
 export { Card, PageHeader, Pager, Tabs, type TabItem } from "./Layout";
 export { Banner, EmptyState, Field, type BannerTone, type FieldProps } from "./Feedback";
+export { MarkedTextarea } from "./MarkedTextarea";

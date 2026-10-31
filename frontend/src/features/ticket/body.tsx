@@ -25,6 +25,24 @@ function markAll(body: string, needle: string, apply: (m: CharMark) => void, mar
   }
 }
 
+/**
+ * 고치는 중에 형광펜으로 칠할 구간(시작·끝 글자 위치, 겹치면 합침): 근거 밖 숫자·인용(자체 대조)과 ⑤ 검증이 지적한 문장.
+ * 서버는 위치가 아니라 문장(quote)과 값을 주므로, 지금 본문에서 찾아 위치를 구한다. 고친 글에서 사라진 값은 저절로 빠진다.
+ */
+export function markRanges(body: string, bad: string[], findings: Finding[]): [number, number][] {
+  const marks: CharMark[] = Array.from({ length: body.length }, () => ({}));
+  for (const token of bad) markAll(body, token, (m) => (m.bad = true), marks, true);
+  findings.forEach((f, i) => markAll(body, f.quote, (m) => (m.finding = m.finding ?? i), marks));
+  const out: [number, number][] = [];
+  let start = -1;
+  for (let i = 0; i <= body.length; i++) {
+    const on = i < body.length && (marks[i].bad || marks[i].finding !== undefined);
+    if (on && start < 0) start = i;
+    if (!on && start >= 0) { out.push([start, i]); start = -1; }
+  }
+  return out;
+}
+
 export function renderBody(
   body: string,
   opts: {
