@@ -295,7 +295,7 @@ def _t2_part(sub) -> dict[str, Any]:
     """T2 출력 중 한 하위 문의 몫(복합 문의의 티켓 run, last_pipeline_step이 seq로 꺼낸다)."""
     return {"seq": sub.seq, "category_code": sub.category_code, "category_confidence": sub.category_confidence,
             "urgency_flag": sub.urgency_flag, "urgency_evidence": sub.urgency_evidence,
-            "evidence_sentences": sub.evidence_sentences, "query_en": sub.query_en}
+            "evidence_sentences": sub.evidence_sentences, "query_en": sub.query_en, "summary_ko": sub.summary_ko}
 
 
 def _pipeline_done(conn: Connection, run_id: int, subs) -> str:
@@ -367,14 +367,15 @@ def _save_sub(conn, run_id, state, sub, outcome: RunOutcome, inquiry_id: int, re
                sla_first_response_target_h = CASE WHEN priority_adjusted_by_agent THEN sla_first_response_target_h ELSE %s END,
                sla_resolution_target_h = CASE WHEN priority_adjusted_by_agent THEN sla_resolution_target_h ELSE %s END,
                evidence_json = %s,
-               reference_doc_id = %s, reference_section = %s, no_evidence_flag = %s, pipeline_error = %s
+               reference_doc_id = %s, reference_section = %s, no_evidence_flag = %s, pipeline_error = %s,
+               summary_ko = coalesce(%s, summary_ko)
            WHERE sub_ticket_id = %s""",
         (sub.category_code, sub.evidence_sentences, sub.urgency_flag, sub.product_code, sub.error_code, sub.current_fw,
          sub.priority_final, sub.priority_rule_id, sub.routing_rule_id, sub.assigned_dept, sub.return_kind, sub.sla_id,
          req.required_info if req else [], provided, sub.missing_info, sub.missing_blocking_info,
          sub.fr_target_h, sub.res_target_h, _json(evidence), top.doc_id if top else None,
          top.section_no if top else None, not blocking and not sub.doc_candidates and not sub.pipeline_error, sub.pipeline_error,
-         sub.sub_ticket_id),
+         sub.summary_ko, sub.sub_ticket_id),
     )
     # 조정한 문의는 규칙값(priority_rule_id)만 새로 쓰고 조정값을 덮어쓰지 않는다(FR-011 예외 3행, C-69)
     assign(conn, sub.sub_ticket_id)  # 담당 부서의 상담원(명단)에게 배정, 부서가 바뀌면 다시(C-127)

@@ -128,7 +128,7 @@ def _sub_detail(conn: Connection, sub: dict[str, Any], run: dict[str, Any] | Non
             "routing_rule_id", "assigned_dept", "return_kind", "sla_id", "required_info", "provided_info",
             "missing_info", "missing_blocking_info", "sla_first_response_target_h", "sla_resolution_target_h",
             "first_response_at_utc", "info_request_sent", "status", "pipeline_error", "evidence_json",
-            "escalated", "escalated_to", "escalation_reason")},
+            "escalated", "escalated_to", "escalation_reason", "summary_ko")},
         "escalated_at_utc": _escalated_at(conn, sub["sub_ticket_id"]) if sub["escalated_to"] else None,  # FR-033
         "checks": [{"check_type": r["check_type"], "flag": (r["detail"] or {}).get("flag")} for r in failed],
         "other_flags": [f for f in flags if check_type_of(f) is None and f not in DRAFT_FLAGS],

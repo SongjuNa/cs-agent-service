@@ -93,6 +93,7 @@ class InboxRow(Out):
     customer_tier: str
     country: str | None
     inquiry_subject: str | None
+    summary_ko: str | None = None  # 한국어 한 줄 요약(add-summary-ko). 없으면 화면은 문의 제목을 보인다
     product_code: str | None
     product_name: str | None
     category_code: str | None
@@ -216,6 +217,7 @@ class SubTicketRow(Out):
     escalated: bool
     escalated_to: str | None
     escalation_reason: str | None
+    summary_ko: str | None = None  # 한국어 한 줄 요약(add-summary-ko)
 
 
 class SubState(Out):

@@ -10,7 +10,7 @@ from typing import Any
 
 from app.llm.client import LlmError, Transport, generate_json, load_prompt
 
-PROMPT_FILE = "l1_understand_v1.md"
+PROMPT_FILE = "l1_understand_v2.md"
 CATEGORY_DEFINITIONS_FILE = "l1_category_definitions_v1.md"
 URGENCY_CRITERIA_FILE = "l1_urgency_criteria_v1.md"
 
@@ -49,6 +49,7 @@ SCHEMA: dict = {
                     "urgency_flag": {"type": "string", "enum": URGENCY_ORDER},
                     "urgency_evidence": {"type": ["string", "null"]},
                     "query_en": {"type": "string"},
+                    "summary_ko": {"type": "string"},  # 필수가 아니다: 빠져도 처리는 계속되고 접수함은 문의 제목을 보인다
                 },
                 "required": [
                     "seq", "category_code", "category_confidence", "evidence_sentences",
@@ -73,6 +74,7 @@ class Request:
     urgency_evidence: str | None
     query_en: str | None
     flags: list[str] = field(default_factory=list)
+    summary_ko: str | None = None  # 접수함·상세에 보이는 한국어 한 줄(add-summary-ko)
 
 
 @dataclass
@@ -91,6 +93,19 @@ class Understanding:
     field_names: list[str] = field(default_factory=list)
     prompt_version: str | None = None
     requests: list[Request] = field(default_factory=list)
+
+
+SUMMARY_MAX = 120  # 화면 한 줄에 들어가게 자른다. 프롬프트는 60자를 요청한다
+
+
+def clean_summary(value: Any) -> str | None:
+    """모델이 준 요약을 한 줄로 다듬는다. 문자열이 아니거나 비면 None(처리는 계속, 화면은 문의 제목으로 대신)."""
+    if not isinstance(value, str):
+        return None
+    text = " ".join(value.split())
+    if not text:
+        return None
+    return text if len(text) <= SUMMARY_MAX else text[:SUMMARY_MAX - 1].rstrip() + "…"
 
 
 def urgency_text(urgency_rows: list[tuple[str, str]]) -> str:
@@ -175,7 +190,8 @@ def understand(
         Request(seq=i, category_code=r["category_code"], category_confidence=r["category_confidence"],
                 evidence_sentences=r["evidence_sentences"], urgency_flag=r["urgency_flag"],
                 urgency_evidence=r["urgency_evidence"], query_en=r["query_en"],
-                flags=[FLAG_LOW_CONFIDENCE] if r["category_confidence"] < CONFIDENCE_MIN else [])
+                flags=[FLAG_LOW_CONFIDENCE] if r["category_confidence"] < CONFIDENCE_MIN else [],
+                summary_ko=clean_summary(r.get("summary_ko")))
         for i, r in enumerate(merge_same_category(data["sub_tickets"]), 1)
     ]
     first = requests[0]

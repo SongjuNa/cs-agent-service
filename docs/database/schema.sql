@@ -497,6 +497,7 @@ CREATE TABLE svc.sub_ticket (
   -- 분류·추출 (FR-005~008)
   category_code               text REFERENCES ref.inquiry_category (category),
   evidence_sentences          text[] NOT NULL DEFAULT '{}',
+  summary_ko                 text,                                   -- 접수함·상세에 보이는 한국어 한 줄 요약(add-summary-ko). 처리 때 한 번 저장하고 다시 처리해도 새 값이 있을 때만 바꾼다
   urgency_flag                text NOT NULL DEFAULT 'NONE' REFERENCES ref.urgency (urgency),
   product_code                text REFERENCES ref.product (product_code),
   error_code_reported         text,
@@ -1074,6 +1075,7 @@ CREATE TABLE scoring.sub_ticket (
   -- 분류·추출 (FR-005~008)
   category_code               text REFERENCES ref.inquiry_category (category),
   evidence_sentences          text[] NOT NULL DEFAULT '{}',
+  summary_ko                 text,                                   -- 접수함·상세에 보이는 한국어 한 줄 요약(add-summary-ko). 처리 때 한 번 저장하고 다시 처리해도 새 값이 있을 때만 바꾼다
   urgency_flag                text NOT NULL DEFAULT 'NONE' REFERENCES ref.urgency (urgency),
   product_code                text REFERENCES ref.product (product_code),
   error_code_reported         text,

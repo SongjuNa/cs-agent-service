@@ -29,7 +29,7 @@
 | 티켓 번호 | ticket_id, 복합이면 "#k". 누르면 상세. 정렬 가능 | ticket_id, seq |
 | 채널 | 이름. 티켓 번호 바로 오른쪽. 상태가 신규(NEW)면 "NEW" 태그 | channel, status |
 | 접수 시각 | UTC. 정렬 가능 | received_at_utc |
-| 문의 | 고객이 쓴 제목(원문 언어). 한 줄로 줄이고 마우스를 올리면 전체. 없으면 "—". 한국어 요약은 새 열이 필요해 아직 없음 | inquiry_subject |
+| 문의 | **한국어 한 줄 요약**(AI가 접수 때 만들어 저장한 값, 변경 add-summary-ko). 없으면(예전 접수본) 고객이 쓴 제목(원문 언어), 둘 다 없으면 "—". 한 줄로 줄이고 마우스를 올리면 전체 | summary_ko, inquiry_subject |
 | 고객사·등급 | company_masked + 등급 칩 + 국가 | company_masked, customer_tier, country |
 | 제품 | product_code, 없으면 "미확인" 칩. 마우스 올리면 product_name | product_code, product_name |
 | 유형 | category_code 이름, 복합이면 "복합 n건 중 k" | category_code, seq, inquiry_count |

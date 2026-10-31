@@ -129,7 +129,7 @@ def inbox(conn: Connection, query: InboxQuery, schema: str = "svc") -> dict[str,
         rows AS (
           SELECT s.sub_ticket_id, s.ticket_id, s.seq, count(*) OVER (PARTITION BY s.ticket_id) AS inquiry_count,
                  t.received_at_utc, t.channel, t.language, t.customer_id, c.company_masked, t.customer_tier,
-                 c.country, t.inquiry_subject,
+                 c.country, t.inquiry_subject, s.summary_ko,
                  s.product_code, p.product_name, s.category_code, s.urgency_flag, s.priority,
                  s.priority_adjusted_by_agent AS priority_adjusted, s.assigned_dept, s.escalated_to, s.assignee_masked,
                  s.status, f.fr_status, f.res_status, f.remaining_h,

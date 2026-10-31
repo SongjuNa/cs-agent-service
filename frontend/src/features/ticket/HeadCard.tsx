@@ -97,6 +97,16 @@ export function HeadCard({ detail, onBack, onReprocess, busy, nav }: {
       <p className="tk-recv">
         접수 <b>{ticket.received_at_utc.replace("T", " ").slice(0, 16)}</b> · {label(CHANNEL, ticket.channel)} · {ticket.country ?? "국가 미상"} · 답장 {ticket.language}
       </p>
+      {subs.some((x) => x.sub_ticket.summary_ko) && (
+        <div className="tk-sum" data-testid="ai-summary">
+          <span className="tk-sum__k">AI 요약</span>
+          <ul>
+            {subs.filter((x) => x.sub_ticket.summary_ko).map((x) => (
+              <li key={x.sub_ticket.sub_ticket_id}>{subs.length > 1 ? <b>문의 {x.sub_ticket.seq} · </b> : null}{x.sub_ticket.summary_ko}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div className="tk-stats">
         <Stat k="상태" sub={subs.length > 1 ? "가장 급한 문의 기준" : undefined}>{label(STATUS, summary?.status ?? rep?.sub_ticket.status)}</Stat>
         <Stat k="채널">{label(CHANNEL, ticket.channel)}</Stat>

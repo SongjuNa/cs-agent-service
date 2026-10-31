@@ -173,7 +173,7 @@ function NowList({ now, mine, onOpen, navigate }: { now: Now; mine: boolean; onO
               <li key={r.sub_ticket_id}>
                 <button type="button" onClick={() => onOpen(r.ticket_id)}>
                   <span className="mw-now__id">{r.ticket_id}{r.inquiry_count > 1 ? ` #${r.seq}` : ""}</span>
-                  <span className="mw-now__t" title={r.inquiry_subject ?? undefined}>{r.inquiry_subject ?? r.product_code ?? "—"}</span>
+                  <span className="mw-now__t" title={r.summary_ko ?? r.inquiry_subject ?? undefined}>{r.summary_ko ?? r.inquiry_subject ?? r.product_code ?? "—"}</span>
                   {r.priority && <PriorityBadge priority={r.priority} adjusted={!!r.priority_adjusted} />}
                   <span className="mw-now__a">→ {label(NEXT_ACTION, r.next_action)}</span>
                   <span className="mw-sub">{DEPTH[r.review_depth]}</span>
@@ -189,7 +189,7 @@ function NowList({ now, mine, onOpen, navigate }: { now: Now; mine: boolean; onO
           <b>가장 급한 내 문의</b>
           <button type="button" onClick={() => onOpen(top.ticket_id)}>
             <span className="mw-now__id">{top.ticket_id}</span>
-            <span>{top.inquiry_subject ?? top.product_code ?? ""}</span>
+            <span>{top.summary_ko ?? top.inquiry_subject ?? top.product_code ?? ""}</span>
             <span className="mw-sub">{top.alerts.map((a) => label(ALERT, a)).join(" · ")}</span>
           </button>
         </section>

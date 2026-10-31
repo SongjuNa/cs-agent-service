@@ -3262,6 +3262,17 @@
             "title": "Sub Ticket Id",
             "type": "string"
           },
+          "summary_ko": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary Ko"
+          },
           "ticket_id": {
             "title": "Ticket Id",
             "type": "string"
@@ -5801,6 +5812,17 @@
           "sub_ticket_id": {
             "title": "Sub Ticket Id",
             "type": "string"
+          },
+          "summary_ko": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary Ko"
           },
           "urgency_flag": {
             "title": "Urgency Flag",

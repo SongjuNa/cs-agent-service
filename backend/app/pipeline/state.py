@@ -81,6 +81,7 @@ class SubTicketState(BaseModel):
     query_en: str | None = None
     urgency_flag: str = "NONE"  # 6값, 실패 시 NONE
     urgency_evidence: str | None = None
+    summary_ko: str | None = None  # 한국어 한 줄 요약(add-summary-ko)
     provided_fields: list[ProvidedField] = Field(default_factory=list)
     product_code: str | None = None
     product_family: str | None = None

@@ -1646,6 +1646,8 @@ export interface components {
             status: string;
             /** Sub Ticket Id */
             sub_ticket_id: string;
+            /** Summary Ko */
+            summary_ko?: string | null;
             /** Ticket Id */
             ticket_id: string;
             /** Turn */
@@ -2304,6 +2306,8 @@ export interface components {
             status: string;
             /** Sub Ticket Id */
             sub_ticket_id: string;
+            /** Summary Ko */
+            summary_ko?: string | null;
             /** Urgency Flag */
             urgency_flag: string;
         };
