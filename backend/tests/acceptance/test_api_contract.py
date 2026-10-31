@@ -32,7 +32,8 @@ def test_ac_contract_1_every_api_has_named_response():
     # + 상담원 도우미 1(add-agent-assistant: /assist/ask)
     # + 내부 메모 2(add-internal-notes: GET·POST /tickets/{id}/notes)
     # + 담당 변경 1(add-reassign: POST /sub-tickets/assign)
-    assert sum(len(ops) for ops in spec["paths"].values()) == 40
+    # + 운영 대시보드 1(add-ops-overview: GET /dashboard/summary)
+    assert sum(len(ops) for ops in spec["paths"].values()) == 41
 
 
 def test_ac_contract_2_frontend_copy_is_current():

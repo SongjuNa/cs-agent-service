@@ -25,7 +25,7 @@
 | SCR-03 | 티켓 상세 (팝업 P1~P8) | 접수함 행 | FR-030, FR-024, FR-039, FR-049, FR-028, FR-031~033, FR-019 | `GET /tickets/{id}` 외 15개 | [SCR-03](SCR-03-ticket-detail.md) |
 | SCR-04 | 나의 업무 현황 | 접수 › 나의 업무 현황 | FR-047 | `GET /me/workload` | [SCR-04](SCR-04-my-work.md) |
 | SCR-05 (임시) | 전화 상담 | 접수 › 전화 상담 | FR-050 | `POST /calls/transcribe`, `/calls/note-draft`, `POST /tickets` | [SCR-05](SCR-05-phone.md) |
-| SCR-06 (임시) | 운영 대시보드 | 대시보드 › 운영 대시보드 | FR-034, FR-초안-05 | `GET /dashboard/*` (add-ops-dashboard, add-dashboard-tabs) | [SCR-06](SCR-06-ops-dashboard.md) |
+| SCR-06 (임시) | 운영 대시보드(최신 목업 구성) | 대시보드 › 운영 대시보드 | FR-034 | `GET /dashboard/summary` (add-ops-overview) | [SCR-06](SCR-06-ops-dashboard.md) |
 | SCR-07 (임시) | 고객 관리 | 접수 › 고객 관리 | FR-초안-01 | `GET /customers*` (add-customer-views) | [SCR-07](SCR-07-customers.md) |
 | SCR-08 (임시) | 기준정보 보기(문서·제품·규칙·부서) | 지식 관리 | FR-초안-02·03·04 | `GET /ref/documents*`, `/ref/products*`, `/ref/rules/{kind}` (add-reference-views) | [SCR-08](SCR-08-reference.md) |
 | SCR-09 (임시) | 접수 이력(해결사례 검색) | 접수 › 접수 이력 | FR-초안-06, FR-019 | `GET /cases*` (add-case-search) | [SCR-09](SCR-09-case-search.md) |
@@ -41,7 +41,7 @@ SCR-05~09는 화면 정의서에 없는 새 화면이라 번호를 임시로 붙
 | 로그인, 설정(viewLogin, viewPrefs) | 로그인 없음(D23). 설정은 팀 결정과 부딪힘 | 목업 화면으로 둔다 |
 | 공지사항, 시스템 알림(viewNotice, viewSysNotice) | 새 표가 필요함 | 목업 데이터로 둔다(2026-10-29 조장 답) |
 | 챗봇 관리, 고객포털, 전화 › 상담원 현황(viewChatbot, showPortal, viewAgents) | 우리 시스템 밖 | 목업 화면으로 둔다(2026-10-29 조장 답) |
-| 운영 대시보드(viewOps, SCR-06) | 어떤 화면을 보여 줄지 아직 정하지 않음 | 목업 화면으로 둔다(2026-10-29 조장 결정). SCR-06 명세와 백엔드 제안(add-ops-dashboard, add-dashboard-tabs)은 보류 |
+| (해결됨 2026-10-31) 운영 대시보드(SCR-06) | 2026-10-29에는 보여 줄 화면을 정하지 않아 목업 화면으로 뒀으나, 팀 합의(목업이 최신 기준)로 최신 목업 구성대로 구현했다 | 변경 add-ops-overview. 이전 보류 제안(add-ops-dashboard, add-dashboard-tabs)은 대체됨 |
 | 지식 관리의 고치기·올리기(표 올리기, 색인 다시 만들기) | 규칙표 관리 화면은 범위 밖(2026-10-23 조장 결정) | 보기만 SCR-08에 |
 
 ## 공통 규칙 (모든 화면)

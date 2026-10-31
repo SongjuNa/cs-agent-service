@@ -1764,6 +1764,298 @@
         "title": "CustomerRows",
         "type": "object"
       },
+      "DashAgent": {
+        "properties": {
+          "agent": {
+            "title": "Agent",
+            "type": "string"
+          },
+          "breach": {
+            "title": "Breach",
+            "type": "integer"
+          },
+          "dept": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dept"
+          },
+          "open": {
+            "title": "Open",
+            "type": "integer"
+          },
+          "risk": {
+            "title": "Risk",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "agent",
+          "dept",
+          "open",
+          "breach",
+          "risk"
+        ],
+        "title": "DashAgent",
+        "type": "object"
+      },
+      "DashCountry": {
+        "properties": {
+          "breach": {
+            "title": "Breach",
+            "type": "integer"
+          },
+          "country": {
+            "title": "Country",
+            "type": "string"
+          },
+          "esc_late": {
+            "title": "Esc Late",
+            "type": "integer"
+          },
+          "open": {
+            "title": "Open",
+            "type": "integer"
+          },
+          "risk": {
+            "title": "Risk",
+            "type": "integer"
+          },
+          "safety": {
+            "title": "Safety",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "country",
+          "open",
+          "breach",
+          "risk",
+          "safety",
+          "esc_late"
+        ],
+        "title": "DashCountry",
+        "type": "object"
+      },
+      "DashDay": {
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "date",
+          "n"
+        ],
+        "title": "DashDay",
+        "type": "object"
+      },
+      "DashDept": {
+        "properties": {
+          "breach": {
+            "title": "Breach",
+            "type": "integer"
+          },
+          "dept": {
+            "title": "Dept",
+            "type": "string"
+          },
+          "esc_late": {
+            "title": "Esc Late",
+            "type": "integer"
+          },
+          "open": {
+            "title": "Open",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dept",
+          "open",
+          "breach",
+          "esc_late"
+        ],
+        "title": "DashDept",
+        "type": "object"
+      },
+      "DashEdited": {
+        "properties": {
+          "edited": {
+            "title": "Edited",
+            "type": "integer"
+          },
+          "sent": {
+            "title": "Sent",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sent",
+          "edited"
+        ],
+        "title": "DashEdited",
+        "type": "object"
+      },
+      "DashOpen": {
+        "properties": {
+          "breach": {
+            "title": "Breach",
+            "type": "integer"
+          },
+          "new_today": {
+            "title": "New Today",
+            "type": "integer"
+          },
+          "risk": {
+            "title": "Risk",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "breach",
+          "risk",
+          "new_today"
+        ],
+        "title": "DashOpen",
+        "type": "object"
+      },
+      "DashSla": {
+        "properties": {
+          "fr_breached": {
+            "title": "Fr Breached",
+            "type": "integer"
+          },
+          "fr_met": {
+            "title": "Fr Met",
+            "type": "integer"
+          },
+          "res_ok": {
+            "title": "Res Ok",
+            "type": "integer"
+          },
+          "window_total": {
+            "title": "Window Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "window_total",
+          "fr_met",
+          "fr_breached",
+          "res_ok"
+        ],
+        "title": "DashSla",
+        "type": "object"
+      },
+      "DashStage": {
+        "properties": {
+          "breach": {
+            "title": "Breach",
+            "type": "integer"
+          },
+          "open": {
+            "title": "Open",
+            "type": "integer"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "stage",
+          "open",
+          "breach"
+        ],
+        "title": "DashStage",
+        "type": "object"
+      },
+      "DashboardSummary": {
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "by_agent": {
+            "items": {
+              "$ref": "#/components/schemas/DashAgent"
+            },
+            "title": "By Agent",
+            "type": "array"
+          },
+          "by_country": {
+            "items": {
+              "$ref": "#/components/schemas/DashCountry"
+            },
+            "title": "By Country",
+            "type": "array"
+          },
+          "by_dept": {
+            "items": {
+              "$ref": "#/components/schemas/DashDept"
+            },
+            "title": "By Dept",
+            "type": "array"
+          },
+          "daily": {
+            "items": {
+              "$ref": "#/components/schemas/DashDay"
+            },
+            "title": "Daily",
+            "type": "array"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "edited": {
+            "$ref": "#/components/schemas/DashEdited"
+          },
+          "open": {
+            "$ref": "#/components/schemas/DashOpen"
+          },
+          "sla": {
+            "$ref": "#/components/schemas/DashSla"
+          },
+          "stages": {
+            "items": {
+              "$ref": "#/components/schemas/DashStage"
+            },
+            "title": "Stages",
+            "type": "array"
+          }
+        },
+        "required": [
+          "as_of",
+          "days",
+          "open",
+          "sla",
+          "daily",
+          "by_dept",
+          "by_agent",
+          "by_country",
+          "stages",
+          "edited"
+        ],
+        "title": "DashboardSummary",
+        "type": "object"
+      },
       "Department": {
         "properties": {
           "dept_code": {
@@ -7376,6 +7668,66 @@
           }
         },
         "summary": "Get Customer"
+      }
+    },
+    "/dashboard/summary": {
+      "get": {
+        "description": "미해결 현황, 기한 충족, 일별 접수, 부서·상담원·나라별 쌓임, 처리 단계별 현황(기간은 as_of 이전 days일).",
+        "operationId": "get_summary_dashboard_summary_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "as_of",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "As Of"
+            }
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 365,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Summary"
       }
     },
     "/gold/tickets/{source_ticket_id}": {
