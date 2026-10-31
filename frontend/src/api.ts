@@ -53,6 +53,8 @@ export type ProductDetail = S["ProductDetail"];
 export type RuleKind = S["RuleRows"]["kind"];
 export type CaseRows = S["CaseRows"];
 export type CaseDetail = S["CaseDetail"];
+export type AssistAnswer = S["AssistAnswer"];
+export type AssistSource = S["AssistSource"];
 export type RuleRows = Omit<S["RuleRows"], "rows"> & { rows: Record<string, unknown>[] };
 export type Product = S["Product"];
 export type Loaded = S["Loaded"];
@@ -291,6 +293,9 @@ export const api = {
   product: (code: string) => call<ProductDetail>("GET", `/ref/products/${encodeURIComponent(code)}`),
   // 해결사례 직접 검색 (변경 add-case-search, 화면 명세 SCR-09). 참고용, 초안에는 쓰지 않음
   cases: (query: URLSearchParams) => call<CaseRows>("GET", `/cases?${query.toString()}`),
+  // 상담원 도우미 (변경 add-agent-assistant, 화면 명세 SCR-10). 상담원 참고용, 서버에 저장하지 않는다
+  assist: (question: string, history: { role: "user" | "assistant"; text: string }[], productCode: string | null) =>
+    call<AssistAnswer>("POST", "/assist/ask", { question, history, product_code: productCode }),
   caseDetail: (caseId: string) => call<CaseDetail>("GET", `/cases/${encodeURIComponent(caseId)}`),
   rules: (kind: RuleKind) => call<RuleRows>("GET", `/ref/rules/${kind}`),
   load: (id: string) => call<Loaded>("GET", `/gold/tickets/${encodeURIComponent(id)}`),

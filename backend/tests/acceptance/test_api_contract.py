@@ -29,7 +29,8 @@ def test_ac_contract_1_every_api_has_named_response():
     # 27(add-api-response-models) + 고객 관리 3(add-customer-views: /customers, /customers/countries, /customers/{id})
     # + 기준정보 보기 4(add-reference-views: /ref/documents, /ref/documents/{doc_id}, /ref/products/{product_code}, /ref/rules/{kind})
     # + 해결사례 검색 2(add-case-search: /cases, /cases/{case_id})
-    assert sum(len(ops) for ops in spec["paths"].values()) == 36
+    # + 상담원 도우미 1(add-agent-assistant: /assist/ask)
+    assert sum(len(ops) for ops in spec["paths"].values()) == 37
 
 
 def test_ac_contract_2_frontend_copy_is_current():
