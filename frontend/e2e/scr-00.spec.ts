@@ -67,3 +67,16 @@ test("SCR-00-AC-5: 새로고침해도 고른 부서·상담원·기준 시각이
   await expect(page.getByTitle("부서·상담원 바꾸기")).toContainText("TS_LV");
   await expect(page.getByText("기준 시각: 스냅샷 2026-09-30 23:59 UTC")).toBeVisible();
 });
+
+test("SCR-00-AC-7: 상단 오른쪽에 도움말·세션 시간(연장)·설정·로그아웃이 있고, 로그아웃하면 부서·상담원이 비워진다", async ({ page }) => {
+  await useSession(page, { dept: "TS_LV" });
+  await page.goto("/inbox");
+  const top = page.locator("header.shell-top");
+  await expect(top.getByRole("button", { name: "도움말" })).toBeVisible();
+  await expect(top.getByText(/세션 \d\d:\d\d/)).toBeVisible();
+  await expect(top.getByRole("button", { name: "연장" })).toBeVisible();
+  await top.getByRole("button", { name: "설정" }).click();
+  await expect(page.getByRole("dialog", { name: "내 정보" })).toBeVisible();
+  await top.getByRole("button", { name: "로그아웃" }).click();
+  await expect(page.getByTitle("부서·상담원 바꾸기")).toContainText("상담원을 고르세요");
+});
