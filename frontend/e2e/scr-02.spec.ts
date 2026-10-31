@@ -140,3 +140,27 @@ test("SCR-02-AC-10: 채널 칸은 티켓 번호 옆에 있고, 새로 접수된(
   const chan = await column(page, "채널");
   chan.forEach((c, i) => expect(c.includes("NEW")).toBe(status[i].trim().startsWith("신규")));
 });
+
+test("SCR-02-AC-11: 요약 탭에 회신 대기·이관이 있고, 새 문의 칩과 부제의 기한 초과·임박 수가 서버 counts와 같다", async ({ page, request }) => {
+  const api = await (await request.get("http://localhost:8000/tickets?dept=TS_LV&as_of=2026-09-30T23:59:00Z&size=1")).json();
+  await useSession(page, { dept: "TS_LV", snapshot: true });
+  await page.goto("/inbox");
+  await expect(rows(page).first()).toBeVisible();
+  const c = api.counts;
+  if (c.waiting) await expect(page.getByRole("tab", { name: new RegExp(`^회신 대기\\s*${c.waiting}$`) })).toBeVisible();
+  await expect(page.getByRole("tab", { name: /^이관/ })).toBeVisible();
+  await expect(page.getByText(`기한 초과 ${c.breach} · 기한 임박 ${c.risk}`)).toBeVisible();
+  // 회신 대기 탭 → 모든 행이 고객 회신 대기
+  await page.getByRole("tab", { name: /^회신 대기/ }).click();
+  await expect(page).toHaveURL(/status=WAITING_CUSTOMER/);
+  await expect(rows(page).first()).toBeVisible();
+  for (const v of await column(page, "처리 상태")) expect(v).toMatch(/^고객 회신 대기|^회신 대기/);
+  // 새 문의 칩 → status=NEW, 다시 누르면 풀린다
+  await page.getByRole("tab", { name: /^전체/ }).click();
+  const chip = page.getByRole("button", { name: /^새 문의/ });
+  await chip.click();
+  await expect(page).toHaveURL(/status=NEW/);
+  await expect(chip).toHaveAttribute("aria-pressed", "true");
+  await chip.click();
+  await expect(page).not.toHaveURL(/status=NEW/);
+});

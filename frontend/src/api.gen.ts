@@ -1461,10 +1461,18 @@ export interface components {
         InboxCounts: {
             /** Alert */
             alert: number;
+            /** Breach */
+            breach: number;
+            /** Escalated */
+            escalated: number;
             /** Has Draft */
             has_draft: number;
             /** Needs Info */
             needs_info: number;
+            /** New */
+            new: number;
+            /** Risk */
+            risk: number;
             /** Total */
             total: number;
             /** Waiting */
@@ -1484,6 +1492,8 @@ export interface components {
             channel: string;
             /** Company Masked */
             company_masked: string;
+            /** Country */
+            country: string | null;
             /** Customer Id */
             customer_id: string;
             /** Customer Tier */
@@ -1498,6 +1508,8 @@ export interface components {
             has_unsent_draft: boolean;
             /** Inquiry Count */
             inquiry_count: number;
+            /** Inquiry Subject */
+            inquiry_subject: string | null;
             /** Language */
             language: string;
             /** Needs Info */

@@ -2839,12 +2839,28 @@
             "title": "Alert",
             "type": "integer"
           },
+          "breach": {
+            "title": "Breach",
+            "type": "integer"
+          },
+          "escalated": {
+            "title": "Escalated",
+            "type": "integer"
+          },
           "has_draft": {
             "title": "Has Draft",
             "type": "integer"
           },
           "needs_info": {
             "title": "Needs Info",
+            "type": "integer"
+          },
+          "new": {
+            "title": "New",
+            "type": "integer"
+          },
+          "risk": {
+            "title": "Risk",
             "type": "integer"
           },
           "total": {
@@ -2861,7 +2877,11 @@
           "alert",
           "needs_info",
           "has_draft",
-          "waiting"
+          "waiting",
+          "new",
+          "escalated",
+          "breach",
+          "risk"
         ],
         "title": "InboxCounts",
         "type": "object"
@@ -2916,6 +2936,17 @@
             "title": "Company Masked",
             "type": "string"
           },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
           "customer_id": {
             "title": "Customer Id",
             "type": "string"
@@ -2964,6 +2995,17 @@
           "inquiry_count": {
             "title": "Inquiry Count",
             "type": "integer"
+          },
+          "inquiry_subject": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inquiry Subject"
           },
           "language": {
             "title": "Language",
@@ -3086,6 +3128,8 @@
           "customer_id",
           "company_masked",
           "customer_tier",
+          "country",
+          "inquiry_subject",
           "product_code",
           "product_name",
           "category_code",

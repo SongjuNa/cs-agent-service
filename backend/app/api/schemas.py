@@ -61,6 +61,10 @@ class InboxCounts(Out):
     needs_info: int
     has_draft: int
     waiting: int
+    new: int  # 신규(NEW) 상태
+    escalated: int  # 이관(ESCALATED) 상태
+    breach: int  # 기한 초과 경고가 있는 줄(1차 응답·해결 중 하나라도)
+    risk: int  # 기한 임박 경고만 있는 줄(초과가 있으면 breach로만 센다)
 
 
 class InboxRow(Out):
@@ -74,6 +78,8 @@ class InboxRow(Out):
     customer_id: str
     company_masked: str
     customer_tier: str
+    country: str | None
+    inquiry_subject: str | None
     product_code: str | None
     product_name: str | None
     category_code: str | None

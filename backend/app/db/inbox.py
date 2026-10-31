@@ -17,6 +17,8 @@ from psycopg import Connection
 
 OPEN = ("NEW", "IN_PROGRESS", "WAITING_CUSTOMER", "ESCALATED")  # FR-029 처리 1
 ALERTS = ("FR_AT_RISK", "FR_BREACHED", "RES_AT_RISK", "RES_BREACHED")
+BREACHED = ("FR_BREACHED", "RES_BREACHED")  # 기한 초과(counts.breach)
+AT_RISK = ("FR_AT_RISK", "RES_AT_RISK")  # 기한 임박(counts.risk). 초과가 함께 있으면 초과로만 센다
 PAGE_SIZE, MAX_SIZE = 50, 200  # FR-029 처리 7(50건), 최대는 구현 선택
 MSG_NO_DEPT = "부서를 선택하세요"  # FR-029 예외 1행
 MSG_EMPTY = "처리할 티켓이 없습니다"  # FR-029 예외 2행
@@ -64,7 +66,8 @@ def inbox(conn: Connection, query: InboxQuery, schema: str = "svc") -> dict[str,
     size = max(1, min(query.size, MAX_SIZE))
     page = max(1, query.page)
     out: dict[str, Any] = {"dept": query.dept, "as_of": as_of, "page": page, "size": size,
-                           "counts": {"total": 0, "alert": 0, "needs_info": 0, "has_draft": 0, "waiting": 0},
+                           "counts": {"total": 0, "alert": 0, "needs_info": 0, "has_draft": 0, "waiting": 0,
+                                      "new": 0, "escalated": 0, "breach": 0, "risk": 0},
                            "rows": [], "message": None}
     if not query.dept:
         out["message"] = MSG_NO_DEPT
@@ -98,6 +101,7 @@ def inbox(conn: Connection, query: InboxQuery, schema: str = "svc") -> dict[str,
         rows AS (
           SELECT s.sub_ticket_id, s.ticket_id, s.seq, count(*) OVER (PARTITION BY s.ticket_id) AS inquiry_count,
                  t.received_at_utc, t.channel, t.language, t.customer_id, c.company_masked, t.customer_tier,
+                 c.country, t.inquiry_subject,
                  s.product_code, p.product_name, s.category_code, s.urgency_flag, s.priority,
                  s.priority_adjusted_by_agent AS priority_adjusted, s.assigned_dept, s.escalated_to, s.assignee_masked,
                  s.status, f.fr_status, f.res_status, f.remaining_h,
@@ -136,9 +140,12 @@ def inbox(conn: Connection, query: InboxQuery, schema: str = "svc") -> dict[str,
         SELECT * FROM rows WHERE {' AND '.join(where)}"""
     counts = conn.execute(
         f"""SELECT count(*), count(*) FILTER (WHERE cardinality(alerts) > 0), count(*) FILTER (WHERE needs_info),
-                   count(*) FILTER (WHERE has_unsent_draft), count(*) FILTER (WHERE status = 'WAITING_CUSTOMER')
-              FROM ({base}) x""", params).fetchone()
-    out["counts"] = dict(zip(("total", "alert", "needs_info", "has_draft", "waiting"), counts))
+                   count(*) FILTER (WHERE has_unsent_draft), count(*) FILTER (WHERE status = 'WAITING_CUSTOMER'),
+                   count(*) FILTER (WHERE status = 'NEW'), count(*) FILTER (WHERE status = 'ESCALATED'),
+                   count(*) FILTER (WHERE alerts && %(breached)s::text[]),
+                   count(*) FILTER (WHERE alerts && %(at_risk)s::text[] AND NOT alerts && %(breached)s::text[])
+              FROM ({base}) x""", {**params, "breached": list(BREACHED), "at_risk": list(AT_RISK)}).fetchone()
+    out["counts"] = dict(zip(("total", "alert", "needs_info", "has_draft", "waiting", "new", "escalated", "breach", "risk"), counts))
     params.update(limit=size, offset=(page - 1) * size)
     cur = conn.execute(f"{base} ORDER BY {_order(query.sort)} LIMIT %(limit)s OFFSET %(offset)s", params)
     names = [c.name for c in cur.description]
