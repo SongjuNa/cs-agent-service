@@ -255,7 +255,7 @@ function NowList({ now, mine, agent, onOpen, navigate }: { now: Now; mine: boole
                   </span>
                   <span className="mw-now__r">{r.alerts.slice(0, 1).map((a) => <AlertChip key={a} alert={a} />)}
                     {r.status !== "WAITING_CUSTOMER" && r.remaining_h != null && !(r.status === "RESOLVED" || r.status === "CLOSED") && (
-                      <span className={r.res_status === "BREACHED" ? "mw-remain is-bad" : "mw-remain"}>{formatRemaining(Number(r.remaining_h))}</span>)}
+                      <span className={r.res_status === "BREACHED" ? "mw-remain is-bad" : "mw-remain"} title="해결 기한까지 남은 시간(−는 초과)"><span className="mw-sub">해결 기한 </span>{formatRemaining(Number(r.remaining_h))}</span>)}
                   </span>
                 </button>
               </li>
@@ -268,7 +268,7 @@ function NowList({ now, mine, agent, onOpen, navigate }: { now: Now; mine: boole
           <section className="mw-now__top" aria-label="가장 급한 내 문의" data-testid="most-urgent">
             <button type="button" onClick={() => onOpen(top.ticket_id)}>
               <span className="mw-now__toph"><b>가장 급한 내 문의</b>{top.priority && <PriorityBadge priority={top.priority} adjusted={!!top.priority_adjusted} />}</span>
-              <span className="mw-now__time">{top.remaining_h != null ? formatRemaining(Number(top.remaining_h)) : top.alerts.map((a) => label(ALERT, a)).join(" · ")}</span>
+              <span className="mw-now__time">{top.remaining_h != null ? `해결 기한 ${formatRemaining(Number(top.remaining_h))}` : top.alerts.map((a) => label(ALERT, a)).join(" · ")}</span>
               <span className="mw-now__topsub">{top.ticket_id} · {top.company_masked}</span>
               <span className="mw-now__topsub">{top.summary_ko ?? top.inquiry_subject ?? top.product_code ?? ""}</span>
             </button>
@@ -362,7 +362,7 @@ function Table({ area, rows, onRow, empty, stale }: { area: Area; rows: WorkRow[
     risks: [ticket, company, prio,
       { key: "status", header: "상태", render: (r) => <StatusBadge status={r.status} /> },
       { key: "alerts", header: "경고", render: (r) => <span className="mw-chips">{(r.alerts ?? []).map((a) => <AlertChip key={a} alert={a} />)}</span> },
-      { key: "left", header: "해결 남은 시간", align: "right",
+      { key: "left", header: "해결 기한까지", align: "right",
         render: (r) => <span className={Number(r.remaining_h) < 0 ? "tk-neg" : undefined}>{formatRemaining(r.remaining_h === null || r.remaining_h === undefined ? null : Number(r.remaining_h))}</span> }],
     drafts: [ticket,
       { key: "type", header: "종류", render: (r) => (r.message_type === "INFO_REQUEST" ? "정보 요청" : r.message_type === "FINAL_REPLY" ? "답변" : "진행 안내") },
