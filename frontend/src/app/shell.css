@@ -100,3 +100,6 @@ a.shell-crumb__seg:hover { color: var(--color-brand); text-decoration: underline
 .shell-prof__stats b.is-bad { color: var(--color-neg); }
 .shell-prof__stats span { font-size: 10.5px; color: var(--color-fg-sub); white-space: nowrap; }
 .shell.is-collapsed .shell-prof__body { display: none; }
+.shell-nav__new { margin-left: auto; padding: 0 var(--sp-8); height: 20px; display: inline-flex; align-items: center; border-radius: var(--r-pill); background: var(--color-info-bg); color: var(--color-info); font-size: var(--fs-xs); font-weight: var(--fw-bold); }
+.shell-nav__new + .shell-nav__count { margin-left: var(--sp-6); }
+.shell.is-collapsed .shell-nav__new { display: none; }

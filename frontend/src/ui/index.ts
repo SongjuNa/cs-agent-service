@@ -3,7 +3,7 @@ import "./ui.css";
 
 export { Button, type ButtonProps, type ButtonVariant } from "./Button";
 export { Chip, type Tone } from "./Chip";
-export { AlertChip, formatRemaining, PriorityBadge, SlaBadge, StatusBadge } from "./StatusBadge";
+export { AlertChip, formatLeft, formatRemaining, PriorityBadge, SlaBadge, StatusBadge } from "./StatusBadge";
 export { DataTable, nextSort, type Column, type DataTableProps } from "./DataTable";
 export { Modal, type ModalProps } from "./Modal";
 export { Card, PageHeader, Pager, Tabs, type TabItem } from "./Layout";
