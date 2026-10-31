@@ -22,6 +22,7 @@ const PATHS: Record<string, string> = {
   help: "<circle cx=\"12\" cy=\"12\" r=\"9\"></circle><path d=\"M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6\"></path><path d=\"M12 17.2h.01\"></path>",
   collapse: "<path d=\"m15 6-6 6 6 6\"></path>",
   crumbHome: "<path d=\"M12 3.2 2.5 11.1l1.3 1.5L5 11.6V21h5.2v-6h3.6v6H19v-9.4l1.2 1 1.3-1.5z\"></path>",
+  filter: "<path d=\"M4 6h16M7 12h10M10 18h4\"></path>",
   chev: "<path d=\"m9 6 6 6-6 6\"></path>",
   search: "<circle cx=\"11\" cy=\"11\" r=\"7\"></circle><path d=\"m20 20-3.5-3.5\"></path>",
 };

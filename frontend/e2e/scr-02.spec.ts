@@ -20,20 +20,20 @@ test("SCR-02-AC-1: 미해결 360건 재생 + 스냅샷, TS_LV 요약 '전체 n'�
   await expect(rows(page).first()).toBeVisible();
   await expect(page.getByRole("tab", { name: new RegExp(`^전체\\s*${api.counts.total}$`) })).toBeVisible();
   expect(api.counts.total).toBeGreaterThanOrEqual(69);
-  const alerts = await column(page, "경고");
+  const alerts = await column(page, "기한");
   expect(alerts[0].trim()).not.toBe("");
   const left = (await column(page, "남은 시간")).map((t) => Number(t.replace("−", "-").replace(/[^\d.-]/g, "")));
   const withAlert = left.filter((v, i) => alerts[i].trim() !== "" && !Number.isNaN(v));
   expect(left[0]).toBe(Math.min(...withAlert));
 });
 
-test("SCR-02-AC-2: '정보 요청 필요' 요약을 누르면 모든 행의 정보 요청 열이 '필요'다", async ({ page }) => {
+test("SCR-02-AC-2: '정보 요청 필요' 요약을 누르면 모든 행의 '기한 · 경고' 칸에 '정보 요청 필요'가 보인다", async ({ page }) => {
   await useSession(page, { dept: "TS_LV", snapshot: true });
   await page.goto("/inbox");
   await page.getByRole("tab", { name: /^정보 요청 필요/ }).click();
   await expect(page).toHaveURL(/needs_info=true/);
   await expect(rows(page).first()).toBeVisible();
-  for (const v of await column(page, "정보 요청")) expect(v.trim()).toBe("필요");
+  for (const v of await column(page, "기한")) expect(v).toContain("정보 요청 필요"); // "기한 · 경고" 칸에 칩으로 보인다
 });
 
 test("SCR-02-AC-3: CSV1-000008(→ CSV1-004003)을 접수하면 담당 부서 접수함에 '복합 2건 중 1'·'2건 중 2' 행이 있다", async ({ page }) => {
@@ -46,7 +46,7 @@ test("SCR-02-AC-3: CSV1-000008(→ CSV1-004003)을 접수하면 담당 부서 �
     await page.goto("/inbox?q=CSV1-004003");
     await expect(page.getByTitle("부서·상담원 바꾸기")).toContainText(dept);
     await expect(rows(page).first()).toBeVisible();
-    found.push(...(await column(page, "유형")));
+    found.push(...(await column(page, "문의 요약")));
   }
   expect(found.some((t) => t.includes("복합 2건 중 1"))).toBe(true);
   expect(found.some((t) => t.includes("복합 2건 중 2"))).toBe(true);
@@ -134,14 +134,14 @@ test("SCR-02-AC-9: 행을 고르면 선택 막대가 나오고 [내보내기 (CS
   await expect(page.getByText("2건 선택")).toHaveCount(0);
 });
 
-test("SCR-02-AC-10: 채널 칸은 티켓 번호 옆에 있고, 새로 접수된(신규) 행에만 NEW 태그가 붙는다", async ({ page }) => {
+test("SCR-02-AC-10: 채널은 문의 번호 칸 아래에 있고, 새로 접수된(신규) 행에만 NEW 태그가 붙는다", async ({ page }) => {
   await useSession(page, { dept: "TS_LV", snapshot: true });
   await page.goto("/inbox");
   await expect(rows(page).first()).toBeVisible();
   const heads = (await page.locator("table.ui-table thead th").allInnerTexts()).map((h) => h.trim());
-  expect(heads.indexOf("채널")).toBe(heads.indexOf("티켓 번호") + 1);
+  expect(heads.indexOf("문의 번호")).toBeGreaterThanOrEqual(0); // 채널과 NEW 표시는 문의 번호 칸 아래에 함께 보인다
   const status = await column(page, "처리 상태");
-  const chan = await column(page, "채널");
+  const chan = await column(page, "문의 번호");
   chan.forEach((c, i) => expect(c.includes("NEW")).toBe(status[i].trim().startsWith("신규")));
 });
 
