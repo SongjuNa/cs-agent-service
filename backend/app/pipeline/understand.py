@@ -95,6 +95,7 @@ def understand_ticket(conn: Connection, transport: Transport, ticket_input: dict
             query_en=req.query_en,
             urgency_flag=req.urgency_flag,
             urgency_evidence=req.urgency_evidence,
+            summary_ko=req.summary_ko,
             provided_fields=l2.provided_fields,
             product_code=product_code,
             product_family=family,

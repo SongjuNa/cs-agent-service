@@ -21,7 +21,7 @@ from tests.acceptance.test_status_sla import db, seed  # noqa: F401  (db 픽스�
 from tests.acceptance.test_ticket_detail import api, gold_input, index, quote  # noqa: F401  (api 픽스처)
 
 PIPELINE_STEPS = ["T2", "Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q9a", "Q8", "Q9", "Q10", "Q11", "Q13", "Q14", "T6"]
-LLM_STEPS = {"T2": "l1_understand_v1", "Q1": "l2_extract_v2", "Q10": "l4_draft_v2", "Q13": "l7_gloss_v1",
+LLM_STEPS = {"T2": "l1_understand_v2", "Q1": "l2_extract_v2", "Q10": "l4_draft_v2", "Q13": "l7_gloss_v1",
              "Q14": "l8_verify_v1"}
 
 

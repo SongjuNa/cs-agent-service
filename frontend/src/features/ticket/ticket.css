@@ -171,3 +171,8 @@
 .tk-memo__list li { padding: var(--sp-8) var(--sp-12); border: 1px solid var(--color-line); border-radius: var(--r-md); background: var(--color-filter-bg); }
 .tk-memo__list p { margin: var(--sp-4) 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .tk-memo__input { min-height: 72px; }
+
+/* 한국어 한 줄 요약(add-summary-ko) */
+.tk-sum { display: flex; align-items: flex-start; gap: var(--sp-10); margin: 0 var(--sp-16) var(--sp-10); padding: var(--sp-8) var(--sp-12); border: 1px solid var(--color-line); border-radius: var(--r-md); background: var(--color-filter-bg); font-size: var(--fs-s); }
+.tk-sum__k { flex: none; padding: 1px 8px; border-radius: var(--r-pill); background: var(--color-brand); color: #fff; font-size: var(--fs-xs); font-weight: var(--fw-semibold); }
+.tk-sum ul { margin: 0; padding: 0; list-style: none; }

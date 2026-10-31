@@ -338,6 +338,7 @@ sla_setting은 다른 표와 연결되지 않는 설정값 3행이라 그림에 
 | | seq | SMALLINT | 필수 | ≥ 1, UNIQUE(ticket_id, seq) | 본문에 나온 순서. 상한 없음(D18) |
 | 분류·추출 (FR-005~008) | category_code | TEXT | | FK ref.inquiry_category | 문의 유형(category_code). 비어 있으면 분류 실패 |
 | | evidence_sentences | TEXT[] | 필수 | 기본 빈 목록 | 유형 근거 문장(본문 발췌) |
+| summary_ko | TEXT | | | 한국어 한 줄 요약(변경 add-summary-ko, 2026-10-31). L1 호출이 하위 문의마다 만들어 접수 때 한 번 저장한다. 다시 처리할 때 새 값이 있을 때만 바꾼다. 없으면 화면은 문의 제목을 보인다 |
 | | urgency_flag | TEXT | 필수 | FK ref.urgency, 기본 NONE | 긴급도(urgency_flag) |
 | | product_code | TEXT | | FK ref.product | 제품. 접수 입력값으로 시작해 비어 있으면 추출값으로 채움(FR-010) |
 | | error_code_reported | TEXT | | | 고객이 쓴 오류 코드 |

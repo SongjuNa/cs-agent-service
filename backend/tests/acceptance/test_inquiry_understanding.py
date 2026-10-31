@@ -240,7 +240,7 @@ def test_l2_failure_continues(conn):
 
 
 def test_prompt_files_exist():
-    for name in ("l1_understand_v1.md", "l1_category_definitions_v1.md", "l1_urgency_criteria_v1.md",
+    for name in ("l1_understand_v2.md", "l1_category_definitions_v1.md", "l1_urgency_criteria_v1.md",
                  "l2_extract_v1.md"):
         assert (PROMPTS_DIR / name).is_file()
 

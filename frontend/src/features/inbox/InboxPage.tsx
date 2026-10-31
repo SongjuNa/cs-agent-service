@@ -63,7 +63,9 @@ const columnsFor = (sel: Set<string>, toggle: (id: string) => void, pageAll: boo
   ) },
   { key: "subject", header: "문의", render: (r) => (
     <>
-      {r.inquiry_subject ? <span className="inbox-subject" title={r.inquiry_subject}>{r.inquiry_subject}</span> : <span className="sub">—</span>}
+      {(r.summary_ko ?? r.inquiry_subject)
+        ? <span className="inbox-subject" title={r.summary_ko ? `AI 요약: ${r.summary_ko}` : (r.inquiry_subject ?? undefined)} data-summary={r.summary_ko ? "ai" : "subject"}>{r.summary_ko ?? r.inquiry_subject}</span>
+        : <span className="sub">—</span>}
       {r.memo_count > 0 && <span className="inbox-memo" title={`내부 메모 ${r.memo_count}건`}>메모 {r.memo_count}</span>}
     </>
   ) },

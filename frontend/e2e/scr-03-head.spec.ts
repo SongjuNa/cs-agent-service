@@ -121,3 +121,19 @@ test("SCR-03-AC-26 (최신 목업): 내부 메모를 남기면 남긴 사람과 
   await page.goto(`/inbox?q=${id}&include_closed=true&m=0`);
   await expect(page.locator("table.ui-table tbody tr.is-link").first().locator(".inbox-memo")).toContainText(/메모 \d+/);
 });
+
+test("SCR-03-AC-27 (최신 목업): 접수 때 만들어 저장한 한국어 요약이 접수함 문의 칸과 상세 머리에 같은 문장으로 보인다", async ({ page, request }) => {
+  const list = await (await request.get("http://localhost:8000/tickets?dept=TS_LV&size=200&include_closed=true")).json();
+  const hit = list.rows.find((r: { summary_ko: string | null }) => r.summary_ko);
+  expect(hit, "요약이 있는 TS_LV 접수본(python -m jobs.run_tickets CSV1-000017)").toBeTruthy();
+  const { ticket_id: id, summary_ko: summary } = hit as { ticket_id: string; summary_ko: string };
+  await useSession(page, { dept: "TS_LV", agent: "leo" });
+  await page.goto(`/inbox?q=${id}&m=0&include_closed=true`);
+  const cell = page.locator("table.ui-table tbody tr.is-link").first().locator(".inbox-subject");
+  await expect(cell).toHaveText(summary);
+  await expect(cell).toHaveAttribute("data-summary", "ai");
+  await page.reload(); // 다시 열어도 같은 문장(화면을 열 때마다 모델을 부르지 않는다)
+  await expect(page.locator("table.ui-table tbody tr.is-link").first().locator(".inbox-subject")).toHaveText(summary);
+  await page.goto(`/tickets/${id}`);
+  await expect(page.getByTestId("ai-summary")).toContainText(summary);
+});
