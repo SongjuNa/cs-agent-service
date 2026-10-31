@@ -168,3 +168,34 @@ test.describe.serial("이관 메일 (최신 목업)", () => {
     await expect(head.locator(".tk-stat").nth(0)).not.toContainText("이관됨");
   });
 });
+
+test("SCR-03-AC-29 (최신 목업, 변경 add-body-translation): 번역이 없으면 [번역 보기]가 보이고, 누르면 '한국어 번역 · 검토용' 아래에 번역이 나타나며 단추는 사라진다. 실패하면 서버 문구가 보이고 단추가 남는다", async ({ page, request }) => {
+  // 언어 모델 호출(Gemini)을 피하려고 번역 요청과 그 뒤 상세 응답만 흉내 낸다. 나머지 값은 실제 서버 값이다.
+  const list = await (await request.get("http://localhost:8000/tickets?dept=TS_LV&size=1&include_closed=true")).json();
+  const id = list.rows[0].ticket_id as string;
+  const KO = "[시험] 펌웨어 릴리스 노트를 보내 주세요.";
+  let translated = false;
+  let fail = true;
+  await page.route(new RegExp(`/api/tickets/${id}(\\?.*)?$`), async (route) => {
+    const res = await route.fetch();
+    const json = await res.json();
+    json.ticket.body_ko = translated ? KO : null;
+    await route.fulfill({ response: res, json });
+  });
+  await page.route(new RegExp(`/api/tickets/${id}/translate$`), async (route) => {
+    if (fail) { await route.fulfill({ status: 502, json: { detail: "번역하지 못했습니다. 잠시 뒤 다시 시도하세요" } }); return; }
+    translated = true;
+    await route.fulfill({ json: { ticket_id: id, body_ko: KO, cached: false } });
+  });
+  await useSession(page, { dept: "TS_LV" });
+  await page.goto(`/tickets/${id}`);
+  const block = page.getByTestId("body-ko-block");
+  await expect(block).toContainText("한국어 번역 · 검토용");
+  await block.getByRole("button", { name: "번역 보기" }).click();
+  await expect(block.getByRole("alert")).toContainText("번역하지 못했습니다");
+  await expect(block.getByRole("button", { name: "번역 보기" })).toBeVisible(); // 실패하면 다시 누를 수 있다
+  fail = false;
+  await block.getByRole("button", { name: "번역 보기" }).click();
+  await expect(page.getByTestId("body-ko")).toHaveText(KO);
+  await expect(block.getByRole("button", { name: "번역 보기" })).toHaveCount(0);
+});

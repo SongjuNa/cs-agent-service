@@ -55,6 +55,7 @@ export type CaseRows = S["CaseRows"];
 export type CaseDetail = S["CaseDetail"];
 export type AssistAnswer = S["AssistAnswer"];
 export type Note = components["schemas"]["Note"];
+export type Translated = components["schemas"]["Translated"];
 export type AssignResult = components["schemas"]["AssignResult"];
 export type DashboardSummary = components["schemas"]["DashboardSummary"];
 export type Performance = components["schemas"]["Performance"];
@@ -307,6 +308,7 @@ export const api = {
   dashboard: (p: URLSearchParams) => call<DashboardSummary>("GET", `/dashboard/summary?${p}`),
   assign: (subTicketIds: string[], assignee: string) => call<AssignResult>("POST", "/sub-tickets/assign", { sub_ticket_ids: subTicketIds, assignee }),
   notes: (ticketId: string) => call<Note[]>("GET", `/tickets/${encodeURIComponent(ticketId)}/notes`),
+  translate: (ticketId: string) => call<Translated>("POST", `/tickets/${encodeURIComponent(ticketId)}/translate`),
   addNote: (ticketId: string, body: string) => call<Note>("POST", `/tickets/${encodeURIComponent(ticketId)}/notes`, { body }),
   assist: (question: string, history: { role: "user" | "assistant"; text: string }[], productCode: string | null) =>
     call<AssistAnswer>("POST", "/assist/ask", { question, history, product_code: productCode }),

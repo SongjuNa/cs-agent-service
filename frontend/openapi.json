@@ -6629,6 +6629,17 @@
       },
       "Ticket": {
         "properties": {
+          "body_ko": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body Ko"
+          },
           "body_language": {
             "anyOf": [
               {
@@ -6776,6 +6787,7 @@
           "multi_yn",
           "inquiry_subject",
           "inquiry_body",
+          "body_ko",
           "contact_name",
           "contact_email",
           "contact_phone",
@@ -7011,6 +7023,29 @@
           "adjusted"
         ],
         "title": "Today",
+        "type": "object"
+      },
+      "Translated": {
+        "properties": {
+          "body_ko": {
+            "title": "Body Ko",
+            "type": "string"
+          },
+          "cached": {
+            "title": "Cached",
+            "type": "boolean"
+          },
+          "ticket_id": {
+            "title": "Ticket Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticket_id",
+          "body_ko",
+          "cached"
+        ],
+        "title": "Translated",
         "type": "object"
       },
       "Usage": {
@@ -10145,6 +10180,45 @@
           }
         },
         "summary": "Get Timeline"
+      }
+    },
+    "/tickets/{ticket_id}/translate": {
+      "post": {
+        "operationId": "translate_tickets__ticket_id__translate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Translated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Translate"
       }
     }
   }

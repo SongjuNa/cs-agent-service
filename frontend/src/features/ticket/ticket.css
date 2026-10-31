@@ -218,3 +218,7 @@
 .tk-aichips__more { margin-left: auto; display: inline-flex; align-items: center; gap: var(--sp-4); border: 0; background: none; color: var(--color-brand); font: inherit; font-size: var(--fs-s); cursor: pointer; }
 .tk-aichips__chev { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; transform: rotate(90deg); }
 .tk-aichips__chev.is-open { transform: rotate(-90deg); }
+
+/* 고객 원문의 한국어 번역(add-body-translation) */
+.tk-text--ko { background: var(--color-filter-bg); }
+.tk-ko-empty { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-10); padding: var(--sp-10) 0; }

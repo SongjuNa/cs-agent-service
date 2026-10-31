@@ -41,7 +41,8 @@ class WordCountEmbedder:
 
 
 CALLS = {"L1": "You read one", "L2": "You extract", "L3": "Write a short email", "L4": "Write a reply", "L5": "Write a greeting",
-         "L7": "Translate the email", "L8": "You review a draft"}
+         "L7": "Translate the email", "L8": "You review a draft",
+         "L12": "Translate the customer message"}
 NO_FINDINGS = {"findings": []}
 
 

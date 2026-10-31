@@ -1,7 +1,8 @@
 // 탭 ① 고객이 보낸 것 (SCR-03 L-01~L-04, FR-030 처리 1). 배치는 목업 v1.42 탭 "고객이 보낸 것"(위 3열 항목, 아래 원문).
-// 목업의 한국어 번역 칸은 넣지 않는다(FR-030 "번역 토글은 여유 시", 화면 명세 Q1).
+// 한국어 번역(변경 add-body-translation): [번역 보기]를 누르면 서버가 한 번 번역해 저장한다. 상담원이 읽는 참고용(검토용)이다.
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
-import type { Detail, Field } from "../../api";
+import { api, ApiError, type Detail, type Field } from "../../api";
 import { CHANNEL, label } from "../../app/labels";
 import { Button, Chip } from "../../ui";
 
@@ -42,6 +43,31 @@ export function Highlighted({ body, fields }: { body: string; fields: Field[] })
   return <>{parts}</>;
 }
 
+/** 원문의 한국어 번역. 저장된 값이 있으면 바로 보이고, 없으면 [번역 보기]로 요청한다 */
+function Translation({ ticketId, saved }: { ticketId: string; saved: string | null | undefined }) {
+  const qc = useQueryClient();
+  const [error, setError] = useState("");
+  const run = useMutation({
+    mutationFn: () => api.translate(ticketId),
+    onSuccess: () => { setError(""); void qc.invalidateQueries(); },
+    onError: (e) => setError(e instanceof ApiError ? e.message : "번역하지 못했습니다. 잠시 뒤 다시 시도하세요"),
+  });
+  return (
+    <div data-testid="body-ko-block">
+      <div className="tk-text-head"><span>한국어 번역 · 검토용</span><span>고객에게 보내지 않음</span></div>
+      {saved ? (
+        <pre className="tk-text tk-text--ko" data-testid="body-ko">{saved}</pre>
+      ) : (
+        <div className="tk-ko-empty">
+          <Button size="sm" busy={run.isPending} onClick={() => run.mutate()}>번역 보기</Button>
+          <span className="tk-note">{run.isPending ? "번역하는 중입니다" : "눌러야 번역합니다. 한 번 번역하면 저장돼 다시 열어도 같은 글이 보입니다"}</span>
+          {error && <span className="tk-neg" role="alert">{error}</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function CustomerTab({ detail }: { detail: Detail }) {
   const t = detail.ticket;
   const [open, setOpen] = useState(t.inquiry_body.length <= FOLD);
@@ -71,6 +97,7 @@ export function CustomerTab({ detail }: { detail: Detail }) {
         <pre className="tk-text" dir={rtl ? "rtl" : undefined} data-testid="inquiry-body"><Highlighted body={body} fields={open ? fields : []} /></pre>
         {t.inquiry_body.length > FOLD && <Button size="sm" variant="ghost" onClick={() => setOpen(!open)}>{open ? "접기" : "펼치기"}</Button>}
       </div>
+      <Translation ticketId={t.ticket_id} saved={t.body_ko} />
 
       {replies.length > 0 && (
         <div className="tk-replies">

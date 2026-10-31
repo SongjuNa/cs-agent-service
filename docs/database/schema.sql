@@ -476,6 +476,7 @@ CREATE TABLE svc.ticket (
   contact_phone           text,
   inquiry_subject         text,                                                -- 저장만, 처리 흐름에 넣지 않음
   inquiry_body            text NOT NULL CHECK (char_length(inquiry_body) BETWEEN 1 AND 2000),  -- 원문(FR-038)
+  body_ko                 text,                                                -- 원문의 한국어 번역(검토용). 상담원이 [번역 보기]를 눌렀을 때 한 번 저장(add-body-translation). 고객 발송·모델 입력에 쓰지 않음
   multi_yn                boolean NOT NULL DEFAULT false,
   source                  text NOT NULL CHECK (source IN ('SIMULATOR','LOAD','REPLAY')),
   source_ticket_id        text,                                                -- FK 없음. eval.gold_set.source_ticket_id와 맞대 본다

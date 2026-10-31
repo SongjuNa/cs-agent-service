@@ -322,6 +322,7 @@ sla_setting은 다른 표와 연결되지 않는 설정값 3행이라 그림에 
 | contact_name, contact_email, contact_phone | TEXT | | | 보낸 사람 연락처 원문(이름, 이메일, 전화). v1.3 추가(기술 명세서 v1.4 §6-2, 가-7). 시뮬레이터로 새로 접수한 행만 채우고 운영진 데이터 재생 행은 비운다. LLM 입력과 실행 로그에 넣지 않는다 |
 | inquiry_subject | TEXT | | | 제목. 저장만 하고 처리 흐름에 넣지 않는다(팀 정리 §6) |
 | inquiry_body | TEXT | 필수 | 1~2,000자 | 본문 원문. 가리는 것은 LLM 호출과 실행 로그뿐이다(FR-038, 기술 명세서 v1.4 §7). 2,000자는 제안 상한 |
+| body_ko | TEXT | | | 원문의 한국어 번역, 검토용(변경 add-body-translation, 2026-11-01). 상담원이 [번역 보기]를 눌렀을 때 L12 호출로 한 번 만들어 저장한다. 상담원이 읽는 참고용이며 고객 발송·초안·다른 모델 호출의 입력에 쓰지 않는다. 없으면 아직 번역하지 않은 것 |
 | multi_yn | BOOLEAN | 필수 | 기본 FALSE | 복합 문의(문의 2개 이상, FR-006) |
 | source | TEXT | 필수 | SIMULATOR / LOAD / REPLAY | 어떻게 들어왔나: 시뮬레이터 직접 입력 / 번호로 불러와 접수(FR-003) / 시연 재생(W6) |
 | source_ticket_id | TEXT | | | 불러오기·재생이면 원본 번호(CSV1-… 또는 팀 문의 번호). FK 없음. `eval.gold_set.source_ticket_id`와 맞대 "채점용 문의" 여부를 본다. 기술 명세서 v1.4 §6-1의 "원본 ID(ticket.source)"가 이 열이다 |
