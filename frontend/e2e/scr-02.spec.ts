@@ -224,3 +224,36 @@ test("SCR-02-AC-13 (최신 목업): 행을 골라 [담당자 변경…] → [변
     await request.post("http://localhost:8000/sub-tickets/assign", { headers: { "X-Agent-Id": "leo" }, data: { sub_ticket_ids: [row!.sub_ticket_id], assignee: original } });
   }
 });
+
+test("SCR-02-AC-14 (최신 목업): 행을 골라 [우선순위 조정]에서 새 우선순위·사유를 넣으면 건마다 조정되고 안내 띠가 뜨며, 이미 그 우선순위인 건은 건너뛴다", async ({ page, request }) => {
+  type R = { sub_ticket_id: string; ticket_id: string; priority: string; assigned_dept: string; status: string };
+  const res = await (await request.get("http://localhost:8000/tickets?dept=TS_LV&q=CSV1-004&size=200")).json();
+  const two: R[] = (res.rows as R[]).filter((r) => r.assigned_dept === "TS_LV" && r.priority).slice(0, 2); // 시험용 접수본만
+  expect(two.length, "시험용 접수본 2건 이상").toBe(2);
+  const target = ["P1", "P2", "P3", "P4"].find((p) => two.some((r) => r.priority !== p) && p !== "P1") ?? "P3"; // 적어도 한 건은 바뀌는 값
+  const changing = two.filter((r) => r.priority !== target);
+  await useSession(page, { dept: "TS_LV", agent: "leo" });
+  try {
+    await page.goto("/inbox?q=CSV1-004&m=0&include_closed=true");
+    await expect(rows(page).first()).toBeVisible();
+    for (const r of two) await page.locator("table.ui-table tbody tr.is-link").filter({ hasText: r.ticket_id }).first().getByRole("checkbox").check();
+    await page.getByRole("button", { name: "우선순위 조정" }).click();
+    const dlg = page.getByRole("dialog", { name: /우선순위 일괄 조정/ });
+    await dlg.getByRole("combobox", { name: "새 우선순위" }).selectOption(target);
+    await expect(dlg.getByRole("button", { name: /건 적용$/ })).toBeDisabled(); // 사유를 쓰기 전에는 꺼짐
+    await dlg.getByRole("combobox", { name: "사유 분류" }).selectOption("CUSTOMER_REQUEST");
+    await dlg.getByRole("textbox", { name: "사유" }).fill("일괄 조정 시험");
+    await expect(dlg.getByTestId("bulk-adjust-note")).toContainText("다시 계산됩니다");
+    await dlg.getByRole("button", { name: `${changing.length}건 적용` }).click();
+    await expect(page.getByRole("status").filter({ hasText: `${changing.length}건의 우선순위를 ${target}로 조정했습니다` })).toBeVisible();
+    const after = await (await request.get("http://localhost:8000/tickets?dept=TS_LV&q=CSV1-004&size=200&include_closed=true")).json();
+    for (const r of two) expect(after.rows.find((x: R) => x.sub_ticket_id === r.sub_ticket_id).priority).toBe(target);
+  } finally {
+    // 원래 우선순위로 되돌린다(시험용 접수본이라 이력이 남아도 된다)
+    for (const r of changing) {
+      const p = await (await request.get(`http://localhost:8000/sub-tickets/${r.sub_ticket_id}/priority?new_priority=${r.priority}`)).json();
+      await request.post(`http://localhost:8000/sub-tickets/${r.sub_ticket_id}/priority`, { headers: { "X-Agent-Id": "leo" },
+        data: { new_priority: r.priority, reason_kind: "OTHER", reason_text: "시험 되돌리기", confirm_breach: true, expected_version: p.version } });
+    }
+  }
+});

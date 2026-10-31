@@ -11,6 +11,7 @@ import {
   AlertChip, Banner, Button, Chip, DataTable, EmptyState, formatRemaining, PageHeader, Pager, PriorityBadge, Tabs,
   type Column,
 } from "../../ui";
+import { BulkAdjustPopup } from "./BulkAdjustPopup";
 import { ALL_ALERTS, hasFilters, rememberInboxOrder, rememberInboxUrl, SIZE, useInbox } from "./inboxQuery";
 import "./inbox.css";
 
@@ -141,6 +142,7 @@ export function InboxPage({ onOpen, flash, navigate }: {
   const qc = useQueryClient();
   const agentList = useAgents();
   const [to, setTo] = useState("");
+  const [adjusting, setAdjusting] = useState(false);
   const [notice, setNotice] = useState<{ tone: "info" | "neg"; text: string } | null>(null);
   const last = useRef<Inbox | undefined>(undefined);
   if (inbox.data) last.current = inbox.data;
@@ -257,10 +259,17 @@ export function InboxPage({ onOpen, flash, navigate }: {
             {(agentList.data ?? []).filter((a) => a.dept === dept).map((a) => <option key={a.name} value={a.name}>{a.name}{a.name === agent ? " (나)" : ""}</option>)}
           </select>
           <Button size="sm" disabled={!to} onClick={() => void reassign(chosen.map((r) => r.sub_ticket_id), to)}>변경</Button>
+          <Button size="sm" onClick={() => setAdjusting(true)}>우선순위 조정</Button>
           <Button size="sm" onClick={() => exportCsv(chosen)}>내보내기 (CSV)</Button>
           <span className="inbox-bulk__grow" />
           <Button variant="ghost" size="sm" onClick={() => setPicked(new Set())}>선택 해제</Button>
         </div>
+      )}
+      {adjusting && (
+        <BulkAdjustPopup rows={chosen} onClose={() => setAdjusting(false)} onDone={(message) => {
+          setAdjusting(false); setPicked(new Set()); setNotice({ tone: "info", text: message });
+          void qc.invalidateQueries({ queryKey: ["inbox"] }); void qc.invalidateQueries({ queryKey: ["inbox-counts"] }); void qc.invalidateQueries({ queryKey: ["workload"] });
+        }} />
       )}
       <section className="ui-card inbox-card">
         <Tabs variant="seg" label="건수 요약" value={summaryOn} onChange={pickSummary}
