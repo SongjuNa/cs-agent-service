@@ -65,6 +65,18 @@ class Note(Out):
     created_at_utc: datetime
 
 
+class AssignSkip(Out):
+    sub_ticket_id: str
+    reason: str
+
+
+class AssignResult(Out):
+    """담당 변경 결과(add-reassign). 바뀐 문의와, 건너뛴 문의(사유와 함께)."""
+
+    moved: list[str]
+    skipped: list[AssignSkip]
+
+
 class InboxCounts(Out):
     total: int
     alert: int
@@ -439,7 +451,7 @@ class Detail(Out):
 class TimelineItem(Out):
     """한 줄 = 공통 칸 + 종류별 칸(extra)."""
 
-    kind: str  # STATUS / MESSAGE / PRIORITY / ALERT_RAISED / ALERT_CLEARED
+    kind: str  # STATUS / MESSAGE / PRIORITY / ASSIGNEE / ALERT_RAISED / ALERT_CLEARED
     at: datetime
     seq: int | None
     id: int
