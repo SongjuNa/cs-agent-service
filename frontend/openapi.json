@@ -515,6 +515,111 @@
         "title": "AlertRow",
         "type": "object"
       },
+      "AskIn": {
+        "properties": {
+          "history": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/HistoryItem"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "product_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Code"
+          },
+          "question": {
+            "default": "",
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "title": "AskIn",
+        "type": "object"
+      },
+      "AssistAnswer": {
+        "properties": {
+          "answer": {
+            "title": "Answer",
+            "type": "string"
+          },
+          "followups": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Followups",
+            "type": "array"
+          },
+          "found": {
+            "title": "Found",
+            "type": "boolean"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/AssistSource"
+            },
+            "title": "Sources",
+            "type": "array"
+          }
+        },
+        "required": [
+          "found",
+          "answer",
+          "sources",
+          "followups",
+          "notes"
+        ],
+        "title": "AssistAnswer",
+        "type": "object"
+      },
+      "AssistSource": {
+        "properties": {
+          "chunk_id": {
+            "title": "Chunk Id",
+            "type": "string"
+          },
+          "doc_id": {
+            "title": "Doc Id",
+            "type": "string"
+          },
+          "no": {
+            "title": "No",
+            "type": "integer"
+          },
+          "section_no": {
+            "title": "Section No",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "no",
+          "chunk_id",
+          "doc_id",
+          "section_no",
+          "title"
+        ],
+        "title": "AssistSource",
+        "type": "object"
+      },
       "BodyIn": {
         "properties": {
           "body": {
@@ -2771,6 +2876,28 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HistoryItem": {
+        "properties": {
+          "role": {
+            "enum": [
+              "user",
+              "assistant"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "text"
+        ],
+        "title": "HistoryItem",
         "type": "object"
       },
       "Inbox": {
@@ -6568,6 +6695,44 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/assist/ask": {
+      "post": {
+        "operationId": "ask_assist_ask_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AskIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssistAnswer"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ask"
+      }
+    },
     "/calls/note-draft": {
       "post": {
         "description": "[메모 다시 만들기]: 앞 응답의 받아쓴 글로 L10 → 값 대조만 다시 한다(§12-5).",
