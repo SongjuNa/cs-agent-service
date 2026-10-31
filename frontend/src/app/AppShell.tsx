@@ -19,11 +19,10 @@ export const MENU: MenuGroup[] = [
   ] },
   { key: "recv", label: "접수", items: [
     { key: "inbox", label: "접수함", path: "/inbox", ready: true },
-    { key: "portal", label: "고객 포털 미리보기", path: "/portal", section: "시연" },
-    { key: "phone", label: "전화 상담", path: "/phone", ready: true, section: "상담 도구" },
-    { key: "similar", label: "접수 이력", path: "/history", ready: true },
+    { key: "similar", label: "접수 이력", path: "/history", ready: true, section: "조회" },
     { key: "customers", label: "고객 관리", path: "/customers", ready: true },
-    { key: "chatbot", label: "챗봇 관리", path: "/chatbot" },
+    { key: "portal", label: "고객 포털 미리보기", path: "/portal", section: "시연" },
+    { key: "phone", label: "전화 상담", path: "/phone", ready: true },
   ] },
   { key: "docs", label: "지식 관리", items: [
     { key: "docs", label: "문서 관리", path: "/docs", ready: true },
