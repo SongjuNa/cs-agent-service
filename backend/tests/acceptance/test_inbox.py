@@ -165,3 +165,18 @@ def test_sort_page_and_no_target(snapshot):
     rows = ts_lv(snapshot)["rows"]
     assert rows[-1]["sub_ticket_id"] == target and rows[-1]["remaining_h"] is None
 
+
+
+def test_counts_new_escalated_breach_risk(snapshot):
+    """add-inbox-row-fields: counts에 신규·이관·기한 초과·기한 임박이 더해진다. 초과와 임박은 겹치지 않고, 줄에 국가·문의 제목이 있다."""
+    got = ts_lv(snapshot)
+    rows, c = got["rows"], got["counts"]
+    breached = [r for r in rows if set(r["alerts"]) & {"FR_BREACHED", "RES_BREACHED"}]
+    at_risk = [r for r in rows if r["alerts"] and r not in breached]
+    assert c["breach"] == len(breached) > 0
+    assert c["risk"] == len(at_risk)
+    assert c["breach"] + c["risk"] == c["alert"]
+    assert c["new"] == sum(r["status"] == "NEW" for r in rows)
+    assert c["escalated"] == sum(r["status"] == "ESCALATED" for r in rows)
+    assert all("country" in r and "inquiry_subject" in r for r in rows)
+    assert any(r["country"] for r in rows)  # 문의 제목은 채점용 재생 데이터에 비어 있어 칸이 있는지만 본다

@@ -32,6 +32,8 @@ const SUMMARY = [
   { key: "alert", label: "경고", count: "alert" },
   { key: "needs_info", label: "정보 요청 필요", count: "needs_info" },
   { key: "has_draft", label: "미발송 초안", count: "has_draft" },
+  { key: "waiting", label: "회신 대기", count: "waiting" },
+  { key: "escalated", label: "이관", count: "escalated" },
 ] as const;
 
 const time = (iso: string | null) => (iso ? iso.replace("T", " ").slice(0, 16) : "—");
@@ -58,11 +60,14 @@ const columnsFor = (sel: Set<string>, toggle: (id: string) => void, pageAll: boo
   { key: "channel", header: "채널", render: (r) => (
     <span className="inbox-chan">{label(CHANNEL, r.channel)}{r.status === "NEW" && <span className="inbox-new" title="새로 접수되어 아직 처리를 시작하지 않은 문의입니다">NEW</span>}</span>
   ) },
+  { key: "subject", header: "문의", render: (r) => r.inquiry_subject
+    ? <span className="inbox-subject" title={r.inquiry_subject}>{r.inquiry_subject}</span> : <span className="sub">—</span> },
   { key: "received", header: "접수 시각", sortKey: "received_at", render: (r) => <span className="sub">{time(r.received_at_utc)}</span> },
   { key: "company", header: "고객사·등급", render: (r) => (
     <span className="inbox-co">
       <span className="inbox-co__name" title={r.company_masked ?? undefined}>{r.company_masked ?? "—"}</span>
       {r.customer_tier && <Chip tone="outline">{r.customer_tier}</Chip>}
+      {r.country && <span className="sub">{r.country}</span>}
     </span>
   ) },
   { key: "product", header: "제품", render: (r) => r.product_code
@@ -150,7 +155,7 @@ export function InboxPage({ onOpen, flash, navigate }: {
   const deptName = depts.data?.find((d) => d.dept_code === dept)?.dept_name_ko;
   const head = (
     <PageHeader title="접수함"
-      meta={dept ? `${deptName ?? dept} (${dept}), 경고 있는 문의를 위에, 그 안에서 남은 시간이 적은 순` : undefined}
+      meta={dept ? `${deptName ?? dept} (${dept}) · 경고 있는 문의를 위에, 남은 시간이 적은 순${counts.data && counts.data.breach + counts.data.risk > 0 ? ` · 기한 초과 ${counts.data.breach} · 기한 임박 ${counts.data.risk}` : ""}` : undefined}
       actions={<a className="ui-btn inbox-link-btn" href="/intake" onClick={(e) => { e.preventDefault(); navigate("/intake"); }}>문의 접수</a>} />
   );
 
@@ -160,14 +165,20 @@ export function InboxPage({ onOpen, flash, navigate }: {
 
   const page = Number(search.get("page") ?? "1") || 1;
   const sort = search.get("sort") ?? undefined;
-  const summaryOn = search.get("alert") === ALL_ALERTS && !search.has("needs_info") && !search.has("has_draft") ? "alert"
-    : search.get("needs_info") === "true" && !search.has("alert") && !search.has("has_draft") ? "needs_info"
-    : search.get("has_draft") === "true" && !search.has("alert") && !search.has("needs_info") ? "has_draft"
-    : !search.has("alert") && !search.has("needs_info") && !search.has("has_draft") ? "all" : "";
+  const flags = ["alert", "needs_info", "has_draft"].filter((k) => search.has(k));
+  const onlyStatus = (v: string) => flags.length === 0 && search.get("status") === v;
+  const summaryOn = search.get("alert") === ALL_ALERTS && flags.length === 1 && !search.has("status") ? "alert"
+    : search.get("needs_info") === "true" && flags.length === 1 && !search.has("status") ? "needs_info"
+    : search.get("has_draft") === "true" && flags.length === 1 && !search.has("status") ? "has_draft"
+    : onlyStatus("WAITING_CUSTOMER") ? "waiting"
+    : onlyStatus("ESCALATED") ? "escalated"
+    : flags.length === 0 && !search.has("status") ? "all" : "";
 
   function pickSummary(key: string) {
     update((q) => {
-      q.delete("alert"); q.delete("needs_info"); q.delete("has_draft");
+      q.delete("alert"); q.delete("needs_info"); q.delete("has_draft"); q.delete("status");
+      if (key === "waiting") q.set("status", "WAITING_CUSTOMER");
+      if (key === "escalated") q.set("status", "ESCALATED");
       if (key === "alert") q.set("alert", ALL_ALERTS);
       if (key === "needs_info" || key === "has_draft") q.set(key, "true");
     });
@@ -240,6 +251,11 @@ export function InboxPage({ onOpen, flash, navigate }: {
                      placeholder="티켓 번호 또는 고객사를 입력하고 검색을 누르세요" aria-label="검색어" />
             </label>
             <button type="submit" className="ui-btn ui-btn--primary inbox-go"><Icon name="search" />검색</button>
+            <button type="button" className={`inbox-newchip${search.get("status") === "NEW" ? " is-on" : ""}`} aria-pressed={search.get("status") === "NEW"}
+                    title="새로 접수되어 아직 처리를 시작하지 않은 문의만 봅니다"
+                    onClick={() => update((q) => { if (q.get("status") === "NEW") q.delete("status"); else q.set("status", "NEW"); })}>
+              새 문의{counts.data ? <b>{counts.data.new}</b> : null}
+            </button>
           </form>
         </div>
 

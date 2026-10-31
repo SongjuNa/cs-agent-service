@@ -35,3 +35,8 @@
 .inbox-new { padding: 1px 6px; border-radius: var(--r-pill, 999px); background: var(--color-brand); color: #fff; font-size: var(--fs-xs); font-weight: var(--fw-semibold); line-height: 16px; }
 .inbox-bulk { display: flex; align-items: center; gap: var(--sp-10); margin-bottom: var(--sp-12); padding: var(--sp-10) var(--sp-16); border: 1px solid var(--color-filter-line); border-radius: var(--r-md); background: var(--color-filter-bg); font-size: var(--fs-s); }
 .inbox-bulk__grow { flex: 1; }
+.inbox-subject { display: block; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inbox-newchip { display: inline-flex; align-items: center; gap: var(--sp-6); height: 38px; padding: 0 var(--sp-12); border: 1px solid var(--color-line); border-radius: var(--r-pill); background: var(--color-surface); color: var(--color-fg); font: inherit; font-size: var(--fs-s); cursor: pointer; white-space: nowrap; flex: none; }
+.inbox-newchip b { color: var(--color-brand); }
+.inbox-newchip.is-on { border-color: var(--color-brand); background: var(--color-brand); color: #fff; }
+.inbox-newchip.is-on b { color: #fff; }
