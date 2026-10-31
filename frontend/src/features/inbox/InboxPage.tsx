@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Inbox, InboxRow } from "../../api";
 import { useDepartments, useInboxCounts } from "../../app/queries";
-import { CATEGORY, CHANNEL, STATUS, label } from "../../app/labels";
+import { ALERT, CATEGORY, CHANNEL, STATUS, label } from "../../app/labels";
 import { useSession } from "../../app/session";
 import { Icon } from "../../app/icons";
 import {
@@ -46,15 +46,19 @@ function remainingCell(r: InboxRow) {
 
 type Row = InboxRow & { __index: number }; // __index = 순번(이 쪽까지 센 번호)
 
-const COLUMNS: Column<Row>[] = [
+const columnsFor = (sel: Set<string>, toggle: (id: string) => void, pageAll: boolean, togglePage: () => void): Column<Row>[] => [
+  { key: "pick", header: <input type="checkbox" aria-label="이 쪽 전체 선택" checked={pageAll} onChange={togglePage} onClick={(e) => e.stopPropagation()} />,
+    render: (r) => <input type="checkbox" aria-label={`${r.ticket_id} #${r.seq} 선택`} checked={sel.has(r.sub_ticket_id)} onChange={() => toggle(r.sub_ticket_id)} onClick={(e) => e.stopPropagation()} /> },
   { key: "seq", header: "순번", align: "right", render: (r) => <span className="sub">{r.__index}</span> },
   { key: "ticket_id", header: "티켓 번호", sortKey: "ticket_id", render: (r) => (
     <a className="ui-tid" href={`/tickets/${encodeURIComponent(r.ticket_id)}`} onClick={(e) => e.preventDefault()}>
       {r.ticket_id}{r.inquiry_count > 1 ? ` #${r.seq}` : ""}
     </a>
   ) },
+  { key: "channel", header: "채널", render: (r) => (
+    <span className="inbox-chan">{label(CHANNEL, r.channel)}{r.status === "NEW" && <span className="inbox-new" title="새로 접수되어 아직 처리를 시작하지 않은 문의입니다">NEW</span>}</span>
+  ) },
   { key: "received", header: "접수 시각", sortKey: "received_at", render: (r) => <span className="sub">{time(r.received_at_utc)}</span> },
-  { key: "channel", header: "채널", render: (r) => label(CHANNEL, r.channel) },
   { key: "company", header: "고객사·등급", render: (r) => (
     <span className="inbox-co">
       <span className="inbox-co__name" title={r.company_masked ?? undefined}>{r.company_masked ?? "—"}</span>
@@ -86,6 +90,23 @@ const COLUMNS: Column<Row>[] = [
   { key: "reminder", header: "리마인드", render: (r) => r.status === "WAITING_CUSTOMER" && r.reminder_sent ? <Chip>발송됨</Chip> : <span className="sub">—</span> },
 ];
 
+/** 선택한 행을 엑셀에서 열 수 있는 CSV로 저장한다(한글이 깨지지 않게 BOM을 붙인다). 화면에 보이는 값 그대로다 */
+function exportCsv(list: InboxRow[]) {
+  const head = ["티켓 번호", "접수 시각(UTC)", "채널", "고객사", "등급", "제품", "유형", "우선순위", "상태", "남은 시간", "경고"];
+  const cell = (v: string) => `"${v.replace(/"/g, '""')}"`;
+  const body = list.map((r) => [
+    r.inquiry_count > 1 ? `${r.ticket_id} #${r.seq}` : r.ticket_id, time(r.received_at_utc), label(CHANNEL, r.channel),
+    r.company_masked ?? "", r.customer_tier ?? "", r.product_code ?? "미확인", label(CATEGORY, r.category_code), r.priority ?? "",
+    label(STATUS, r.status), r.status === "WAITING_CUSTOMER" ? "멈춤" : closed(r) || r.remaining_h == null ? "" : formatRemaining(Number(r.remaining_h)),
+    r.alerts.map((a) => ALERT[a] ?? a).join(" · "),
+  ]);
+  const csv = "\uFEFF" + [head, ...body].map((row) => row.map(cell).join(",")).join("\r\n");
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  const a = document.createElement("a");
+  a.href = url; a.download = `접수함_${list.length}건.csv`;
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+}
+
 export function InboxPage({ onOpen, flash, navigate }: {
   onOpen: (ticketId: string, seq: number) => void;
   flash?: string | null;
@@ -97,6 +118,7 @@ export function InboxPage({ onOpen, flash, navigate }: {
   const [text, setText] = useState(search.get("q") ?? "");
   const inbox = useInbox(search, dept, asOf);
   const counts = useInboxCounts(dept, asOf, search.get("include_closed") === "true");
+  const [picked, setPicked] = useState<Set<string>>(new Set());
   const last = useRef<Inbox | undefined>(undefined);
   if (inbox.data) last.current = inbox.data;
   const data = inbox.data ?? last.current;
@@ -153,6 +175,12 @@ export function InboxPage({ onOpen, flash, navigate }: {
 
   const rows = (data?.rows ?? []).map((r, i) => ({ ...r, __index: (page - 1) * SIZE + i + 1 }));
   const filtered = hasFilters(search);
+  // 선택은 지금 쪽에 보이는 행만 센다. 쪽이나 필터를 바꿔 사라진 행은 선택에서 뺀다
+  const shown = new Set(rows.map((r) => r.sub_ticket_id));
+  const chosen = rows.filter((r) => picked.has(r.sub_ticket_id));
+  const pageAll = rows.length > 0 && chosen.length === rows.length;
+  const toggle = (id: string) => setPicked((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const togglePage = () => setPicked((p) => { const n = new Set([...p].filter((id) => shown.has(id))); if (!pageAll) rows.forEach((r) => n.add(r.sub_ticket_id)); else rows.forEach((r) => n.delete(r.sub_ticket_id)); return n; });
 
   return (
     <>
@@ -160,6 +188,14 @@ export function InboxPage({ onOpen, flash, navigate }: {
       {flash && <Banner tone="neg">{flash}</Banner>}
       {inbox.isError && (
         <Banner tone="neg" action={<Button size="sm" onClick={() => void inbox.refetch()}>새로고침</Button>}>{FAIL}</Banner>
+      )}
+      {chosen.length > 0 && (
+        <div className="inbox-bulk" role="region" aria-label="선택한 문의 일괄 처리">
+          <b>{chosen.length}건 선택</b>
+          <Button size="sm" onClick={() => exportCsv(chosen)}>내보내기 (CSV)</Button>
+          <span className="inbox-bulk__grow" />
+          <Button variant="ghost" size="sm" onClick={() => setPicked(new Set())}>선택 해제</Button>
+        </div>
       )}
       <section className="ui-card inbox-card">
         <Tabs variant="seg" label="건수 요약" value={summaryOn} onChange={pickSummary}
@@ -209,7 +245,7 @@ export function InboxPage({ onOpen, flash, navigate }: {
 
         <DataTable<Row>
           caption="접수함 목록"
-          columns={COLUMNS}
+          columns={columnsFor(picked, toggle, pageAll, togglePage)}
           rows={data ? rows : undefined}
           loading={inbox.isPending}
           stale={inbox.isError}

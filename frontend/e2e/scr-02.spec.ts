@@ -109,3 +109,34 @@ test("SCR-02-AC-8: 2쪽을 보다가 상세로 갔다가 [접수함으로]를 �
   await expect(page).toHaveURL(/page=2/);
   await expect(rows(page).first().locator(".ui-tid")).toHaveText(firstOnPage2);
 });
+
+test("SCR-02-AC-9: 행을 고르면 선택 막대가 나오고 [내보내기 (CSV)]가 고른 행만 저장한다", async ({ page }) => {
+  await useSession(page, { dept: "TS_AUTO" });
+  await page.goto("/inbox");
+  await expect(rows(page).first()).toBeVisible();
+  await expect(page.getByRole("region", { name: "선택한 문의 일괄 처리" })).toHaveCount(0);
+  const ids = await rows(page).locator(".ui-tid").allInnerTexts();
+  await rows(page).nth(0).getByRole("checkbox").check();
+  await rows(page).nth(1).getByRole("checkbox").check();
+  await expect(page.getByText("2건 선택")).toBeVisible();
+  await expect(page).toHaveURL(/\/inbox/); // 체크 칸을 눌러도 상세로 가지 않는다
+  const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "내보내기 (CSV)" }).click()]);
+  expect(download.suggestedFilename()).toBe("접수함_2건.csv");
+  const text = (await (await import("node:fs/promises")).readFile(await download.path()!, "utf8"));
+  expect(text.split("\r\n")).toHaveLength(3); // 머리 + 2행
+  expect(text).toContain(ids[0]);
+  expect(text).toContain(ids[1]);
+  await page.getByRole("button", { name: "선택 해제" }).click();
+  await expect(page.getByText("2건 선택")).toHaveCount(0);
+});
+
+test("SCR-02-AC-10: 채널 칸은 티켓 번호 옆에 있고, 새로 접수된(신규) 행에만 NEW 태그가 붙는다", async ({ page }) => {
+  await useSession(page, { dept: "TS_LV", snapshot: true });
+  await page.goto("/inbox");
+  await expect(rows(page).first()).toBeVisible();
+  const heads = (await page.locator("table.ui-table thead th").allInnerTexts()).map((h) => h.trim());
+  expect(heads.indexOf("채널")).toBe(heads.indexOf("티켓 번호") + 1);
+  const status = await column(page, "처리 상태");
+  const chan = await column(page, "채널");
+  chan.forEach((c, i) => expect(c.includes("NEW")).toBe(status[i].trim().startsWith("신규")));
+});

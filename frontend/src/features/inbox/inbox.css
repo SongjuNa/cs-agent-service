@@ -30,3 +30,8 @@
 .inbox-co__name { max-width: 170px; overflow: hidden; text-overflow: ellipsis; }
 .inbox-chips { display: inline-flex; gap: var(--sp-4); }
 .inbox-p1dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--color-danger-solid); margin-right: var(--sp-6); vertical-align: middle; }
+
+.inbox-chan { display: inline-flex; align-items: center; gap: var(--sp-6); white-space: nowrap; }
+.inbox-new { padding: 1px 6px; border-radius: var(--r-pill, 999px); background: var(--color-brand); color: #fff; font-size: var(--fs-xs); font-weight: var(--fw-semibold); line-height: 16px; }
+.inbox-bulk { display: flex; align-items: center; gap: var(--sp-10); margin-bottom: var(--sp-12); padding: var(--sp-10) var(--sp-16); border: 1px solid var(--color-filter-line); border-radius: var(--r-md); background: var(--color-filter-bg); font-size: var(--fs-s); }
+.inbox-bulk__grow { flex: 1; }
