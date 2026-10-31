@@ -1,9 +1,9 @@
-// SCR-03 티켓 상세 (화면 정의서 v1 SCR-03, v2 0-7절 A안 탭 4개, 명세서 FR-030). 배치는 목업 v1.42 `viewTicket`.
-// 머리 카드 + 경고 띠 + 탭 4개(고객이 보낸 것 / 시스템이 판단한 것 / 보낼 것 기본 / 이력). 탭은 주소(?tab=)에 남긴다.
-import { useEffect, useState } from "react";
+// SCR-03 티켓 상세 (명세서 FR-030). 배치는 최신 목업(탭 없는 한 화면): 머리 카드 + 지금 할 일 띠 + 경고 띠 +
+// [읽기: 고객이 보낸 것 | 쓰기: 보낼 것] 두 칸(첫 화면) → 시스템이 판단한 것(근거) → 이력. 옛 탭 주소(?tab=)는 그 구역으로 스크롤한다.
+import { useEffect, useRef, useState } from "react";
 import { api, ApiError, SNAPSHOT, type Draft, type EvidenceRow, type SubTicket } from "../../api";
 import { useSession } from "../../app/session";
-import { Banner, Button, EmptyState, Tabs } from "../../ui";
+import { Banner, Button, EmptyState } from "../../ui";
 import { AdjustPopup, EscalatePopup, ReplyPopup } from "./ActionPopups";
 import { CustomerTab } from "./CustomerTab";
 import { useDepartments } from "../../app/queries";
@@ -16,15 +16,20 @@ import { SystemTab } from "./SystemTab";
 import { useRefresh, useTicket } from "./ticketQuery";
 import "./ticket.css";
 
-type Tab = "customer" | "system" | "send" | "history";
-const TABS: { key: Tab; label: string }[] = [
-  { key: "customer", label: "고객이 보낸 것" }, { key: "system", label: "시스템이 판단한 것" },
-  { key: "send", label: "보낼 것" }, { key: "history", label: "이력" },
+type Section = "customer" | "system" | "send" | "history";
+const SECTIONS: { key: Section; label: string }[] = [
+  { key: "customer", label: "고객이 보낸 것" }, { key: "send", label: "보낼 것" },
+  { key: "system", label: "시스템이 판단한 것" }, { key: "history", label: "이력" },
 ];
 
-function tabFromUrl(): Tab {
+/** 옛 탭 주소(?tab=customer 등)로 들어오면 그 구역으로 스크롤한다. 없으면 맨 위 */
+function sectionFromUrl(): Section | null {
   const t = new URLSearchParams(window.location.search).get("tab");
-  return TABS.some((x) => x.key === t) ? (t as Tab) : "send"; // 처음 열면 "보낼 것"(화면 명세 "목업과 다른 곳", Q11)
+  return SECTIONS.some((x) => x.key === t) ? (t as Section) : null;
+}
+
+function scrollToSection(key: Section) {
+  document.getElementById(`tk-sec-${key}`)?.scrollIntoView({ block: "start", behavior: "smooth" });
 }
 
 export function TicketPage({ ticketId, agent, onBack, navigate }: { ticketId: string; agent: string; onBack: (message?: string) => void; navigate?: (path: string) => void }) {
@@ -48,7 +53,11 @@ export function TicketPage({ ticketId, agent, onBack, navigate }: { ticketId: st
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
-  const [tab, setTabState] = useState<Tab>(tabFromUrl);
+  const wanted = useRef<Section | null>(sectionFromUrl());
+  const loaded = !!query.data;
+  useEffect(() => {
+    if (loaded && wanted.current) { const k = wanted.current; wanted.current = null; setTimeout(() => scrollToSection(k)); }
+  }, [loaded]);
   const [sendKind, setSendKind] = useState<Draft["message_type"] | null>(null);
   const [focus, setFocus] = useState<string | null>(null);
   const [why, setWhy] = useState<EvidenceRow | null>(null);
@@ -58,13 +67,6 @@ export function TicketPage({ ticketId, agent, onBack, navigate }: { ticketId: st
   const [adjusting, setAdjusting] = useState<SubTicket | null>(null);
   const [replying, setReplying] = useState(false);
   const [escalating, setEscalating] = useState(false);
-
-  function setTab(t: Tab) {
-    const url = new URL(window.location.href);
-    url.searchParams.set("tab", t);
-    window.history.replaceState(null, "", url);
-    setTabState(t);
-  }
 
   const notFound = query.error instanceof ApiError && query.error.status === 404;
   if (notFound) {
@@ -111,7 +113,7 @@ export function TicketPage({ ticketId, agent, onBack, navigate }: { ticketId: st
     .map((d) => d.sent!.sent_at_utc).sort().pop() ?? null;
   const canReply = !locked && subs.some((s) => s.sub_ticket.status === "WAITING_CUSTOMER");
 
-  const jump = (rowId: string) => { setTab("system"); setFocus(null); setTimeout(() => setFocus(rowId)); };
+  const jump = (rowId: string) => { scrollToSection("system"); setFocus(null); setTimeout(() => setFocus(rowId)); };
   const processingPane = (
     <div className="tk-pane"><p className="tk-busy" role="status" data-testid="processing">처리 중. 끝나면 자동으로 채워집니다</p></div>
   );
@@ -124,20 +126,33 @@ export function TicketPage({ ticketId, agent, onBack, navigate }: { ticketId: st
       <HeadCard detail={detail} onBack={() => onBack()} onReprocess={reprocess} busy={busy}
                 nav={navigate ? { ids: order, index, go: goTo } : undefined} />
       <NowStrip detail={detail} deptName={(code) => depts.data?.find((d) => d.dept_code === code)?.dept_name_ko ?? code ?? "담당 부서"} />
-      <AlertBand detail={detail} onShowSend={() => { setTab("send"); setSendKind("INFO_REQUEST"); }} />
-      <div className="tk-tabs">
-        <Tabs label="티켓 상세" value={tab} onChange={(k) => setTab(k as Tab)} items={TABS} />
-        {tab === "customer" ? <CustomerTab detail={detail} />
-          : tab === "history" ? <HistoryTab ticketId={ticketId} canReply={canReply} onReply={() => setReplying(true)} />
-          : detail.processing ? processingPane
-          : tab === "system" ? (
+      <AlertBand detail={detail} onShowSend={() => { scrollToSection("send"); setSendKind("INFO_REQUEST"); }} />
+      <div className="tk-body">
+        <div className="tk-cols">
+          <section id="tk-sec-customer" className="tk-sec" aria-label="고객이 보낸 것">
+            <h2 className="tk-sec__h">고객이 보낸 것</h2>
+            <CustomerTab detail={detail} />
+          </section>
+          <section id="tk-sec-send" className="tk-sec" aria-label="보낼 것">
+            <h2 className="tk-sec__h">보낼 것</h2>
+            {detail.processing ? processingPane : (
+              <SendTab detail={detail} agent={agent} kind={sendKind} onKind={setSendKind} locked={locked || busy}
+                       canEscalate={canEscalate} escalateTitle={escalateTitle} onEscalate={() => setEscalating(true)}
+                       onSource={setSource} onJump={jump} onFail={setFail} refresh={refresh} />
+            )}
+          </section>
+        </div>
+        <section id="tk-sec-system" className="tk-sec" aria-label="시스템이 판단한 것">
+          <h2 className="tk-sec__h">시스템이 판단한 것</h2>
+          {detail.processing ? processingPane : (
             <SystemTab detail={detail} locked={locked || busy} focus={focus} onWhy={setWhy} onSource={setSource}
                        onAdjust={setAdjusting} onEdit={edit} onCases={navigate && ((sub) => navigate(casesLink(sub)))} />
-          ) : (
-            <SendTab detail={detail} agent={agent} kind={sendKind} onKind={setSendKind} locked={locked || busy}
-                     canEscalate={canEscalate} escalateTitle={escalateTitle} onEscalate={() => setEscalating(true)}
-                     onSource={setSource} onJump={jump} onFail={setFail} refresh={refresh} />
           )}
+        </section>
+        <section id="tk-sec-history" className="tk-sec" aria-label="이력">
+          <h2 className="tk-sec__h">이력</h2>
+          <HistoryTab ticketId={ticketId} canReply={canReply} onReply={() => setReplying(true)} />
+        </section>
       </div>
 
       {why && <WhyPopup label={why.label} why={{ 결과: why.result, 근거: why.evidence, ...why.why }} onClose={() => setWhy(null)}

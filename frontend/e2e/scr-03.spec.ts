@@ -41,7 +41,6 @@ test.describe("시연 티켓 읽기", () => {
     await expect(marks.first()).toBeVisible();
     await expect(marks.filter({ hasText: "ACB-AS-2000" })).toHaveCount(1);
 
-    await tab(page, "시스템이 판단한 것").click();
     await expect(row(page, 1, "C-01")).toContainText(st.category_code);
     await expect(row(page, 1, "C-02")).toContainText(st.urgency_flag);
     await expect(row(page, 1, "C-03")).toContainText(st.priority);
@@ -54,7 +53,6 @@ test.describe("시연 티켓 읽기", () => {
     }
     expect(st.missing_blocking_info).toContain("serial_no");
 
-    await tab(page, "보낼 것").click();
     await expect(tab(page, "정보 요청")).toHaveAttribute("aria-selected", "true");
     const card = page.getByTestId("draft-card").first();
     await expect(card).toHaveAttribute("data-type", "INFO_REQUEST");
@@ -78,7 +76,6 @@ test.describe("시연 티켓 읽기", () => {
     await page.goto(`/tickets/${DEMO_08}?tab=system`);
     await expect(page.locator("[data-testid^=judge-]")).toHaveCount(2);
     for (const s of d.sub_tickets) await expect(row(page, s.sub_ticket.seq, "C-01")).toContainText(s.sub_ticket.category_code);
-    await tab(page, "보낼 것").click();
     await tab(page, "답변").click();
     await expect(page.locator('[data-testid=draft-card][data-type="FINAL_REPLY"]')).toHaveCount(2);
   });
@@ -229,7 +226,6 @@ test.describe.serial("000017 사본 A: 발송 → 충돌 → 회신", () => {
     const d = await waitDone(request, id);
     await page.goto(`/tickets/${id}?tab=system`);
     await expect(page.getByTestId("required-1").locator('[data-field="serial_no"]')).toHaveAttribute("data-state", "provided");
-    await tab(page, "보낼 것").click();
     await tab(page, "답변").click();
     const answer = d.sub_tickets[0].drafts.some((x: Json) => x.message_type === "FINAL_REPLY" && !x.superseded_at);
     if (answer) await expect(page.locator('[data-testid=draft-card][data-type="FINAL_REPLY"]')).toBeVisible();
