@@ -2,7 +2,7 @@
    띠 13px 10/14 안쪽, 탭 14px 안쪽 14 + 아래 2px 줄). 색은 tokens.css 변수만 쓴다(principles §3). */
 
 .tk { display: flex; flex-direction: column; gap: 14px; }
-.tk.is-stale > .tk-head, .tk.is-stale > .tk-tabs { opacity: 0.45; }
+.tk.is-stale > .tk-head, .tk.is-stale > .tk-body { opacity: 0.45; }
 .tk-muted { color: var(--color-fg-sub); }
 .tk-neg { color: var(--color-neg); }
 .tk-mono { font-family: var(--font-code); font-size: var(--fs-xs); color: var(--color-fg-sub); }
@@ -155,3 +155,10 @@
 .tk-now__t { flex: 1; color: var(--color-fg); }
 .tk-now__depth { flex: none; font-size: var(--fs-xs); color: var(--color-fg-sub); }
 .tk-now__depth--deep { color: var(--color-neg); font-weight: var(--fw-semibold); }
+
+/* 최신 목업: 탭 없는 한 화면. 시스템 판단 → [읽기 | 쓰기] 두 칸 → 이력 */
+.tk-body { display: flex; flex-direction: column; gap: 14px; }
+.tk-sec { min-width: 0; background: var(--color-surface); border: 1px solid var(--color-line); border-radius: var(--r-lg); overflow: hidden; scroll-margin-top: var(--sp-16); }
+.tk-sec__h { margin: 0; padding: var(--sp-12) var(--sp-16); border-bottom: 1px solid var(--color-line); font-size: var(--fs-s); font-weight: var(--fw-semibold); color: var(--color-fg); }
+.tk-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+@media (max-width: 1100px) { .tk-cols { grid-template-columns: minmax(0, 1fr); } }

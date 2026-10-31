@@ -40,3 +40,29 @@ test("SCR-03-AC-23: 접수함에서 열면 'n / 전체'가 보이고, 다음 문
   await page.keyboard.press("k");
   await expect(page).toHaveURL(new RegExp(`/tickets/${ids[1]}$`));
 });
+
+test("SCR-03-AC-24: 탭 없이 '고객이 보낸 것'과 '보낼 것'이 나란히 있고, 그 아래에 '시스템이 판단한 것'과 '이력'이 순서대로 있다", async ({ page, request }) => {
+  const list = await (await request.get("http://localhost:8000/tickets?dept=TS_LV&size=200&include_closed=true")).json();
+  let id = "";
+  for (const r of list.rows) {
+    const d = await (await request.get(`http://localhost:8000/tickets/${r.ticket_id}`)).json();
+    if (!d.processing && d.run) { id = r.ticket_id; break; }
+  }
+  expect(id).not.toBe("");
+  await useSession(page, { dept: "TS_LV" });
+  await page.goto(`/tickets/${id}`);
+  const customer = page.getByRole("region", { name: "고객이 보낸 것" });
+  const send = page.getByRole("region", { name: "보낼 것" });
+  await expect(customer).toBeVisible();
+  await expect(send).toBeVisible();
+  await expect(page.getByRole("tab", { name: /^고객이 보낸 것/ })).toHaveCount(0);
+  const [c, s, sys, hist] = await Promise.all([customer.boundingBox(), send.boundingBox(),
+    page.getByRole("region", { name: "시스템이 판단한 것" }).boundingBox(), page.getByRole("region", { name: "이력" }).boundingBox()]);
+  expect(c!.x).toBeLessThan(s!.x); // 왼쪽 읽기, 오른쪽 쓰기
+  expect(Math.abs(c!.y - s!.y)).toBeLessThan(5); // 같은 줄
+  expect(sys!.y).toBeGreaterThan(Math.max(c!.y + c!.height, s!.y + s!.height) - 1); // 두 칸 아래
+  expect(hist!.y).toBeGreaterThan(sys!.y);
+  // 옛 탭 주소는 그 구역으로 스크롤한다
+  await page.goto(`/tickets/${id}?tab=history`);
+  await expect(page.getByRole("region", { name: "이력" })).toBeInViewport();
+});
