@@ -24,7 +24,7 @@ SELECT 'MESSAGE', m.sent_at_utc, s.seq, m.message_id,
        jsonb_build_object('message_id', m.message_id, 'sender', m.sender, 'message_type', m.message_type,
                           'message_status', m.message_status, 'language', m.language, 'body', m.body,
                           'sent_by_name', m.sent_by_name, 'edited_yn', m.edited_yn,
-                          'notice_transition', m.notice_transition, 'override_check', m.override_check)
+                          'notice_transition', m.notice_transition, 'override_check', m.override_check, 'via_mail', m.via_mail)
   FROM svc.ticket_message m LEFT JOIN svc.sub_ticket s ON s.sub_ticket_id = m.sub_ticket_id
  WHERE m.ticket_id = %(t)s AND m.message_status IN ('SENT','RECEIVED')
 UNION ALL

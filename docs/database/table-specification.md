@@ -395,6 +395,7 @@ sla_setting은 다른 표와 연결되지 않는 설정값 3행이라 그림에 
 | sent_by_name | TEXT | 필수 | | 상담원 ID, SYSTEM, CUSTOMER. 부서 글이면 부서 상담원 ID(예: QA_CLAIM_AGENT_01), ID 없이 부서만 고른 경우만 DEPT. v1.3: 이름을 sent_by에서 바꿈(기술 명세서 v1.4). 상담원 ID는 sub_ticket.assignee_masked와 같은 값이다(T43). "오늘 처리 건수"(FR-047)가 센다 |
 | notice_transition | TEXT | | REMINDER (여유 시: ACK / ESCALATED / REPLY_RECEIVED / RESOLVED) | PROGRESS_NOTICE의 세부 종류. MVP는 리마인드(FR-023)만, 나머지 4개는 FR-048 때 쓴다 |
 | override_check | BOOLEAN | 필수 | 기본 FALSE | 자체 대조 불일치를 알고도 발송(FR-031) |
+| via_mail | BOOLEAN | 필수 | | 이 글이 메일로 오갔는가(변경 add-escalation-mail, 2026-10-31). 이관 요청을 메일로도 보낸 ESCALATION_NOTE SENT와, 부서가 메일로 회신한 ESCALATION_NOTE RECEIVED가 true. 기본 false. 실제 메일 연동은 아직 없다(표시만) |
 | mask_count | INTEGER | 필수 | 기본 0 | LLM에 보낼 때 가릴 곳 수. 저장할 때 함께 계산한다(FR-038 "마스킹됨 n곳") |
 | superseded_at | TIMESTAMPTZ | | | 재처리로 밀려난 초안 표시. v1.3: 이름을 superseded_at_utc에서 바꿈(기술 명세서 v1.4). 시각 열 이름 끝 `_utc` 규칙의 유일한 예외 |
 | created_at_utc | TIMESTAMPTZ | 필수 | 기본 now() | 저장 시각 |

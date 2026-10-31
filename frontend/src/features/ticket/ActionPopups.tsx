@@ -143,9 +143,12 @@ export function EscalatePopup({ subs, onDone, onClose }: { subs: SubTicket[]; on
   const [dept, setDept] = useState(top?.dept ?? "");
   const [reason, setReason] = useState(top?.reason_code ?? "");
   const [memo, setMemo] = useState("");
+  const [mail, setMail] = useState(true); // 최신 목업: 이관 요청을 메일로도 보내기(처음부터 켜짐)
   const depts = useDepartments();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const deptName = depts.data?.find((d) => d.dept_code === dept)?.dept_name_ko ?? dept;
+  const subject = `[${subId.replace(/-\d+$/, "")}] 이관 요청 · ${reason || "사유 선택 전"}`;
 
   function pick(id: string) {
     const c = open.find((s) => s.sub_ticket.sub_ticket_id === id)?.escalation?.escalation_candidates[0];
@@ -157,7 +160,7 @@ export function EscalatePopup({ subs, onDone, onClose }: { subs: SubTicket[]; on
     if (!reason) { setError("이관 사유를 고르세요"); return; } // FR-033 예외 1행
     setBusy(true);
     try {
-      await api.escalate(subId, { dept, reason_code: reason, memo: memo.trim(), expected_version: sub.version });
+      await api.escalate(subId, { dept, reason_code: reason, memo: memo.trim(), expected_version: sub.version, send_mail: mail });
       onDone();
     } catch (e) {
       setError(errorText(e, "이관 실패"));
@@ -193,6 +196,18 @@ export function EscalatePopup({ subs, onDone, onClose }: { subs: SubTicket[]; on
           </select>
         </Field>
         <div className="is-wide"><Field label="메모" hint="선택"><textarea rows={3} value={memo} onChange={(e) => setMemo(e.target.value)} /></Field></div>
+      </div>
+      <div className="tk-mailbox" data-testid="mail-box">
+        <label className="tk-mailbox__h"><input type="checkbox" checked={mail} onChange={(e) => setMail(e.target.checked)} />이관 요청을 메일로도 보내기</label>
+        <p className="tk-note">이관 부서는 이 시스템을 열지 않아도 됩니다. 부서가 메일에 답장하면 회신이 이 문의에 자동으로 연결되어, 따로 입력하지 않아도 됩니다.</p>
+        {mail && (
+          <dl className="tk-mailbox__prev">
+            <div><dt>받는 곳</dt><dd>{dept ? `${deptName} 담당 메일함` : "이관 부서를 고르세요"}</dd></div>
+            <div><dt>제목</dt><dd>{subject}</dd></div>
+            <div><dt>내용</dt><dd>{memo.trim() || <span className="tk-muted">메모를 쓰면 여기에 들어갑니다</span>}<span className="tk-note"> 문의 요약과 원문, 회신 방법이 함께 들어갑니다</span></dd></div>
+          </dl>
+        )}
+        <p className="tk-note">메일 연동은 화면 예시입니다. 실제 발송과 회신 인식은 아직 연결되어 있지 않습니다.</p>
       </div>
       {sub && <p className="tk-note">현재 담당 {sub.sub_ticket.assigned_dept ?? "—"}. 고객 이관 안내 초안은 만들지 않습니다.</p>}
       {error && <Banner tone="neg">{error}</Banner>}

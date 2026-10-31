@@ -38,7 +38,8 @@ class EscalateError(Exception):
 
 
 def escalate(conn: Connection, sub_ticket_id: str, dept: str | None, reason_code: str | None, memo: str | None,
-             agent_id: str, at: datetime, expected_version: int | None = None) -> dict[str, Any]:
+             agent_id: str, at: datetime, expected_version: int | None = None,
+             send_mail: bool = False) -> dict[str, Any]:
     """검사 순서: 사유 → 이미 이관 → 처리 중 → 부서(design 결정 1). 한 트랜잭션으로 쓰고, 처리 중이 아니면 거부를 실행 로그에 남긴다."""
     reason_code, dept, memo = (reason_code or "").strip(), (dept or "").strip(), (memo or "").strip()
     if not reason_code:
@@ -67,9 +68,9 @@ def escalate(conn: Connection, sub_ticket_id: str, dept: str | None, reason_code
             body = memo or f"이관: {dept} ({reason_code})"  # 본문 1자 이상(C-154)
             (message_id,) = conn.execute(
                 """INSERT INTO svc.ticket_message (ticket_id, sub_ticket_id, sender, message_type, message_status, sent_at_utc,
-                       language, body, sent_by_name, mask_count)
-                   VALUES (%s, %s, 'AGENT', 'ESCALATION_NOTE', 'SENT', %s, %s, %s, %s, %s) RETURNING message_id""",
-                (ticket_id, sub_ticket_id, at, NOTE_LANGUAGE, body, agent_id, mask_text(body)[1])).fetchone()
+                       language, body, sent_by_name, mask_count, via_mail)
+                   VALUES (%s, %s, 'AGENT', 'ESCALATION_NOTE', 'SENT', %s, %s, %s, %s, %s, %s) RETURNING message_id""",
+                (ticket_id, sub_ticket_id, at, NOTE_LANGUAGE, body, agent_id, mask_text(body)[1], send_mail)).fetchone()
             version = conn.execute("SELECT version FROM svc.sub_ticket WHERE sub_ticket_id = %s",
                                    (sub_ticket_id,)).fetchone()[0]
     if status != "IN_PROGRESS":  # 허용되지 않은 전이: 거부하고 실행 로그에 남긴다(FR-025 예외 1행, 발송 API와 같은 모양)

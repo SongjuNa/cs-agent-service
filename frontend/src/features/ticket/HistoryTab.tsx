@@ -25,6 +25,11 @@ function line(item: TimelineItem): { chip: string; tone: Tone; text: string; who
     case "ALERT_CLEARED":
       return { chip: "경고", tone: "pos", text: `경고 해제: ${label(ALERT, item.alert_type as string)}` };
     default: {
+      if (item.message_type === "ESCALATION_NOTE" && item.via_mail) {
+        return item.message_status === "RECEIVED"
+          ? { chip: "메일", tone: "info", text: "회신 메일 수신 (이관 부서가 메일로 답장)", who: String(item.sent_by_name ?? "") }
+          : { chip: "메일", tone: "info", text: "이관 요청 메일 발송 (부서 담당 메일함, 답장하면 이 문의에 연결되는 시안)", who: String(item.sent_by_name ?? "") };
+      }
       if (item.sender === "SYSTEM" && item.notice_transition === "REMINDER") return { chip: "메시지", tone: "info", text: "리마인드 자동 발송", who: "시스템" };
       const name = item.sent_by_name && item.sent_by_name !== item.sender ? String(item.sent_by_name) : WHO[String(item.sender)];
       return { chip: "메시지", tone: "info", text: `${TYPE[String(item.message_type)] ?? item.message_type} ${MSG_STATUS[String(item.message_status)] ?? ""}, ${item.language}${item.edited_yn ? ", 상담원 수정" : ""}`, who: name };
@@ -32,16 +37,37 @@ function line(item: TimelineItem): { chip: string; tone: Tone; text: string; who
   }
 }
 
-export function HistoryTab({ ticketId, canReply, onReply }: { ticketId: string; canReply: boolean; onReply: () => void }) {
+/** 부서가 메일로 답장하길 기다리는 하위 문의(seq → sub_ticket_id): 그 문의가 ESCALATED이고 마지막 이관 메모가 "메일로 보낸 것"일 때 */
+function awaitingMail(items: TimelineItem[], escalated: Map<number, string>): Map<number, string> {
+  const out = new Map<number, string>();
+  for (const [seq, subId] of escalated) {
+    const last = [...items].reverse().find((i) => i.kind === "MESSAGE" && i.message_type === "ESCALATION_NOTE" && i.seq === seq);
+    if (last && last.message_status === "SENT" && last.via_mail) out.set(seq, subId);
+  }
+  return out;
+}
+
+export function HistoryTab({ ticketId, canReply, onReply, escalated, onMailReply }: {
+  ticketId: string; canReply: boolean; onReply: () => void;
+  /** ESCALATED인 하위 문의(seq → sub_ticket_id)와 "회신 메일 도착(시연)" 실행 */
+  escalated: Map<number, string>; onMailReply: (subTicketId: string) => void;
+}) {
   const timeline = useTimeline(ticketId, true);
   // 최근 것이 위(목업 .tl). 서버는 시각 오름차순으로 준다
   const items = [...(timeline.data ?? [])].reverse();
+  const waitingMail = awaitingMail(timeline.data ?? [], escalated);
   return (
     <div className="tk-pane">
       <div className="tk-pane__bar">
         메시지, 상태 변경, 경고, 조정을 시각순으로
         <Button size="sm" disabled={!canReply} onClick={onReply}>고객 회신 입력</Button>
       </div>
+      {[...waitingMail].map(([seq, subId]) => (
+        <div key={subId} className="tk-mailwait" data-testid="mail-wait">
+          <span>부서 회신 메일을 기다리는 중입니다{waitingMail.size > 1 ? ` (문의 ${seq})` : ""}. 실제 메일은 연결되어 있지 않아, 부서가 메일로 답장한 것처럼 회신을 자동 반영해 볼 수 있습니다.</span>
+          <Button size="sm" onClick={() => onMailReply(subId)}>회신 메일 도착 (시연)</Button>
+        </div>
+      ))}
       {timeline.isError && <Banner tone="neg">이력을 불러오지 못함. 새로고침</Banner>}
       {timeline.isPending ? <p className="tk-muted">읽는 중…</p> : (
         <ol className="tk-tl" data-testid="timeline">

@@ -1,6 +1,7 @@
 // SCR-03 머리 영역 (최신 목업에 맞춤, 변경 add-inbox-turn-depth): 접수 정보 줄, 지금 할 일·검토 모드 띠, 이전·다음 문의 이동.
 import { expect, test } from "@playwright/test";
 import { useSession } from "./session";
+import { intakeCopy } from "./ticket";
 
 const rows = (page: import("@playwright/test").Page) => page.locator("table.ui-table tbody tr.is-link");
 
@@ -136,4 +137,34 @@ test("SCR-03-AC-27 (최신 목업): 접수 때 만들어 저장한 한국어 요
   await expect(page.locator("table.ui-table tbody tr.is-link").first().locator(".inbox-subject")).toHaveText(summary);
   await page.goto(`/tickets/${id}`);
   await expect(page.getByTestId("ai-summary")).toContainText(summary);
+});
+
+test.describe.serial("이관 메일 (최신 목업)", () => {
+  test.setTimeout(300_000);
+  let id = "";
+  test.beforeAll(async ({ request }) => { test.setTimeout(300_000); id = await intakeCopy(request, "CSV1-000017"); });
+
+  test("SCR-03-AC-28: 이관 팝업의 '메일로도 보내기'(처음부터 켜짐, 받는 곳·제목 미리보기)로 이관하면 이력에 '이관 요청 메일 발송'이 남고, [회신 메일 도착 (시연)]을 누르면 '회신 메일 수신'과 함께 처리 중으로 돌아온다", async ({ page }) => {
+    await useSession(page, { dept: "TS_LV", agent: "leo" });
+    await page.goto(`/tickets/${id}`);
+    await page.getByRole("button", { name: "이관", exact: true }).click();
+    const p4 = page.getByRole("dialog", { name: "이관" });
+    const box = p4.getByTestId("mail-box");
+    await expect(box.getByRole("checkbox", { name: /메일로도 보내기/ })).toBeChecked();
+    await expect(box).toContainText("실제 발송과 회신 인식은 아직 연결되어 있지 않습니다"); // 시안임을 숨기지 않는다
+    await p4.getByLabel(/이관 부서/).selectOption("FIELD_SVC");
+    await p4.getByLabel(/이관 사유/).selectOption("ONSITE_REQUIRED");
+    await expect(box).toContainText("받는 곳");
+    await expect(box).toContainText(`[${id}] 이관 요청 · ONSITE_REQUIRED`);
+    await p4.getByRole("button", { name: "이관", exact: true }).click();
+    await expect(p4).toBeHidden();
+    const history = page.getByRole("region", { name: "이력" });
+    await expect(history.getByTestId("timeline")).toContainText("이관 요청 메일 발송");
+    await expect(history.getByTestId("mail-wait")).toBeVisible();
+    await history.getByRole("button", { name: "회신 메일 도착 (시연)" }).click();
+    await expect(history.getByTestId("timeline")).toContainText("회신 메일 수신");
+    await expect(history.getByTestId("mail-wait")).toHaveCount(0); // 회신이 오면 더는 기다리지 않는다
+    const head = page.getByRole("region", { name: "티켓 요약" });
+    await expect(head.locator(".tk-stat").nth(0)).not.toContainText("이관됨");
+  });
 });

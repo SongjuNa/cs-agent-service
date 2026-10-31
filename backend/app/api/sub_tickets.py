@@ -114,6 +114,7 @@ class EscalateIn(BaseModel):
     reason_code: str | None = None
     memo: str | None = None
     expected_version: int | None = None  # FR-025 예외 2행
+    send_mail: bool = False  # 이관 요청을 메일로도 보낸다(표시만, 실제 발송 연동은 아직 없음, add-escalation-mail)
 
 
 @router.post("/sub-tickets/{sub_ticket_id}/escalate", response_model=schemas.Escalated, response_model_exclude_unset=True)
@@ -124,7 +125,7 @@ def post_escalate(sub_ticket_id: str, data: EscalateIn, conn: Connection = Depen
         raise HTTPException(400, "상담원 ID를 입력하세요")
     try:
         return escalate(conn, sub_ticket_id, data.dept, data.reason_code, data.memo, x_agent_id.strip(),
-                        datetime.now(timezone.utc), expected_version=data.expected_version)
+                        datetime.now(timezone.utc), expected_version=data.expected_version, send_mail=data.send_mail)
     except LookupError as exc:
         raise HTTPException(404, MSG_NOT_FOUND) from exc
     except ConcurrentChange as exc:
@@ -138,6 +139,7 @@ class DeptBodyIn(BaseModel):
 
     body: str | None = None
     expected_version: int | None = None  # FR-025 예외 2행
+    via_mail: bool = False  # 부서가 메일로 회신해 온 것으로 기록한다(add-escalation-mail)
 
 
 def _agent(x_agent_id: str | None) -> str:
@@ -155,7 +157,7 @@ def post_dept_reply(sub_ticket_id: str, data: DeptBodyIn, background: Background
     agent = _agent(x_agent_id)
     try:
         out = register_reply(conn, sub_ticket_id, data.body, agent, x_agent_dept, datetime.now(timezone.utc),
-                             expected_version=data.expected_version)
+                             expected_version=data.expected_version, via_mail=data.via_mail)
     except LookupError as exc:
         raise HTTPException(404, MSG_NOT_FOUND) from exc
     except ConcurrentChange as exc:

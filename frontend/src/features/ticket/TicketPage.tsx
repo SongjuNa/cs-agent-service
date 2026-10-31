@@ -17,6 +17,9 @@ import { SystemTab } from "./SystemTab";
 import { useRefresh, useTicket } from "./ticketQuery";
 import "./ticket.css";
 
+/** 시연용 회신 메일 본문. 실제 메일 연동이 없어 부서가 메일로 답장한 것처럼 반영한다(add-escalation-mail) */
+const MAIL_REPLY_DEMO = "[시연] 요청하신 건을 확인했습니다. 회신 메일 자동 반영 시연이며 실제 부서 회신이 아닙니다.";
+
 type Section = "customer" | "system" | "send" | "history";
 const SECTIONS: { key: Section; label: string }[] = [
   { key: "customer", label: "고객이 보낸 것" }, { key: "send", label: "보낼 것" },
@@ -155,7 +158,9 @@ export function TicketPage({ ticketId, agent, onBack, navigate }: { ticketId: st
         </section>
         <section id="tk-sec-history" className="tk-sec" aria-label="이력">
           <h2 className="tk-sec__h">이력</h2>
-          <HistoryTab ticketId={ticketId} canReply={canReply} onReply={() => setReplying(true)} />
+          <HistoryTab ticketId={ticketId} canReply={canReply} onReply={() => setReplying(true)}
+                      escalated={new Map(subs.filter((x) => x.sub_ticket.status === "ESCALATED").map((x) => [x.sub_ticket.seq, x.sub_ticket.sub_ticket_id]))}
+                      onMailReply={(subId) => void action(() => api.deptReply(subId, MAIL_REPLY_DEMO, true), "회신을 반영하지 못함")} />
         </section>
       </div>
 

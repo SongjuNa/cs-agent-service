@@ -1240,6 +1240,11 @@ export interface components {
             body?: string | null;
             /** Expected Version */
             expected_version?: number | null;
+            /**
+             * Via Mail
+             * @default false
+             */
+            via_mail: boolean;
         };
         /** DeptMail */
         DeptMail: {
@@ -1469,6 +1474,11 @@ export interface components {
             memo?: string | null;
             /** Reason Code */
             reason_code?: string | null;
+            /**
+             * Send Mail
+             * @default false
+             */
+            send_mail: boolean;
         };
         /** Escalated */
         Escalated: {
