@@ -35,7 +35,7 @@
 | 유형 | category_code 이름, 복합이면 "복합 n건 중 k" | category_code, seq, inquiry_count |
 | 우선순위 | P1~P4 배지, P1은 빨간 점, 조정이면 "(조정)". 아래 줄에 검토 모드(상세 검토·일반 확인·빠른 확인; 완료 줄은 없음). 정렬 가능 | priority, priority_adjusted, review_depth |
 | 처리 상태 · 다음 행동 | 상태 배지(CP-1). 이관받은 행은 "{원 부서}에서 이관됨", 이관 보낸 행은 "→ {부서}". 아래 줄에 다음 행동(내 차례면 "→ " 접두, 팀 전체 보기에서는 담당 상담원도) | status, escalated_in_from, escalated_to, next_action, turn, assignee_masked |
-| 남은 시간 | 해결 남은 시간. 대기 중 "멈춤", 없으면 "SLA 미정". 정렬 가능 | remaining_h, res_status |
+| 해결 기한까지 | 해결 기한까지 남은 시간(머리글에 "해결"을 붙여 1차 응답 경고와 구분). 대기 중 "멈춤", 없으면 "SLA 미정". 정렬 가능 | remaining_h, res_status |
 | 경고 | 경고 칩(노랑 위험, 빨강 위반) | alerts[] |
 | 정보 요청 | "필요" | needs_info |
 | 승인 대기 | "있음" | has_unsent_draft |
