@@ -40,3 +40,11 @@
 .inbox-newchip b { color: var(--color-brand); }
 .inbox-newchip.is-on { border-color: var(--color-brand); background: var(--color-brand); color: #fff; }
 .inbox-newchip.is-on b { color: #fff; }
+.inbox-scope { display: inline-flex; border: 1px solid var(--color-line); border-radius: var(--r-md); overflow: hidden; }
+.inbox-scope button { display: inline-flex; align-items: center; gap: var(--sp-6); height: var(--h-control); padding: 0 var(--sp-12); border: 0; background: var(--color-surface); color: var(--color-fg); font: inherit; font-size: var(--fs-s); cursor: pointer; }
+.inbox-scope button + button { border-left: 1px solid var(--color-line); }
+.inbox-scope button.is-on { background: var(--color-brand); color: #fff; }
+.inbox-action { display: block; margin-top: 2px; font-size: var(--fs-xs); color: var(--color-fg-sub); }
+.inbox-action--me { color: var(--color-brand); font-weight: var(--fw-semibold); }
+.inbox-depth { display: block; margin-top: 2px; font-size: var(--fs-xs); color: var(--color-fg-sub); }
+.inbox-depth--deep { color: var(--color-neg); font-weight: var(--fw-semibold); }

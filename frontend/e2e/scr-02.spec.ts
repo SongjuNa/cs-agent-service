@@ -149,7 +149,8 @@ test("SCR-02-AC-11: 요약 탭에 회신 대기·이관이 있고, 새 문의 �
   const c = api.counts;
   if (c.waiting) await expect(page.getByRole("tab", { name: new RegExp(`^회신 대기\\s*${c.waiting}$`) })).toBeVisible();
   await expect(page.getByRole("tab", { name: /^이관/ })).toBeVisible();
-  await expect(page.getByText(`기한 초과 ${c.breach} · 기한 임박 ${c.risk}`)).toBeVisible();
+  if (c.breach) await expect(page.getByText(new RegExp(`기한 초과 ${c.breach}`))).toBeVisible();
+  if (c.risk) await expect(page.getByText(new RegExp(`기한 임박 ${c.risk}`))).toBeVisible();
   // 회신 대기 탭 → 모든 행이 고객 회신 대기
   await page.getByRole("tab", { name: /^회신 대기/ }).click();
   await expect(page).toHaveURL(/status=WAITING_CUSTOMER/);
@@ -163,4 +164,31 @@ test("SCR-02-AC-11: 요약 탭에 회신 대기·이관이 있고, 새 문의 �
   await expect(chip).toHaveAttribute("aria-pressed", "true");
   await chip.click();
   await expect(page).not.toHaveURL(/status=NEW/);
+});
+
+test("SCR-02-AC-12: 상담원을 고르면 '내 담당'만 보이고 '팀 전체'로 바꿀 수 있으며, 내가 처리할 문의 묶음이 맨 위에 다음 행동과 함께 나온다", async ({ page, request }) => {
+  const team = await (await request.get("http://localhost:8000/tickets?dept=TS_LV&as_of=2026-09-30T23:59:00Z&size=200")).json();
+  const name: string = team.rows.find((r: { assignee_masked: string | null; turn: string }) => r.assignee_masked && r.turn === "ME").assignee_masked;
+  const mine = await (await request.get(`http://localhost:8000/tickets?dept=TS_LV&as_of=2026-09-30T23:59:00Z&size=1&assignee=${name}&me=${name}`)).json();
+  await useSession(page, { dept: "TS_LV", agent: name, snapshot: true });
+  await page.goto("/inbox");
+  await expect(rows(page).first()).toBeVisible();
+  // 내 담당: 건수와 부제, 묶음 머리, 다음 행동, [다음 문의 처리 시작]
+  await expect(page.getByRole("button", { name: /^내 담당/ })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: /^내 담당/ })).toContainText(String(mine.counts.mine));
+  await expect(page.getByText(`내 담당 ${mine.counts.total}건 중`)).toBeVisible();
+  await expect(page.locator("tr.ui-table__group").first()).toContainText("내가 처리할 문의");
+  const status = await column(page, "처리 상태");
+  expect(status.length).toBe(Math.min(mine.counts.total, 50));
+  expect(status[0]).toMatch(/→ /); // 내 차례 줄은 "→ 다음 행동"
+  const start = page.getByRole("button", { name: /다음 문의 처리 시작/ });
+  const firstId = await rows(page).first().locator(".ui-tid").innerText();
+  await expect(start).toContainText(firstId.replace(/ #\d+$/, ""));
+  // 팀 전체
+  await page.getByRole("button", { name: /^팀 전체/ }).click();
+  await expect(page).toHaveURL(/m=0/);
+  await expect(page.getByText(new RegExp(`팀 전체 ${team.counts.total}건 중`))).toBeVisible();
+  // 열 머리 정렬을 누르면 묶음 머리가 사라진다
+  await page.locator("table.ui-table thead th", { hasText: "접수 시각" }).click();
+  await expect(page.locator("tr.ui-table__group")).toHaveCount(0);
 });

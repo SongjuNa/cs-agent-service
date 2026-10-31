@@ -1,12 +1,14 @@
 // SCR-03 티켓 상세 (화면 정의서 v1 SCR-03, v2 0-7절 A안 탭 4개, 명세서 FR-030). 배치는 목업 v1.42 `viewTicket`.
 // 머리 카드 + 경고 띠 + 탭 4개(고객이 보낸 것 / 시스템이 판단한 것 / 보낼 것 기본 / 이력). 탭은 주소(?tab=)에 남긴다.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api, ApiError, SNAPSHOT, type Draft, type EvidenceRow, type SubTicket } from "../../api";
 import { useSession } from "../../app/session";
 import { Banner, Button, EmptyState, Tabs } from "../../ui";
 import { AdjustPopup, EscalatePopup, ReplyPopup } from "./ActionPopups";
 import { CustomerTab } from "./CustomerTab";
-import { AlertBand, HeadCard } from "./HeadCard";
+import { useDepartments } from "../../app/queries";
+import { inboxOrder } from "../inbox/inboxQuery";
+import { AlertBand, HeadCard, NowStrip } from "./HeadCard";
 import { HistoryTab } from "./HistoryTab";
 import { FailPopup, SourcePopup, WhyPopup, type SourceTarget } from "./Popups";
 import { SendTab } from "./SendTab";
@@ -30,6 +32,22 @@ export function TicketPage({ ticketId, agent, onBack, navigate }: { ticketId: st
   const asOf = mode === "snapshot" ? SNAPSHOT : null;
   const query = useTicket(ticketId, asOf);
   const refresh = useRefresh(ticketId);
+  const depts = useDepartments();
+  const order = inboxOrder(); // 접수함이 마지막으로 보여 준 순서
+  const index = order.indexOf(ticketId);
+  const goTo = (id: string) => navigate?.(`/tickets/${encodeURIComponent(id)}`);
+  // 단축키 j 다음 문의 · k 이전 문의 (글을 쓰는 중이거나 창이 열려 있으면 쓰지 않는다)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement;
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (document.querySelector('[role="dialog"]')) return;
+      if (e.key === "j" && index >= 0 && index < order.length - 1) goTo(order[index + 1]);
+      else if (e.key === "k" && index > 0) goTo(order[index - 1]);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
   const [tab, setTabState] = useState<Tab>(tabFromUrl);
   const [sendKind, setSendKind] = useState<Draft["message_type"] | null>(null);
   const [focus, setFocus] = useState<string | null>(null);
@@ -103,7 +121,9 @@ export function TicketPage({ ticketId, agent, onBack, navigate }: { ticketId: st
       {stale && (
         <Banner tone="neg" action={<Button size="sm" onClick={() => void query.refetch()}>새로고침</Button>}>불러오지 못함. 새로고침</Banner>
       )}
-      <HeadCard detail={detail} onBack={() => onBack()} onReprocess={reprocess} busy={busy} />
+      <HeadCard detail={detail} onBack={() => onBack()} onReprocess={reprocess} busy={busy}
+                nav={navigate ? { ids: order, index, go: goTo } : undefined} />
+      <NowStrip detail={detail} deptName={(code) => depts.data?.find((d) => d.dept_code === code)?.dept_name_ko ?? code ?? "담당 부서"} />
       <AlertBand detail={detail} onShowSend={() => { setTab("send"); setSendKind("INFO_REQUEST"); }} />
       <div className="tk-tabs">
         <Tabs label="티켓 상세" value={tab} onChange={(k) => setTab(k as Tab)} items={TABS} />

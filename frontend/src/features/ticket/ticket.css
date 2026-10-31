@@ -143,3 +143,15 @@
 .tk-skeleton { min-height: 120px; background: var(--color-hover); }
 .tk-tabs.tk-skeleton { min-height: 360px; }
 .tk-why { align-self: start; white-space: nowrap; } /* 판단 줄 오른쪽 [근거 보기] */
+
+.tk-recv { margin: 0; padding: 0 var(--sp-16) var(--sp-8); font-size: var(--fs-s); color: var(--color-fg-sub); }
+.tk-recv b { color: var(--color-fg); font-weight: var(--fw-semibold); }
+.tk-nav { display: inline-flex; align-items: center; gap: var(--sp-6); font-size: var(--fs-s); color: var(--color-fg-sub); }
+.tk-nav button { width: 30px; height: 30px; border: 1px solid var(--color-line); border-radius: var(--r-sm); background: var(--color-surface); color: var(--color-fg); font-size: 18px; line-height: 1; cursor: pointer; }
+.tk-nav button:disabled { opacity: 0.4; cursor: default; }
+.tk-now { display: flex; align-items: center; gap: var(--sp-12); margin: var(--sp-12) 0; padding: var(--sp-10) var(--sp-16); border: 1px solid var(--color-line); border-radius: var(--r-md); background: var(--color-surface); font-size: var(--fs-s); }
+.tk-now__k { flex: none; padding: 2px 8px; border-radius: var(--r-pill); background: var(--color-brand); color: #fff; font-size: var(--fs-xs); font-weight: var(--fw-semibold); }
+.tk-now--wait .tk-now__k, .tk-now--done .tk-now__k { background: var(--color-fg-sub); }
+.tk-now__t { flex: 1; color: var(--color-fg); }
+.tk-now__depth { flex: none; font-size: var(--fs-xs); color: var(--color-fg-sub); }
+.tk-now__depth--deep { color: var(--color-neg); font-weight: var(--fw-semibold); }

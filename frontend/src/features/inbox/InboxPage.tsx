@@ -3,14 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import type { Inbox, InboxRow } from "../../api";
 import { useDepartments, useInboxCounts } from "../../app/queries";
-import { ALERT, CATEGORY, CHANNEL, STATUS, label } from "../../app/labels";
+import { ALERT, CATEGORY, CHANNEL, DEPTH, NEXT_ACTION, STATUS, TURN_GROUP, label } from "../../app/labels";
 import { useSession } from "../../app/session";
 import { Icon } from "../../app/icons";
 import {
   AlertChip, Banner, Button, Chip, DataTable, EmptyState, formatRemaining, PageHeader, Pager, PriorityBadge, Tabs,
   type Column,
 } from "../../ui";
-import { ALL_ALERTS, hasFilters, rememberInboxUrl, SIZE, useInbox } from "./inboxQuery";
+import { ALL_ALERTS, hasFilters, rememberInboxOrder, rememberInboxUrl, SIZE, useInbox } from "./inboxQuery";
 import "./inbox.css";
 
 const FAIL = "목록을 불러오지 못함. 새로고침"; // FR-029 예외 4행
@@ -48,7 +48,7 @@ function remainingCell(r: InboxRow) {
 
 type Row = InboxRow & { __index: number }; // __index = 순번(이 쪽까지 센 번호)
 
-const columnsFor = (sel: Set<string>, toggle: (id: string) => void, pageAll: boolean, togglePage: () => void): Column<Row>[] => [
+const columnsFor = (sel: Set<string>, toggle: (id: string) => void, pageAll: boolean, togglePage: () => void, showAssignee: boolean): Column<Row>[] => [
   { key: "pick", header: <input type="checkbox" aria-label="이 쪽 전체 선택" checked={pageAll} onChange={togglePage} onClick={(e) => e.stopPropagation()} />,
     render: (r) => <input type="checkbox" aria-label={`${r.ticket_id} #${r.seq} 선택`} checked={sel.has(r.sub_ticket_id)} onChange={() => toggle(r.sub_ticket_id)} onClick={(e) => e.stopPropagation()} /> },
   { key: "seq", header: "순번", align: "right", render: (r) => <span className="sub">{r.__index}</span> },
@@ -77,16 +77,22 @@ const columnsFor = (sel: Set<string>, toggle: (id: string) => void, pageAll: boo
     <>{label(CATEGORY, r.category_code)}{r.inquiry_count > 1 && <span className="sub"> 복합 {r.inquiry_count}건 중 {r.seq}</span>}</>
   ) },
   { key: "priority", header: "우선순위", sortKey: "priority", render: (r) => r.priority
-    ? <>{r.priority === "P1" && <span className="inbox-p1dot" title="우선순위 P1" />}<PriorityBadge priority={r.priority} adjusted={!!r.priority_adjusted} /></>
+    ? <>{r.priority === "P1" && <span className="inbox-p1dot" title="우선순위 P1" />}<PriorityBadge priority={r.priority} adjusted={!!r.priority_adjusted} />
+        {r.turn !== "DONE" && <span className={`inbox-depth inbox-depth--${r.review_depth.toLowerCase()}`} title="검토 모드: 얼마나 깊게 봐야 하는지">{DEPTH[r.review_depth]}</span>}</>
     : <span className="sub">—</span> },
-  { key: "status", header: "처리 상태", sortKey: "status", render: (r) => (
+  { key: "status", header: "처리 상태 · 다음 행동", sortKey: "status", render: (r) => (
     // 이관받은 줄은 상태 칸에 "{원 부서}에서 이관됨"만 보인다(FR-029 처리 1)
-    r.escalated_in_from ? <>{r.escalated_in_from}에서 이관됨</> : (
-      <>
-        {label(STATUS, r.status)}
-        {r.status === "ESCALATED" && r.escalated_to ? <span className="sub"> → {r.escalated_to}</span> : null}
-      </>
-    )
+    <>
+      {r.escalated_in_from ? <>{r.escalated_in_from}에서 이관됨</> : (
+        <>
+          {label(STATUS, r.status)}
+          {r.status === "ESCALATED" && r.escalated_to ? <span className="sub"> → {r.escalated_to}</span> : null}
+        </>
+      )}
+      <span className={`inbox-action inbox-action--${r.turn.toLowerCase()}`} title="누구 차례인지는 상세의 '지금 할 일'과 같은 기준입니다">
+        {r.turn === "ME" && "→ "}{label(NEXT_ACTION, r.next_action)}{showAssignee && r.assignee_masked ? <span className="sub"> · {r.assignee_masked}</span> : null}
+      </span>
+    </>
   ) },
   { key: "remaining", header: "남은 시간", sortKey: "remaining", align: "right", render: remainingCell },
   { key: "alerts", header: "경고", render: (r) => r.alerts.length ? <span className="inbox-chips">{r.alerts.map((a) => <AlertChip key={a} alert={a} />)}</span> : null },
@@ -117,18 +123,20 @@ export function InboxPage({ onOpen, flash, navigate }: {
   flash?: string | null;
   navigate: (path: string) => void;
 }) {
-  const { dept, asOf } = useSession();
+  const { dept, asOf, agent } = useSession();
   const depts = useDepartments();
   const [search, setSearch] = useState(() => new URLSearchParams(window.location.search));
   const [text, setText] = useState(search.get("q") ?? "");
-  const inbox = useInbox(search, dept, asOf);
-  const counts = useInboxCounts(dept, asOf, search.get("include_closed") === "true");
+  const onlyMine = !!agent && search.get("m") !== "0"; // 처음 열면 내 담당만, 팀 전체는 m=0
+  const inbox = useInbox(search, dept, asOf, agent);
+  const counts = useInboxCounts(dept, asOf, search.get("include_closed") === "true", agent);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const last = useRef<Inbox | undefined>(undefined);
   if (inbox.data) last.current = inbox.data;
   const data = inbox.data ?? last.current;
 
   useEffect(() => { rememberInboxUrl(`/inbox${window.location.search}`); }, [search]);
+  useEffect(() => { if (data) rememberInboxOrder(data.rows.map((r) => r.ticket_id)); }, [data]);
   useEffect(() => {
     const onPop = () => setSearch(new URLSearchParams(window.location.search));
     window.addEventListener("popstate", onPop);
@@ -153,10 +161,22 @@ export function InboxPage({ onOpen, flash, navigate }: {
   }); // 매 입력마다 다시 건다
 
   const deptName = depts.data?.find((d) => d.dept_code === dept)?.dept_name_ko;
+  const firstMine = data?.rows.find((r) => r.turn === "ME");
+  const scope = onlyMine ? "내 담당" : "팀 전체";
+  const c = data?.counts;
   const head = (
     <PageHeader title="접수함"
-      meta={dept ? `${deptName ?? dept} (${dept}) · 경고 있는 문의를 위에, 남은 시간이 적은 순${counts.data && counts.data.breach + counts.data.risk > 0 ? ` · 기한 초과 ${counts.data.breach} · 기한 임박 ${counts.data.risk}` : ""}` : undefined}
-      actions={<a className="ui-btn inbox-link-btn" href="/intake" onClick={(e) => { e.preventDefault(); navigate("/intake"); }}>문의 접수</a>} />
+      meta={dept ? `${deptName ?? dept} (${dept}) · ${scope} ${c?.total ?? "…"}건 중 ${c ? (c.turn_me > 0 ? `지금 처리할 문의 ${c.turn_me}건${c.breach ? ` · 기한 초과 ${c.breach}` : ""}${c.risk ? ` · 기한 임박 ${c.risk}` : ""}` : "지금 처리할 문의 없음") : "…"}` : undefined}
+      actions={<>
+        {firstMine && <Button variant="primary" onClick={() => onOpen(firstMine.ticket_id, firstMine.seq)} title="내가 처리할 문의를 위에서부터 차례로 엽니다">다음 문의 처리 시작 <b className="ui-tid">{firstMine.ticket_id}</b></Button>}
+        {agent && (
+          <div className="inbox-scope" role="group" aria-label="보기 범위" title="누구에게 배정된 문의를 볼지 고릅니다">
+            <button type="button" className={onlyMine ? "is-on" : ""} aria-pressed={onlyMine} onClick={() => update((q) => q.delete("m"))}>내 담당{counts.data ? <b>{counts.data.mine}</b> : null}</button>
+            <button type="button" className={!onlyMine ? "is-on" : ""} aria-pressed={!onlyMine} onClick={() => update((q) => q.set("m", "0"))}>팀 전체{counts.data ? <b>{counts.data.total}</b> : null}</button>
+          </div>
+        )}
+        <a className="ui-btn inbox-link-btn" href="/intake" onClick={(e) => { e.preventDefault(); navigate("/intake"); }}>문의 접수</a>
+      </>} />
   );
 
   if (!dept) {
@@ -256,12 +276,19 @@ export function InboxPage({ onOpen, flash, navigate }: {
                     onClick={() => update((q) => { if (q.get("status") === "NEW") q.delete("status"); else q.set("status", "NEW"); })}>
               새 문의{counts.data ? <b>{counts.data.new}</b> : null}
             </button>
+            <button type="button" className={`inbox-newchip${search.get("depth") === "DEEP" ? " is-on" : ""}`} aria-pressed={search.get("depth") === "DEEP"}
+                    title="긴급(안전·설비 정지)이거나 우선순위 P1이라 깊게 봐야 하는 문의만 봅니다"
+                    onClick={() => update((q) => { if (q.get("depth") === "DEEP") q.delete("depth"); else q.set("depth", "DEEP"); })}>
+              상세 검토{counts.data ? <b>{counts.data.deep}</b> : null}
+            </button>
           </form>
         </div>
 
         <DataTable<Row>
           caption="접수함 목록"
-          columns={columnsFor(picked, toggle, pageAll, togglePage)}
+          columns={columnsFor(picked, toggle, pageAll, togglePage, !onlyMine)}
+          groupHeader={sort ? undefined : (r, prev) => (!prev || TURN_GROUP[prev.turn] !== TURN_GROUP[r.turn]
+            ? <><b>{TURN_GROUP[r.turn]}</b>{r.turn === "ME" && c ? <span className="sub">{c.turn_me}건</span> : null}</> : null)}
           rows={data ? rows : undefined}
           loading={inbox.isPending}
           stale={inbox.isError}

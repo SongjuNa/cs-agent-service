@@ -23,7 +23,8 @@ PAGE_SIZE, MAX_SIZE = 50, 200  # FR-029 처리 7(50건), 최대는 구현 선택
 MSG_NO_DEPT = "부서를 선택하세요"  # FR-029 예외 1행
 MSG_EMPTY = "처리할 티켓이 없습니다"  # FR-029 예외 2행
 # 기본 정렬: 경고 있음 → 해결 남은 시간(없으면 맨 아래) → 접수 시각 → 하위 문의 번호(FR-029 처리 3, FR-027 처리 5, C-99)
-DEFAULT_ORDER = "(cardinality(alerts) > 0) DESC, remaining_h ASC NULLS LAST, received_at_utc, sub_ticket_id"
+# 내 차례 묶음이 먼저(add-inbox-turn-depth 결정 3), 각 묶음 안은 기존 정렬
+DEFAULT_ORDER = "turn_rank, (cardinality(alerts) > 0) DESC, remaining_h ASC NULLS LAST, received_at_utc, sub_ticket_id"
 SORTS = {"received_at": "received_at_utc", "priority": "priority", "remaining": "remaining_h",
          "status": "status", "ticket_id": "ticket_id"}
 
@@ -43,7 +44,24 @@ class InboxQuery:
     page: int = 1
     size: int = PAGE_SIZE
     sort: str | None = None
+    assignee: str | None = None  # 담당 상담원 이름이 같은 줄만
+    turn: list[str] = field(default_factory=list)  # ME·DEPT·CUSTOMER·DONE
+    depth: list[str] = field(default_factory=list)  # DEEP·NORMAL·QUICK
+    me: str | None = None  # counts.mine을 셀 상담원 이름
     as_of: datetime | None = None
+
+
+# app/rules/turn.py의 turn_of·depth_of와 같은 규칙을 SQL로 옮긴 것. 필터·정렬·쪽 나누기가 SQL에서 일어나서다.
+# 두 쪽이 같은지는 시험(test_inbox_turn_sql_matches_rules)이 본다.
+TURN_SQL = """CASE WHEN status IN ('RESOLVED','CLOSED') THEN 'DONE' WHEN status = 'ESCALATED' THEN 'DEPT'
+                    WHEN status = 'WAITING_CUSTOMER' THEN 'CUSTOMER' ELSE 'ME' END"""
+ACTION_SQL = """CASE WHEN status IN ('RESOLVED','CLOSED') THEN 'DONE' WHEN status = 'ESCALATED' THEN 'WAIT_DEPT'
+                       WHEN status = 'WAITING_CUSTOMER' THEN 'WAIT_CUSTOMER' WHEN needs_info THEN 'SEND_INFO_REQUEST'
+                       WHEN dept_replied THEN 'CHECK_DEPT_REPLY' WHEN has_unsent_draft THEN 'APPROVE_DRAFT'
+                       ELSE 'WRITE_ANSWER' END"""
+DEPTH_SQL = """CASE WHEN urgency_flag IN ('SAFETY','SITE_DOWN') OR priority = 'P1' THEN 'DEEP'
+                      WHEN NOT needs_info AND priority IN ('P3','P4') THEN 'QUICK' ELSE 'NORMAL' END"""
+RANK_SQL = """CASE WHEN status IN ('RESOLVED','CLOSED') THEN 2 WHEN status IN ('ESCALATED','WAITING_CUSTOMER') THEN 1 ELSE 0 END"""
 
 
 def _order(sort: str | None) -> str:
@@ -67,7 +85,7 @@ def inbox(conn: Connection, query: InboxQuery, schema: str = "svc") -> dict[str,
     page = max(1, query.page)
     out: dict[str, Any] = {"dept": query.dept, "as_of": as_of, "page": page, "size": size,
                            "counts": {"total": 0, "alert": 0, "needs_info": 0, "has_draft": 0, "waiting": 0,
-                                      "new": 0, "escalated": 0, "breach": 0, "risk": 0},
+                                      "new": 0, "escalated": 0, "breach": 0, "risk": 0, "mine": 0, "turn_me": 0, "deep": 0},
                            "rows": [], "message": None}
     if not query.dept:
         out["message"] = MSG_NO_DEPT
@@ -86,6 +104,14 @@ def inbox(conn: Connection, query: InboxQuery, schema: str = "svc") -> dict[str,
     if query.alert:
         where.append("alerts && %(alert)s::text[]")
         params["alert"] = query.alert
+    if query.assignee:
+        where.append("assignee_masked = %(assignee)s")
+        params["assignee"] = query.assignee
+    for name, col in (("turn", "turn"), ("depth", "review_depth")):
+        values = getattr(query, name)
+        if values:
+            where.append(f"{col} = ANY(%({name})s)")
+            params[name] = values
     if query.needs_info:
         where.append("needs_info")
     if query.has_draft:
@@ -108,7 +134,8 @@ def inbox(conn: Connection, query: InboxQuery, schema: str = "svc") -> dict[str,
                  coalesce(a.alerts, '{{}}') AS alerts,
                  cardinality(s.missing_blocking_info) > 0 AS needs_info,
                  coalesce(d.has_unsent_draft, false) AS has_unsent_draft,
-                 coalesce(r.reminder_sent, false) AS reminder_sent
+                 coalesce(r.reminder_sent, false) AS reminder_sent,
+                 coalesce(dr.dept_replied, false) AS dept_replied
             FROM {schema}.sub_ticket s
             JOIN {schema}.ticket t ON t.ticket_id = s.ticket_id
             JOIN ref.customer c ON c.customer_id = t.customer_id
@@ -136,16 +163,30 @@ def inbox(conn: Connection, query: InboxQuery, schema: str = "svc") -> dict[str,
                WHERE m.sub_ticket_id = s.sub_ticket_id AND m.notice_transition = 'REMINDER' AND m.message_status = 'SENT'
                LIMIT 1
             ) r ON true
+            LEFT JOIN LATERAL (
+              SELECT true AS dept_replied
+                FROM {schema}.ticket_message m
+               WHERE m.sub_ticket_id = s.sub_ticket_id AND m.message_type = 'ESCALATION_NOTE' AND m.message_status = 'RECEIVED'
+               LIMIT 1
+            ) dr ON true
+        ),
+        ranked AS (
+          SELECT rows.*, {TURN_SQL} AS turn, {ACTION_SQL} AS next_action, {DEPTH_SQL} AS review_depth,
+                 {RANK_SQL} AS turn_rank
+            FROM rows
         )
-        SELECT * FROM rows WHERE {' AND '.join(where)}"""
+        SELECT * FROM ranked WHERE {' AND '.join(where)}"""
     counts = conn.execute(
         f"""SELECT count(*), count(*) FILTER (WHERE cardinality(alerts) > 0), count(*) FILTER (WHERE needs_info),
                    count(*) FILTER (WHERE has_unsent_draft), count(*) FILTER (WHERE status = 'WAITING_CUSTOMER'),
                    count(*) FILTER (WHERE status = 'NEW'), count(*) FILTER (WHERE status = 'ESCALATED'),
                    count(*) FILTER (WHERE alerts && %(breached)s::text[]),
-                   count(*) FILTER (WHERE alerts && %(at_risk)s::text[] AND NOT alerts && %(breached)s::text[])
-              FROM ({base}) x""", {**params, "breached": list(BREACHED), "at_risk": list(AT_RISK)}).fetchone()
-    out["counts"] = dict(zip(("total", "alert", "needs_info", "has_draft", "waiting", "new", "escalated", "breach", "risk"), counts))
+                   count(*) FILTER (WHERE alerts && %(at_risk)s::text[] AND NOT alerts && %(breached)s::text[]),
+                   count(*) FILTER (WHERE assignee_masked = %(me)s), count(*) FILTER (WHERE turn = 'ME'),
+                   count(*) FILTER (WHERE review_depth = 'DEEP')
+              FROM ({base}) x""", {**params, "breached": list(BREACHED), "at_risk": list(AT_RISK), "me": query.me}).fetchone()
+    out["counts"] = dict(zip(("total", "alert", "needs_info", "has_draft", "waiting", "new", "escalated", "breach", "risk",
+                                  "mine", "turn_me", "deep"), counts))
     params.update(limit=size, offset=(page - 1) * size)
     cur = conn.execute(f"{base} ORDER BY {_order(query.sort)} LIMIT %(limit)s OFFSET %(offset)s", params)
     names = [c.name for c in cur.description]

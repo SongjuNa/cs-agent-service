@@ -65,6 +65,9 @@ class InboxCounts(Out):
     escalated: int  # 이관(ESCALATED) 상태
     breach: int  # 기한 초과 경고가 있는 줄(1차 응답·해결 중 하나라도)
     risk: int  # 기한 임박 경고만 있는 줄(초과가 있으면 breach로만 센다)
+    mine: int  # 요청의 me와 담당 상담원이 같은 줄
+    turn_me: int  # 내 차례(turn=ME)인 줄
+    deep: int  # 검토 모드 상세(review_depth=DEEP)인 줄
 
 
 class InboxRow(Out):
@@ -98,6 +101,9 @@ class InboxRow(Out):
     needs_info: bool
     has_unsent_draft: bool
     reminder_sent: bool
+    turn: str  # ME·DEPT·CUSTOMER·DONE
+    next_action: str  # DONE·WAIT_DEPT·WAIT_CUSTOMER·SEND_INFO_REQUEST·CHECK_DEPT_REPLY·APPROVE_DRAFT·WRITE_ANSWER
+    review_depth: str  # DEEP·NORMAL·QUICK
 
 
 class Inbox(Out):
@@ -403,6 +409,9 @@ class SubTicket(Out):
     writer: Literal["CS", "DEPT_REPLY", "DEPT_MAIL"]
     dept_replies: list[DeptReply]
     dept_mails: list[DeptMail]
+    turn: str  # ME·DEPT·CUSTOMER·DONE (접수함 줄과 같은 규칙, add-inbox-turn-depth)
+    next_action: str
+    review_depth: str  # DEEP·NORMAL·QUICK
 
 
 class Detail(Out):
