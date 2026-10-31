@@ -66,3 +66,32 @@ test("SCR-03-AC-24: 탭 없이 '고객이 보낸 것'과 '보낼 것'이 나란�
   await page.goto(`/tickets/${id}?tab=history`);
   await expect(page.getByRole("region", { name: "이력" })).toBeInViewport();
 });
+
+test("SCR-03-AC-25: 초안을 고치는 중에도 ⑤ 검증이 지적한 문장이 형광펜으로 보이고, 그 문장을 지우면 표시가 사라진다", async ({ page, request }) => {
+  // ⑤ 지적(findings)이 있는 초안을 가진 처리 끝난 티켓을 API로 찾는다(시연 접수본)
+  const list = await (await request.get("http://localhost:8000/tickets?dept=TS_LV&size=200&include_closed=true")).json();
+  let id = "", quote = "", body = "";
+  for (const r of list.rows) {
+    const d = await (await request.get(`http://localhost:8000/tickets/${r.ticket_id}`, { headers: { "X-Agent-Dept": "TS_LV" } })).json();
+    if (d.processing || !d.run) continue;
+    const dr = d.sub_tickets[0].drafts.find((x: { superseded_at: string | null; review_marks: { marks: { no: number; findings?: { quote: string }[] }[] }; body: string; message_type: string }) =>
+      !x.superseded_at && x.message_type === "INFO_REQUEST" && x.review_marks.marks.find((m) => m.no === 5)?.findings?.length);
+    if (dr) { id = r.ticket_id; body = dr.body; quote = dr.review_marks.marks.find((m: { no: number }) => m.no === 5).findings[0].quote; break; }
+  }
+  expect(id, "⑤ 지적이 있는 정보 요청 초안을 가진 티켓").not.toBe("");
+  expect(body.includes(quote)).toBe(true);
+  await useSession(page, { dept: "TS_LV", agent: "leo" });
+  await page.goto(`/tickets/${id}`);
+  const card = page.getByTestId("draft-card").first();
+  await card.getByRole("button", { name: "본문 고치기" }).click();
+  const marks = card.locator(".ui-mk__ov mark");
+  await expect(marks.first()).toBeVisible();
+  await expect(card.getByTestId("mark-legend")).toBeVisible();
+  const marked = (await marks.allInnerTexts()).join("");
+  expect(marked).toContain(quote.slice(0, 20));
+  // 지적된 문장을 지우면 그 구간의 표시가 사라진다
+  const edited = body.split(quote).join("");
+  await card.getByRole("textbox", { name: "초안 본문" }).fill(edited);
+  const after = (await card.locator(".ui-mk__ov mark").allInnerTexts()).join("");
+  expect(after.includes(quote.slice(0, 20))).toBe(false);
+});

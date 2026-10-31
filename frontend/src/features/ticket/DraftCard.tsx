@@ -2,8 +2,8 @@
 // 왼쪽 "보낼 글(고객 언어), 고칠 수 있음" / 오른쪽 "한국어 대역, 검토용, 발송 안 함". 인용·숫자는 P2 링크.
 import { useEffect, useRef, useState } from "react";
 import { api, ApiError, type Draft, type Lookup, type Mark, type SendIssue } from "../../api";
-import { Button, Chip } from "../../ui";
-import { renderBody, type BodyLink } from "./body";
+import { Button, Chip, MarkedTextarea } from "../../ui";
+import { markRanges, renderBody, type BodyLink } from "./body";
 import { utc } from "./CustomerTab";
 import { markTone, SendPopup, type SendState, type SourceTarget } from "./Popups";
 
@@ -172,7 +172,13 @@ export function DraftCard({ agent, draft, seqLabel, lookups, candidates, ticketL
             <button type="button" className="tk-link" onClick={() => setEditing(!editing)}>{editing ? "링크 보기" : "본문 고치기"}</button>
           </div>
           {editing ? (
-            <textarea className="tk-editor" dir={rtl ? "rtl" : undefined} value={body} aria-label="초안 본문" onChange={(e) => { setBody(e.target.value); setEmptyError(false); }} />
+            <>
+              <MarkedTextarea className="tk-editor" dir={rtl ? "rtl" : undefined} value={body} aria-label="초안 본문" ranges={markRanges(body, bad, findings)}
+                              onChange={(e) => { setBody(e.target.value); setEmptyError(false); }} />
+              {markRanges(body, bad, findings).length > 0 && (
+                <p className="tk-note tk-mk-legend" data-testid="mark-legend"><mark>노란 표시</mark>는 확인할 곳입니다(근거에 없는 숫자·인용, ⑤ 검증이 지적한 문장). 고치면 표시가 사라집니다</p>
+              )}
+            </>
           ) : (
             <div className="tk-text tk-view" dir={rtl ? "rtl" : undefined} data-testid="draft-body">
               {renderBody(body, { lookups, bad, findings, onLink, findingRef: (el) => (findingRef.current = el) })}
