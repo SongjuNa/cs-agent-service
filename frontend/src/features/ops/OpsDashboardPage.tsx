@@ -48,7 +48,6 @@ function Body({ d, days, setDays, stale, refetch, deptName, navigate }: {
   const peak = perDay.indexOf(Math.max(...perDay));
   const loadAvg = d.by_agent.reduce((s, a) => s + a.open, 0) / Math.max(1, d.by_agent.length);
   const heavy = d.by_agent[0];
-  const edited = d.edited.sent ? pct(d.edited.edited, d.edited.sent) : null;
   const autoRate = d.auto.total ? pct(d.auto.sent, d.auto.total) : null;
   const deptMax = Math.max(1, ...d.by_dept.map((x) => x.open));
   const agentMax = Math.max(1, ...d.by_agent.map((x) => x.open));
