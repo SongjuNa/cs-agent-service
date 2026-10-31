@@ -4033,6 +4033,108 @@
         "title": "NoteIn",
         "type": "object"
       },
+      "PerfDay": {
+        "properties": {
+          "adjusted": {
+            "title": "Adjusted",
+            "type": "integer"
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "escalated": {
+            "title": "Escalated",
+            "type": "integer"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "sent": {
+            "title": "Sent",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "date",
+          "n",
+          "sent",
+          "escalated",
+          "adjusted"
+        ],
+        "title": "PerfDay",
+        "type": "object"
+      },
+      "PerfSla": {
+        "properties": {
+          "fr_breached": {
+            "title": "Fr Breached",
+            "type": "integer"
+          },
+          "fr_met": {
+            "title": "Fr Met",
+            "type": "integer"
+          },
+          "res_ok": {
+            "title": "Res Ok",
+            "type": "integer"
+          },
+          "window_total": {
+            "title": "Window Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "window_total",
+          "fr_met",
+          "fr_breached",
+          "res_ok"
+        ],
+        "title": "PerfSla",
+        "type": "object"
+      },
+      "Performance": {
+        "properties": {
+          "agent": {
+            "title": "Agent",
+            "type": "string"
+          },
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "daily": {
+            "items": {
+              "$ref": "#/components/schemas/PerfDay"
+            },
+            "title": "Daily",
+            "type": "array"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "sla": {
+            "$ref": "#/components/schemas/PerfSla"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "agent",
+          "as_of",
+          "days",
+          "total",
+          "daily",
+          "sla"
+        ],
+        "title": "Performance",
+        "type": "object"
+      },
       "PriorityIn": {
         "properties": {
           "confirm_breach": {
@@ -7767,6 +7869,82 @@
           }
         },
         "summary": "Load"
+      }
+    },
+    "/me/performance": {
+      "get": {
+        "description": "내 실적(변경 add-my-performance): 최근 days일 동안 내가 한 발송·이관·조정을 날짜별로, 내 담당 문의의 기한 충족을.",
+        "operationId": "get_performance_me_performance_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "as_of",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "As Of"
+            }
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 7,
+              "maximum": 90,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-agent-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Agent-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Performance"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Performance"
       }
     },
     "/me/workload": {

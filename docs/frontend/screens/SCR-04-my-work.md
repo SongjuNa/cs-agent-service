@@ -24,6 +24,7 @@
 | SCR-04-L3 | 고객 회신 대기 표 | 티켓, 정보 요청 시각, 경과, 126h 리마인드·168h 종료 눈금 막대, "리마인드 발송됨" | waiting_customer[] (requested_at_utc, elapsed_h, remind_at_h, close_at_h, reminder_sent) |
 | SCR-04-L4 | 이관 회신 대기 표 | 티켓, 이관 부서, 이관 시각, 경과 | waiting_escalation[] (escalated_to, escalated_at_utc, elapsed_h) |
 | SCR-04-N | 오늘 처리한 건수 | 발송 n · 이관 n · 우선순위 조정 n (기준 날짜, UTC) | today.sent, escalated, adjusted |
+| SCR-04-PERF | 내 실적 (최신 목업, 변경 add-my-performance) | "오늘 처리 n (발송 · 이관 · 조정)" / "최근 N일 처리 · 하루 평균" / "1차 응답 충족 %"(최근 N일 접수·내 담당) / "해결 기한 내 %" + 날짜별 처리 막대(오늘은 진하게). 기간 7일·14일·30일. **상담원을 고른 "내 담당" 보기에만** 보인다. 처리 = 내가 보낸 발송 + 내가 한 이관 + 내가 한 조정(오늘 처리한 건수와 같은 정의) | GET /me/performance?days=&as_of=(머리 `X-Agent-Id`) |
 | SCR-04-X | SLA 미정 | 목록에서 빠진 "SLA 미정 n건" | sla_unset |
 
 ## 화면 상태
@@ -60,6 +61,8 @@
 - SCR-04-AC-6 (AC-047-6): Given 어느 표의 한 행, When 누르면, Then 그 티켓 상세가 열린다.
 - SCR-04-AC-7 (AC-047-7): Given 우선순위 조정으로 경고가 새로 생긴 문의, When 다음 갱신 뒤 보면, Then 기한 위험·위반 표에 나타난다.
 - SCR-04-AC-9 (최신 목업, 2026-10-31 팀 합의): Given 상담원을 고른 TS_LV 스냅샷, When 나의 업무 현황을 열면, Then "새 문의" 타일이 접수함 API의 counts.new와 같고, "지금 처리할 건"의 건수·줄이 turn=ME 응답과 같으며(첫 줄에 경고가 있으면 "가장 급한 내 문의"가 그 줄), 줄을 누르면 그 문의 상세가 열린다.
+- SCR-04-AC-10 (최신 목업): Given 처리 기록이 있는 상담원을 고른 스냅샷, When 나의 업무 현황을 열면, Then "내 실적"의 오늘 처리와 기간 처리 합, 1차 응답 충족률이 서버 `/me/performance` 값과 같고, 오늘 숫자(발송·이관)가 "오늘 처리한 건수" 카드와 같으며, 기간을 14일로 바꾸면 `days=14`로 다시 묻고 "최근 14일 처리"로 바뀐다.
+- SCR-04-AC-11: Given 상담원을 고르지 않은 "부서 전체" 보기, When 열면, Then "내 실적"이 없다.
 - SCR-04-AC-8: Given 이름·부서를 고르지 않은 상태, When 화면을 열면, Then "상단에서 이름과 부서를 고르세요"만 보인다.
 
 ## 목업과 다른 곳

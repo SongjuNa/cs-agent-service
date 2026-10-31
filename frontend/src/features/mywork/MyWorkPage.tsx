@@ -2,7 +2,7 @@
 // 배치는 목업 v1.42 `viewHome`: 머리 → 인사말 → 숫자 칸 4개 → 탭 → 탭별 표. 탭은 주소(?tab=)에 남긴다.
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
-import { api, type InboxRow, type WorkRow, type Workload } from "../../api";
+import { api, type InboxRow, type Performance, type WorkRow, type Workload } from "../../api";
 import { ALERT, DEPTH, NEXT_ACTION, label } from "../../app/labels";
 import { useDepartments } from "../../app/queries";
 import { useSession } from "../../app/session";
@@ -154,6 +154,54 @@ export function MyWorkPage({ onOpen, navigate }: { onOpen: (id: string) => void;
   );
 }
 
+const SPANS = [7, 14, 30] as const;
+const ratio = (n: number, d: number) => (d ? Math.round((n / d) * 100) : null);
+
+/** 최신 목업 "내 실적". 최근 며칠 동안 내가 한 발송·이관·조정을 날짜별 막대로, 내 담당 문의의 기한 충족을 숫자로 보인다(서버가 센 값, 변경 add-my-performance) */
+function PerformanceCard({ agent }: { agent: string }) {
+  const { asOf } = useSession();
+  const [span, setSpan] = useState<number>(7);
+  const q = useQuery({
+    queryKey: ["my-performance", { agent, asOf, span }],
+    queryFn: () => { const p = new URLSearchParams({ days: String(span) }); if (asOf) p.set("as_of", asOf); return api.performance(p); },
+    placeholderData: keepPreviousData, refetchInterval: REFRESH_MS,
+  });
+  const d: Performance | undefined = q.data;
+  const today = d?.daily[d.daily.length - 1];
+  const max = Math.max(1, ...(d?.daily.map((x) => x.n) ?? [1]));
+  const fr = d ? ratio(d.sla.fr_met, d.sla.fr_met + d.sla.fr_breached) : null;
+  const res = d ? ratio(d.sla.res_ok, d.sla.window_total) : null;
+  return (
+    <section className="ui-card mw-perf" aria-label="내 실적" data-testid="my-performance">
+      <header className="mw-perf__h">
+        <b>내 실적</b>
+        <span className="mw-perf__span" role="group" aria-label="기간">
+          {SPANS.map((n) => <button key={n} type="button" aria-pressed={span === n} className={span === n ? "is-on" : ""} onClick={() => setSpan(n)}>{n}일</button>)}
+        </span>
+      </header>
+      {q.isError && !d && <p className="mw-perf__err" role="alert">내 실적을 불러오지 못함</p>}
+      {d && today && (
+        <div className="mw-perf__body">
+          <div className="mw-perf__nums">
+            <div data-stat="today"><b>{today.n}</b><span>오늘 처리 (발송 {today.sent} · 이관 {today.escalated} · 조정 {today.adjusted})</span></div>
+            <div data-stat="total"><b>{d.total}</b><span>최근 {d.days}일 처리 · 하루 평균 {(d.total / d.days).toFixed(1)}</span></div>
+            <div data-stat="fr"><b>{fr ?? "—"}{fr !== null && "%"}</b><span>1차 응답 충족 (최근 {d.days}일 접수·내 담당 {d.sla.window_total}건)</span></div>
+            <div data-stat="res"><b>{res ?? "—"}{res !== null && "%"}</b><span>해결 기한 내 (같은 기준)</span></div>
+          </div>
+          <div className="mw-perf__bars" role="img" aria-label={`최근 ${d.days}일 날짜별 처리 건수`}>
+            {d.daily.map((x, i) => (
+              <div key={x.date} className={i === d.daily.length - 1 ? "mw-perf__bar is-today" : "mw-perf__bar"} title={`${x.date} · ${x.n}건 (발송 ${x.sent} · 이관 ${x.escalated} · 조정 ${x.adjusted})`}>
+                <i style={{ height: `${(x.n / max) * 100}%` }} />
+                {(d.daily.length <= 14 || i % 5 === 0 || i === d.daily.length - 1) && <small>{Number(x.date.slice(8, 10))}</small>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 type Now = { rows: InboxRow[]; turnMe: number; counts: { new: number } };
 
 /** 최신 목업 "지금 처리할 건"과 "가장 급한 내 문의". 접수함의 내 차례 묶음 앞부분이다 */
@@ -254,6 +302,7 @@ function Body({ data, agent, stale, tab, setTab, page, setPage, onOpen, navigate
           )}
         </div>
       </section>
+      {mine && agent && <PerformanceCard agent={agent} />}
     </div>
   );
 }
