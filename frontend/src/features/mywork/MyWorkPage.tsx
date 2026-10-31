@@ -97,7 +97,10 @@ export function MyWorkPage({ onOpen, navigate }: { onOpen: (id: string) => void;
       const counts = new URLSearchParams({ dept, size: "1" });
       if (asOf) counts.set("as_of", asOf);
       if (effective === "mine") { counts.set("assignee", agent); counts.set("me", agent); }
-      return Promise.all([api.inbox(base), api.inbox(counts)]).then(([list, all]) => ({ rows: list.rows, turnMe: list.counts.total, counts: all.counts }));
+      const fresh = new URLSearchParams(counts); // 새로 온 건: 아직 처리를 시작하지 않은 내 담당(변경 add-home-look)
+      fresh.set("status", "NEW"); fresh.set("size", "4");
+      return Promise.all([api.inbox(base), api.inbox(counts), api.inbox(fresh)])
+        .then(([list, all, news]) => ({ rows: list.rows, turnMe: list.counts.total, counts: all.counts, fresh: news.rows }));
     },
     enabled: ready,
     placeholderData: keepPreviousData,
@@ -136,6 +139,8 @@ export function MyWorkPage({ onOpen, navigate }: { onOpen: (id: string) => void;
     <div className="mw">
       <PageHeader title="나의 업무 현황" meta={meta} actions={
         <>
+          {effective === "mine" && agent && <span className="mw-pill">{agent} · {deptName}</span>}
+          <span className="mw-pill mw-pill--plain">{(data?.as_of ?? "").slice(5, 10).replace("-", ".")} 기준</span>
           <div className="ui-tabs ui-tabs--seg mw-scope" role="group" aria-label="보는 범위">
             <button type="button" className="ui-tab" aria-pressed={effective === "mine"} aria-selected={effective === "mine"}
                     disabled={!agent} onClick={() => choose("mine")}>내 담당</button>
@@ -167,12 +172,15 @@ function AutoCard({ agent, navigate }: { agent: string; navigate: (path: string)
     placeholderData: keepPreviousData, refetchInterval: REFRESH_MS,
   });
   const a = q.data?.auto;
-  if (!a || (a.sent === 0 && a.pending === 0)) return null;
+  if (!a) return null;
   return (
     <section className="ui-card mw-auto" aria-label="AI 자동 처리" data-testid="my-auto">
-      <b>AI 자동 처리</b>
-      <span>최근 7일 내 담당 {a.sent}건을 AI가 사람 승인 없이 보냈고, 사후 검수 대기는 <b>{a.pending}건</b>입니다.</span>
-      <Button size="sm" onClick={() => navigate("/inbox?auto=true")}>확인하기</Button>
+      <header className="mw-now__h"><b>AI 자동 처리</b><span className="mw-autocount">{a.sent}</span></header>
+      <p>최근 7일 내 담당 {a.sent}건을 AI가 사람 승인 없이 보냈습니다.</p>
+      <div className="mw-auto__foot">
+        <span className={a.pending ? "mw-chip mw-chip--warn" : "mw-chip mw-chip--ok"}>사후 검수 대기 {a.pending}</span>
+        <Button size="sm" onClick={() => navigate("/inbox?auto=true")}>확인하기</Button>
+      </div>
     </section>
   );
 }
@@ -221,10 +229,10 @@ function PerformanceCard({ agent }: { agent: string }) {
   );
 }
 
-type Now = { rows: InboxRow[]; turnMe: number; counts: { new: number } };
+type Now = { rows: InboxRow[]; turnMe: number; counts: { new: number }; fresh: InboxRow[] };
 
 /** 최신 목업 "지금 처리할 건"과 "가장 급한 내 문의". 접수함의 내 차례 묶음 앞부분이다 */
-function NowList({ now, mine, onOpen, navigate }: { now: Now; mine: boolean; onOpen: (id: string) => void; navigate: (path: string) => void }) {
+function NowList({ now, mine, agent, onOpen, navigate }: { now: Now; mine: boolean; agent: string; onOpen: (id: string) => void; navigate: (path: string) => void }) {
   const scope = mine ? "" : "?m=0";
   const top = now.rows[0];
   return (
@@ -239,28 +247,48 @@ function NowList({ now, mine, onOpen, navigate }: { now: Now; mine: boolean; onO
             {now.rows.map((r) => (
               <li key={r.sub_ticket_id}>
                 <button type="button" onClick={() => onOpen(r.ticket_id)}>
-                  <span className="mw-now__id">{r.ticket_id}{r.inquiry_count > 1 ? ` #${r.seq}` : ""}</span>
-                  <span className="mw-now__t" title={r.summary_ko ?? r.inquiry_subject ?? undefined}>{r.summary_ko ?? r.inquiry_subject ?? r.product_code ?? "—"}</span>
-                  {r.priority && <PriorityBadge priority={r.priority} adjusted={!!r.priority_adjusted} />}
-                  <span className="mw-now__a">→ {label(NEXT_ACTION, r.next_action)}</span>
-                  <span className="mw-sub">{DEPTH[r.review_depth]}</span>
-                  {r.alerts.map((a) => <AlertChip key={a} alert={a} />)}
+                  {r.priority ? <PriorityBadge priority={r.priority} adjusted={!!r.priority_adjusted} /> : <span />}
+                  <span className="mw-now__main">
+                    <span><span className="mw-now__id">{r.ticket_id}{r.inquiry_count > 1 ? ` #${r.seq}` : ""}</span> <span className="mw-sub">{r.company_masked}</span></span>
+                    <span className="mw-now__t" title={r.summary_ko ?? r.inquiry_subject ?? undefined}>{r.summary_ko ?? r.inquiry_subject ?? r.product_code ?? "—"}</span>
+                    <span className="mw-now__a">→ {label(NEXT_ACTION, r.next_action)} <span className="mw-sub">· {DEPTH[r.review_depth]}</span></span>
+                  </span>
+                  <span className="mw-now__r">{r.alerts.slice(0, 1).map((a) => <AlertChip key={a} alert={a} />)}
+                    {r.status !== "WAITING_CUSTOMER" && r.remaining_h != null && !(r.status === "RESOLVED" || r.status === "CLOSED") && (
+                      <span className={r.res_status === "BREACHED" ? "mw-remain is-bad" : "mw-remain"}>{formatRemaining(Number(r.remaining_h))}</span>)}
+                  </span>
                 </button>
               </li>
             ))}
           </ul>
         )}
       </section>
-      {top && top.alerts.length > 0 && (
-        <section className="ui-card mw-now__top" aria-label="가장 급한 내 문의" data-testid="most-urgent">
-          <b>가장 급한 내 문의</b>
-          <button type="button" onClick={() => onOpen(top.ticket_id)}>
-            <span className="mw-now__id">{top.ticket_id}</span>
-            <span>{top.summary_ko ?? top.inquiry_subject ?? top.product_code ?? ""}</span>
-            <span className="mw-sub">{top.alerts.map((a) => label(ALERT, a)).join(" · ")}</span>
-          </button>
+      <div className="mw-now__side">
+        {top && top.alerts.length > 0 ? (
+          <section className="mw-now__top" aria-label="가장 급한 내 문의" data-testid="most-urgent">
+            <button type="button" onClick={() => onOpen(top.ticket_id)}>
+              <span className="mw-now__toph"><b>가장 급한 내 문의</b>{top.priority && <PriorityBadge priority={top.priority} adjusted={!!top.priority_adjusted} />}</span>
+              <span className="mw-now__time">{top.remaining_h != null ? formatRemaining(Number(top.remaining_h)) : top.alerts.map((a) => label(ALERT, a)).join(" · ")}</span>
+              <span className="mw-now__topsub">{top.ticket_id} · {top.company_masked}</span>
+              <span className="mw-now__topsub">{top.summary_ko ?? top.inquiry_subject ?? top.product_code ?? ""}</span>
+            </button>
+          </section>
+        ) : <section className="mw-now__top mw-now__top--calm"><b>기한 경고 없음</b></section>}
+        {mine && agent && <AutoCard agent={agent} navigate={navigate} />}
+        <section className="ui-card mw-fresh" aria-label="새로 온 건" data-testid="fresh-list">
+          <header className="mw-now__h"><b>새로 온 건</b><span className="mw-sub">{now.counts.new}건</span></header>
+          {now.fresh.length === 0 ? <p className="mw-now__empty">새로 온 건이 없습니다</p> : (
+            <ul>
+              {now.fresh.map((r) => (
+                <li key={r.sub_ticket_id}><button type="button" onClick={() => onOpen(r.ticket_id)}>
+                  <span className="mw-now__main"><span className="mw-now__id">{r.ticket_id}</span><span className="mw-sub">{r.company_masked}</span></span>
+                  <span className="mw-sub">신규 배정</span>
+                </button></li>
+              ))}
+            </ul>
+          )}
         </section>
-      )}
+      </div>
     </div>
   );
 }
@@ -277,7 +305,7 @@ function Body({ data, agent, stale, tab, setTab, page, setPage, onOpen, navigate
   const reminded = data.waiting_customer.filter((w) => w.reminder_sent).length;
   const tile = (area: Area, k: string, sub: ReactNode, onClick: () => void, bad = false) => (
     <button type="button" className={tab === area ? "mw-k is-on" : "mw-k"} onClick={onClick} data-tile={area}>
-      <span>{k}</span><b className={bad ? "is-bad" : undefined}>{data.tiles[area]}</b><em>{sub}</em>
+      <span>{k}</span><span className="mw-k__n"><b className={bad ? "is-bad" : undefined}>{data.tiles[area]}</b><small>건</small></span><em>{sub}</em>
     </button>
   );
   const rows: WorkRow[] = data[tab];
@@ -293,17 +321,17 @@ function Body({ data, agent, stale, tab, setTab, page, setPage, onOpen, navigate
           : "지금 급한 건이 없습니다."}
       </p>
       <div className="mw-tiles">
+        {now && (
+          <button type="button" className="mw-k" data-tile="new" onClick={() => navigate(`/inbox?status=NEW${mine ? "" : "&m=0"}`)}>
+            <span>새 문의</span><span className="mw-k__n"><b>{now.counts.new}</b><small>건</small></span><em>아직 처리를 시작하지 않음</em>
+          </button>
+        )}
         {tile("drafts", "승인 대기 초안", `${checked}건에 확인 표시`, () => setTab("drafts"))}
         {tile("risks", "기한 위험·위반", breached ? `해결 기한 지남 ${breached}` : "기한 안", () => setTab("risks"), breached > 0)}
         {tile("waiting_customer", "고객 회신 대기", `리마인드 발송 ${reminded}`, () => navigate("/inbox?status=WAITING_CUSTOMER"))}
         {tile("waiting_escalation", "이관 회신 대기", "전문 부서 회신 전", () => setTab("waiting_escalation"))}
-        {now && (
-          <button type="button" className="mw-k" data-tile="new" onClick={() => navigate(`/inbox?status=NEW${mine ? "" : "&m=0"}`)}>
-            <span>새 문의</span><b>{now.counts.new}</b><em>아직 처리를 시작하지 않음</em>
-          </button>
-        )}
       </div>
-      {now && <NowList now={now} mine={mine} onOpen={onOpen} navigate={navigate} />}
+      {now && <NowList now={now} mine={mine} agent={agent} onOpen={onOpen} navigate={navigate} />}
 
       <section className="ui-card mw-card">
         <Tabs label="나의 업무 현황" value={tab} onChange={(k) => setTab(k as Area)}
@@ -321,7 +349,6 @@ function Body({ data, agent, stale, tab, setTab, page, setPage, onOpen, navigate
           )}
         </div>
       </section>
-      {mine && agent && <AutoCard agent={agent} navigate={navigate} />}
       {mine && agent && <PerformanceCard agent={agent} />}
     </div>
   );
