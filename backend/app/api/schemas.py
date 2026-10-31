@@ -892,3 +892,21 @@ class CaseDetail(Out):
     time_to_resolve_hours: str | None
     recurrence_prevention: str | None
     case_summary: str | None
+
+
+# ---- 상담원 도우미 (변경 add-agent-assistant) ----
+
+class AssistSource(Out):
+    no: int
+    chunk_id: str
+    doc_id: str
+    section_no: str
+    title: str
+
+
+class AssistAnswer(Out):
+    found: bool
+    answer: str
+    sources: list[AssistSource]
+    followups: list[str]
+    notes: list[str]

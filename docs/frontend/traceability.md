@@ -18,9 +18,10 @@
 | SCR-07 고객 관리 | [SCR-07](screens/SCR-07-customers.md) | 4 | 4 | |
 | SCR-08 기준정보 보기 | [SCR-08](screens/SCR-08-reference.md) | 4 | 4 | |
 | SCR-09 접수 이력 | [SCR-09](screens/SCR-09-case-search.md) | 3 | 3 | |
-| 합계 | | 74 | 68 | SCR-06 6개 |
+| SCR-10 상담원 도우미 | [SCR-10](screens/SCR-10-assistant.md) | 8 | 8 | 전부 목 응답으로 확인(Gemini 호출 때문). 실제 연결은 [슬라이스 10](slices/10-assistant.md)의 손으로 확인한 것 |
+| 합계 | | 82 | 76 | SCR-06 6개 |
 
-- 목(흉내 낸 응답)은 오류·빈 상태 시험에만 썼다: SCR-01-AC-4, SCR-02-AC-7, SCR-03-AC-5·7·12·20, SCR-05-AC-6, SCR-08-AC-1("색인 없음" 문서가 시연 DB에 없음).
+- 목(흉내 낸 응답)은 오류·빈 상태 시험에만 썼다: SCR-01-AC-4, SCR-02-AC-7, SCR-03-AC-5·7·12·20, SCR-05-AC-6, SCR-08-AC-1("색인 없음" 문서가 시연 DB에 없음). SCR-10은 8개 모두 목(답마다 Gemini를 부름).
 - AC가 아닌 화면 시험 2개: SCR-08 「왜?」 → [규칙표에서 보기], SCR-09 티켓 상세 → [접수 이력에서 보기].
 - SCR-03-AC-19는 5단계에서 "일부"를 풀었다. ② 탭의 비슷한 해결사례(3건 이하, 팀 정답지 사례 없음)를 000017 사본에서 본다.
 
@@ -54,6 +55,7 @@
 | FR-초안-03 | 제품 보기 | SCR-08 제품 관리 | `ReferencePages.tsx` (KnowledgePage) | SCR-08-AC-2 | test_reference_views |
 | FR-초안-04 | 규칙·부서 보기 | SCR-08 규칙·부서·기타 | `ReferencePages.tsx` (KnowledgePage), `ui/DataTable.tsx` 강조 | SCR-08-AC-3, 「왜?」 연결 시험 | test_reference_views |
 | FR-초안-06 | 해결사례 직접 검색 | SCR-09 | `features/cases/CaseSearchPage.tsx` | SCR-09-AC-1~3 | test_case_search |
+| FR-초안-07 (임시) | 상담원 도우미(문서 근거 질의응답) | SCR-10 | `features/assistant/AssistantDock.tsx`, `app/AppShell.tsx` | SCR-10-AC-1~8 | test_agent_assistant |
 
 화면에 직접 보이지 않는 요구사항(FR-004·005·007·008 문의 이해, FR-016·017 근거 검색, FR-018 고장 진단, FR-020 이관 후보, FR-023 리마인드, FR-025·026 상태·SLA, FR-036 실행 로그, FR-038 가리기, 규칙 엔진)은 백엔드 시험에서만 확인한다. 화면은 그 결과 값을 그대로 보이는지만 본다(SCR-03-AC-1).
 
