@@ -1,0 +1,25 @@
+/* SCR-10 상담원 도우미. 색·간격·글자 크기는 tokens.css 변수만 쓴다(principles §3). */
+
+.as-fab { position: fixed; right: var(--sp-16); bottom: var(--sp-16); z-index: 40; height: 44px; padding: 0 var(--sp-16); border: 0; border-radius: 22px; background: var(--color-brand); color: var(--color-brand-fg); font: inherit; font-weight: var(--fw-semibold); cursor: pointer; box-shadow: 0 4px 14px rgba(10, 30, 90, 0.28); }
+.as-fab:hover { background: var(--color-brand-hover); }
+
+.as-panel { position: fixed; right: var(--sp-16); bottom: var(--sp-16); z-index: 40; display: flex; flex-direction: column; width: 380px; max-width: calc(100vw - 2 * var(--sp-16)); height: 520px; max-height: calc(100vh - 2 * var(--sp-16)); border: 1px solid var(--color-line); border-radius: var(--r-lg); background: var(--color-surface); box-shadow: 0 8px 28px rgba(10, 30, 90, 0.24); overflow: hidden; }
+.as-head { display: flex; align-items: center; gap: var(--sp-4); padding: var(--sp-8) var(--sp-12); border-bottom: 1px solid var(--color-line); font-size: var(--fs-b); }
+.as-spacer { flex: 1; }
+.as-log { flex: 1; display: flex; flex-direction: column; gap: var(--sp-10); padding: var(--sp-12); overflow-y: auto; background: var(--color-hover); }
+.as-hint { margin: 0; color: var(--color-fg-sub); font-size: var(--fs-s); }
+.as-msg { max-width: 92%; padding: var(--sp-8) var(--sp-12); border-radius: var(--r-md); font-size: var(--fs-b); line-height: var(--lh-base); overflow-wrap: anywhere; }
+.as-msg--me { align-self: flex-end; background: var(--color-brand); color: var(--color-brand-fg); white-space: pre-wrap; }
+.as-msg--bot { align-self: flex-start; background: var(--color-surface); border: 1px solid var(--color-line); }
+.as-msg--err { background: var(--color-neg-bg); color: var(--color-neg); border-color: var(--color-neg); }
+.as-muted { color: var(--color-fg-sub); }
+.as-text { margin: 0; white-space: pre-wrap; }
+.as-note { margin: var(--sp-6) 0 0; font-size: var(--fs-xs); color: var(--color-crit); }
+.as-sources, .as-follow { display: flex; flex-wrap: wrap; gap: var(--sp-6); margin-top: var(--sp-8); }
+.as-source { padding: var(--sp-2) var(--sp-8); border: 1px solid var(--color-info); border-radius: 999px; background: var(--color-info-bg); color: var(--color-info); font: inherit; font-size: var(--fs-xs); cursor: pointer; }
+.as-source:hover { background: var(--color-seg-hover); }
+.as-chip { padding: var(--sp-2) var(--sp-8); border: 1px solid var(--color-line); border-radius: 999px; background: var(--color-surface); color: var(--color-fg); font: inherit; font-size: var(--fs-xs); cursor: pointer; }
+.as-chip:hover:not(:disabled) { background: var(--color-hover); }
+.as-form { display: flex; gap: var(--sp-8); align-items: flex-end; padding: var(--sp-10) var(--sp-12); border-top: 1px solid var(--color-line); }
+.as-form textarea { flex: 1; resize: none; padding: var(--sp-8) var(--sp-10); border: 1px solid var(--color-line); border-radius: var(--r-md); font: inherit; font-size: var(--fs-b); color: var(--color-fg); }
+.as-input-error { margin: 0; padding: 0 var(--sp-12) var(--sp-10); font-size: var(--fs-s); color: var(--color-neg); }

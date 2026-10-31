@@ -1,6 +1,7 @@
 // SCR-00 공통 틀. 목업 v1.42 updateShell·renderProf·MENU의 배치: 남색 머리 막대 + 왼쪽 메뉴(프로필, 메뉴 묶음) + 경로 표시.
 // 목업의 글자 크기·세션 시간·설정·로그아웃은 로그인이 없어(D23) 두지 않는다. 근무 상태는 저장하지 않는 목업 요소(N-00-01).
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { AssistantDock } from "../features/assistant/AssistantDock";
 import { Banner, Field } from "../ui";
 import { Bell } from "./Bell";
 import { Icon, Wordmark } from "./icons";
@@ -105,6 +106,7 @@ export function AppShell({ active, crumbs, navigate, children }: {
           {children}
         </main>
       </div>
+      <AssistantDock />
     </div>
   );
 }
