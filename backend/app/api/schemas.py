@@ -55,6 +55,16 @@ class ReplyAccepted(Out):
 
 # ---- 접수함 (GET /tickets, FR-029) ----
 
+class Note(Out):
+    """내부 메모(add-internal-notes). 고객에게 보내지 않는다."""
+
+    note_id: int
+    ticket_id: str
+    body: str
+    author: str
+    created_at_utc: datetime
+
+
 class InboxCounts(Out):
     total: int
     alert: int
@@ -104,6 +114,7 @@ class InboxRow(Out):
     turn: str  # ME·DEPT·CUSTOMER·DONE
     next_action: str  # DONE·WAIT_DEPT·WAIT_CUSTOMER·SEND_INFO_REQUEST·CHECK_DEPT_REPLY·APPROVE_DRAFT·WRITE_ANSWER
     review_depth: str  # DEEP·NORMAL·QUICK
+    memo_count: int  # 이 티켓의 내부 메모 수(add-internal-notes)
 
 
 class Inbox(Out):

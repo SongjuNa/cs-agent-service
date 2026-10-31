@@ -768,6 +768,19 @@ CREATE TRIGGER sla_alert_guard BEFORE UPDATE OR DELETE ON svc.sla_alert
   FOR EACH ROW EXECUTE FUNCTION svc.guard_append_only('no_delete', 'cleared_at_utc', 'notified_to');
 
 -- ---------------------------------------------------------------------
+-- 4-12. internal_note 내부 메모 (변경 add-internal-notes, 최신 목업 "내부 메모")
+-- ---------------------------------------------------------------------
+CREATE TABLE svc.internal_note (
+  note_id         bigserial PRIMARY KEY,
+  ticket_id       text NOT NULL REFERENCES svc.ticket (ticket_id),
+  body            text NOT NULL CHECK (char_length(btrim(body)) BETWEEN 1 AND 2000),
+  author          text NOT NULL,                                   -- 상담원 이름(X-Agent-Id)
+  created_at_utc  timestamptz NOT NULL DEFAULT now()
+);
+COMMENT ON TABLE svc.internal_note IS '내부 메모. 상담원끼리만 보며 고객에게 보내지 않고 언어 모델 입력에도 넣지 않는다. 수정·삭제 API 없음';
+CREATE INDEX internal_note_ticket ON svc.internal_note (ticket_id, created_at_utc);
+
+-- ---------------------------------------------------------------------
 -- 4-10. agent_run 실행 / agent_step 노드 실행 (FR-036, 보존 90일 T31)
 -- ---------------------------------------------------------------------
 CREATE TABLE svc.agent_run (
