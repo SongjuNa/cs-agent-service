@@ -10,12 +10,17 @@ CLOSED = ("RESOLVED", "CLOSED")
 URGENT = ("SAFETY", "SITE_DOWN")  # 목업 isUrgent: 안전·설비 정지
 
 
-def turn_of(status: str, needs_info: bool, has_unsent_draft: bool, dept_replied: bool) -> tuple[str, str]:
+def turn_of(status: str, needs_info: bool, has_unsent_draft: bool, dept_replied: bool,
+            auto_state: str = "NONE") -> tuple[str, str]:
     """(turn, next_action). turn: ME·DEPT·CUSTOMER·DONE.
+
+    자동 발송했는데 사후 검수가 아직이면(auto_state=PENDING) 문의가 끝났어도 내 차례다(변경 add-auto-send-views).
 
     이관 회신이 오면 서버는 ESCALATED → IN_PROGRESS로 바꾸므로, 목업의 "부서 회신 도착"은
     "ESCALATED가 아니고 이관 회신 메시지가 있음"(dept_replied)이다.
     """
+    if auto_state == "PENDING":
+        return "ME", "REVIEW_AUTO"
     if status in CLOSED:
         return "DONE", "DONE"
     if status == "ESCALATED":

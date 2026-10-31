@@ -45,6 +45,7 @@ class InboxQuery:
     size: int = PAGE_SIZE
     sort: str | None = None
     assignee: str | None = None  # 담당 상담원 이름이 같은 줄만
+    auto: bool = False  # 자동 발송한 줄만(사후 검수 끝난 것 포함, 닫힌 문의도)
     turn: list[str] = field(default_factory=list)  # ME·DEPT·CUSTOMER·DONE
     depth: list[str] = field(default_factory=list)  # DEEP·NORMAL·QUICK
     me: str | None = None  # counts.mine을 셀 상담원 이름
@@ -53,15 +54,15 @@ class InboxQuery:
 
 # app/rules/turn.py의 turn_of·depth_of와 같은 규칙을 SQL로 옮긴 것. 필터·정렬·쪽 나누기가 SQL에서 일어나서다.
 # 두 쪽이 같은지는 시험(test_inbox_turn_sql_matches_rules)이 본다.
-TURN_SQL = """CASE WHEN status IN ('RESOLVED','CLOSED') THEN 'DONE' WHEN status = 'ESCALATED' THEN 'DEPT'
+TURN_SQL = """CASE WHEN auto_state = 'PENDING' THEN 'ME' WHEN status IN ('RESOLVED','CLOSED') THEN 'DONE' WHEN status = 'ESCALATED' THEN 'DEPT'
                     WHEN status = 'WAITING_CUSTOMER' THEN 'CUSTOMER' ELSE 'ME' END"""
-ACTION_SQL = """CASE WHEN status IN ('RESOLVED','CLOSED') THEN 'DONE' WHEN status = 'ESCALATED' THEN 'WAIT_DEPT'
+ACTION_SQL = """CASE WHEN auto_state = 'PENDING' THEN 'REVIEW_AUTO' WHEN status IN ('RESOLVED','CLOSED') THEN 'DONE' WHEN status = 'ESCALATED' THEN 'WAIT_DEPT'
                        WHEN status = 'WAITING_CUSTOMER' THEN 'WAIT_CUSTOMER' WHEN needs_info THEN 'SEND_INFO_REQUEST'
                        WHEN dept_replied THEN 'CHECK_DEPT_REPLY' WHEN has_unsent_draft THEN 'APPROVE_DRAFT'
                        ELSE 'WRITE_ANSWER' END"""
 DEPTH_SQL = """CASE WHEN urgency_flag IN ('SAFETY','SITE_DOWN') OR priority = 'P1' THEN 'DEEP'
                       WHEN NOT needs_info AND priority IN ('P3','P4') THEN 'QUICK' ELSE 'NORMAL' END"""
-RANK_SQL = """CASE WHEN status IN ('RESOLVED','CLOSED') THEN 2 WHEN status IN ('ESCALATED','WAITING_CUSTOMER') THEN 1 ELSE 0 END"""
+RANK_SQL = """CASE WHEN auto_state = 'PENDING' THEN 0 WHEN status IN ('RESOLVED','CLOSED') THEN 2 WHEN status IN ('ESCALATED','WAITING_CUSTOMER') THEN 1 ELSE 0 END"""
 
 
 def _order(sort: str | None) -> str:
@@ -85,7 +86,7 @@ def inbox(conn: Connection, query: InboxQuery, schema: str = "svc") -> dict[str,
     page = max(1, query.page)
     out: dict[str, Any] = {"dept": query.dept, "as_of": as_of, "page": page, "size": size,
                            "counts": {"total": 0, "alert": 0, "needs_info": 0, "has_draft": 0, "waiting": 0,
-                                      "new": 0, "escalated": 0, "breach": 0, "risk": 0, "mine": 0, "turn_me": 0, "deep": 0},
+                                      "new": 0, "escalated": 0, "breach": 0, "risk": 0, "mine": 0, "turn_me": 0, "deep": 0, "auto": 0, "auto_pending": 0},
                            "rows": [], "message": None}
     if not query.dept:
         out["message"] = MSG_NO_DEPT
@@ -93,8 +94,10 @@ def inbox(conn: Connection, query: InboxQuery, schema: str = "svc") -> dict[str,
 
     where = ["(assigned_dept = %(dept)s OR escalated_to = %(dept)s)"]
     params: dict[str, Any] = {"dept": query.dept, "as_of": as_of}
-    if not query.include_closed:
-        where.append("status = ANY(%(open)s)")
+    if query.auto:
+        where.append("auto_state <> 'NONE'")  # 자동 처리 탭은 닫힌 문의도 보인다
+    elif not query.include_closed:
+        where.append("(status = ANY(%(open)s) OR auto_state = 'PENDING')")  # 사후 검수 전은 내 일이라 열린 것과 함께
         params["open"] = list(OPEN)
     for name in ("status", "priority", "channel"):
         values = getattr(query, name)
@@ -123,6 +126,12 @@ def inbox(conn: Connection, query: InboxQuery, schema: str = "svc") -> dict[str,
         params["q"] = f"%{query.q.strip()}%"
 
     # 내부 메모 표는 svc에만 있다(채점용 scoring 재생에는 메모가 없다)
+    auto_sql = ("""(SELECT CASE WHEN am.message_id IS NULL THEN 'NONE'
+                                WHEN EXISTS (SELECT 1 FROM svc.auto_review ar WHERE ar.message_id = am.message_id) THEN 'REVIEWED'
+                                ELSE 'PENDING' END
+                      FROM (SELECT max(m.message_id) AS message_id FROM svc.ticket_message m
+                             WHERE m.sub_ticket_id = s.sub_ticket_id AND m.sender = 'SYSTEM' AND m.sent_by_name = 'AI_AUTO'
+                               AND m.message_type = 'FINAL_REPLY' AND m.message_status = 'SENT') am)""" if schema == "svc" else "'NONE'")
     memo_sql = ("(SELECT count(*) FROM svc.internal_note n WHERE n.ticket_id = s.ticket_id)" if schema == "svc" else "0")
     base = f"""
         WITH f AS MATERIALIZED (SELECT * FROM {schema}.inquiry_sla(%(as_of)s)),
@@ -138,7 +147,7 @@ def inbox(conn: Connection, query: InboxQuery, schema: str = "svc") -> dict[str,
                  coalesce(d.has_unsent_draft, false) AS has_unsent_draft,
                  coalesce(r.reminder_sent, false) AS reminder_sent,
                  coalesce(dr.dept_replied, false) AS dept_replied,
-                 {memo_sql} AS memo_count
+                 {memo_sql} AS memo_count, {auto_sql} AS auto_state
             FROM {schema}.sub_ticket s
             JOIN {schema}.ticket t ON t.ticket_id = s.ticket_id
             JOIN ref.customer c ON c.customer_id = t.customer_id
@@ -186,10 +195,11 @@ def inbox(conn: Connection, query: InboxQuery, schema: str = "svc") -> dict[str,
                    count(*) FILTER (WHERE alerts && %(breached)s::text[]),
                    count(*) FILTER (WHERE alerts && %(at_risk)s::text[] AND NOT alerts && %(breached)s::text[]),
                    count(*) FILTER (WHERE assignee_masked = %(me)s), count(*) FILTER (WHERE turn = 'ME'),
-                   count(*) FILTER (WHERE review_depth = 'DEEP')
+                   count(*) FILTER (WHERE review_depth = 'DEEP'),
+                   count(*) FILTER (WHERE auto_state <> 'NONE'), count(*) FILTER (WHERE auto_state = 'PENDING')
               FROM ({base}) x""", {**params, "breached": list(BREACHED), "at_risk": list(AT_RISK), "me": query.me}).fetchone()
     out["counts"] = dict(zip(("total", "alert", "needs_info", "has_draft", "waiting", "new", "escalated", "breach", "risk",
-                                  "mine", "turn_me", "deep"), counts))
+                                  "mine", "turn_me", "deep", "auto", "auto_pending"), counts))
     params.update(limit=size, offset=(page - 1) * size)
     cur = conn.execute(f"{base} ORDER BY {_order(query.sort)} LIMIT %(limit)s OFFSET %(offset)s", params)
     names = [c.name for c in cur.description]

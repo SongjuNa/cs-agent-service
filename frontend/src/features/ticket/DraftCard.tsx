@@ -48,6 +48,7 @@ export function DraftCard({ agent, draft, seqLabel, lookups, candidates, ticketL
           <b>{title}</b>
           <span data-testid="sent-line">발송됨 {utc(draft.sent.sent_at_utc)} · {draft.sent.sent_by_name}</span>
           <Chip tone={draft.sent.edited_yn ? "brand" : "info"}>{draft.sent.edited_yn ? "상담원 수정" : "AI 제안 그대로"}</Chip>
+          {draft.sent.sent_by_name === "AI_AUTO" && <Chip tone="brand">AI 자동 발송</Chip>}
           {draft.sent.override_check && <Chip tone="crit">확인하고 발송</Chip>}
         </header>
         <pre className="tk-text" dir={draft.language === "ar" ? "rtl" : undefined}>{draft.sent.body}</pre>

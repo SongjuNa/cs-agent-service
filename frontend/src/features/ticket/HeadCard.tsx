@@ -1,6 +1,7 @@
 // SCR-03 머리 카드 H-01~H-05와 경고 띠 H-03. 배치는 목업 v1.42 `viewTicket`의 .obj-head(제목 줄 + 숫자 6칸)와 .strip.
-import type { ReactNode } from "react";
-import type { Detail, SubTicket } from "../../api";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, type ReactNode } from "react";
+import { api, ApiError, type Detail, type SubTicket } from "../../api";
 import { CATEGORY, CHANNEL, DEPTH, DEPTH_HINT, label, NEXT_HINT, STATUS } from "../../app/labels";
 import { useDepartments } from "../../app/queries";
 import { Button, Chip, PriorityBadge } from "../../ui";
@@ -125,19 +126,39 @@ export function HeadCard({ detail, onBack, onReprocess, busy, nav }: {
   );
 }
 
+/** 자동 발송된 답변의 사후 검수 완료 버튼(변경 add-auto-send-views). 한 번만 되며, 누른 상담원 이름이 기록된다 */
+function ReviewButton({ subTicketId }: { subTicketId: string }) {
+  const qc = useQueryClient();
+  const [error, setError] = useState("");
+  const review = useMutation({
+    mutationFn: () => api.autoReview(subTicketId),
+    onSuccess: () => { setError(""); void qc.invalidateQueries(); },  // 상세·접수함·나의 업무·대시보드가 모두 이 숫자를 쓴다
+    onError: (e) => setError(e instanceof ApiError ? e.message : "검수를 기록하지 못했습니다. 다시 시도하세요"),
+  });
+  return (
+    <>
+      {error && <span className="tk-neg" role="alert">{error}</span>}
+      <Button variant="primary" size="sm" busy={review.isPending} onClick={() => review.mutate()} data-testid="auto-review">사후 검수 완료</Button>
+    </>
+  );
+}
+
 /** 지금 할 일 한 줄과 검토 모드. 접수함 줄과 같은 서버 규칙(turn·next_action·review_depth, 변경 add-inbox-turn-depth) */
 export function NowStrip({ detail, deptName }: { detail: Detail; deptName: (code: string | null) => string }) {
   const rep = repOf(detail);
   if (!rep || detail.processing) return null;
   const done = rep.turn === "DONE";
   const waiting = rep.turn === "DEPT" || rep.turn === "CUSTOMER";
-  const text = rep.next_action === "WAIT_DEPT"
-    ? `${deptName(rep.sub_ticket.escalated_to)} 회신 대기 — ${NEXT_HINT.WAIT_DEPT}` : label(NEXT_HINT, rep.next_action);
+  const pending = detail.sub_tickets.find((s) => s.auto_state === "PENDING");  // 자동 발송했고 사후 검수 전인 문의(변경 add-auto-send-views)
+  const shown = pending ?? rep;
+  const text = shown.next_action === "WAIT_DEPT"
+    ? `${deptName(shown.sub_ticket.escalated_to)} 회신 대기 — ${NEXT_HINT.WAIT_DEPT}` : label(NEXT_HINT, shown.next_action);
   return (
-    <section className={`tk-now tk-now--${done ? "done" : waiting ? "wait" : "me"}`} aria-label="지금 할 일" data-testid="now-strip">
-      <span className="tk-now__k">{done ? "완료" : waiting ? "대기" : "내 차례"}</span>
+    <section className={`tk-now tk-now--${pending ? "me" : done ? "done" : waiting ? "wait" : "me"}`} aria-label="지금 할 일" data-testid="now-strip">
+      <span className="tk-now__k">{pending ? "내 차례" : done ? "완료" : waiting ? "대기" : "내 차례"}</span>
       <span className="tk-now__t">{text}</span>
-      {!done && (
+      {pending && <ReviewButton subTicketId={pending.sub_ticket.sub_ticket_id} />}
+      {!done && !pending && (
         <span className={`tk-now__depth tk-now__depth--${rep.review_depth.toLowerCase()}`} title={DEPTH_HINT[rep.review_depth]}>
           검토 모드 · {DEPTH[rep.review_depth]}
         </span>

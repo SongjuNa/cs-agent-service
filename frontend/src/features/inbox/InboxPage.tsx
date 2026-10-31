@@ -97,6 +97,7 @@ const columnsFor = (sel: Set<string>, toggle: (id: string) => void, pageAll: boo
           {r.status === "ESCALATED" && r.escalated_to ? <span className="sub"> → {r.escalated_to}</span> : null}
         </>
       )}
+      {r.auto_state !== "NONE" && <span className={`inbox-auto inbox-auto--${r.auto_state.toLowerCase()}`} title="AI가 사람 승인 없이 보낸 답변">AI 자동 발송 · {r.auto_state === "PENDING" ? "검수 대기" : "검수 완료"}</span>}
       <span className={`inbox-action inbox-action--${r.turn.toLowerCase()}`} title="누구 차례인지는 상세의 '지금 할 일'과 같은 기준입니다">
         {r.turn === "ME" && "→ "}{label(NEXT_ACTION, r.next_action)}{showAssignee && r.assignee_masked ? <span className="sub"> · {r.assignee_masked}</span> : null}
       </span>
@@ -323,6 +324,11 @@ export function InboxPage({ onOpen, flash, navigate }: {
                     title="긴급(안전·설비 정지)이거나 우선순위 P1이라 깊게 봐야 하는 문의만 봅니다"
                     onClick={() => update((q) => { if (q.get("depth") === "DEEP") q.delete("depth"); else q.set("depth", "DEEP"); })}>
               상세 검토{counts.data ? <b>{counts.data.deep}</b> : null}
+            </button>
+            <button type="button" className={`inbox-newchip${search.get("auto") === "true" ? " is-on" : ""}`} aria-pressed={search.get("auto") === "true"}
+                    title="AI가 사람 승인 없이 보낸 문의. 사후 검수 전인 것이 먼저입니다"
+                    onClick={() => update((q) => { if (q.get("auto") === "true") q.delete("auto"); else q.set("auto", "true"); })}>
+              자동 처리{counts.data ? <b>{counts.data.auto}</b> : null}{counts.data && counts.data.auto_pending > 0 ? <span className="sub"> · 검수 {counts.data.auto_pending}</span> : null}
             </button>
           </form>
         </div>

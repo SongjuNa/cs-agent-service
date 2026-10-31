@@ -49,7 +49,7 @@ export const label = (map: Record<string, string>, code: string | null | undefin
 /** 접수함 줄의 "다음 행동"(서버 next_action 코드, 변경 add-inbox-turn-depth). 목업 actionOf 문구 */
 export const NEXT_ACTION: Record<string, string> = {
   DONE: "처리 완료", WAIT_DEPT: "부서 회신 대기", WAIT_CUSTOMER: "고객 회신 대기", SEND_INFO_REQUEST: "정보 요청 보내기",
-  CHECK_DEPT_REPLY: "부서 회신 확인 후 발송", APPROVE_DRAFT: "초안 승인 후 발송", WRITE_ANSWER: "답변 작성",
+  CHECK_DEPT_REPLY: "부서 회신 확인 후 발송", APPROVE_DRAFT: "초안 승인 후 발송", WRITE_ANSWER: "답변 작성", REVIEW_AUTO: "자동 발송 사후 검수",
 };
 /** 묶음 머리(서버 turn 코드 → 목업 GROUP) */
 export const TURN_GROUP: Record<string, string> = { ME: "내가 처리할 문의", DEPT: "기다리는 문의 · 부서·고객 회신", CUSTOMER: "기다리는 문의 · 부서·고객 회신", DONE: "처리 완료" };
@@ -64,6 +64,7 @@ export const NEXT_HINT: Record<string, string> = {
   CHECK_DEPT_REPLY: "부서 회신을 확인한 뒤 고객에게 보낼 답변을 확인하고 발송하세요",
   APPROVE_DRAFT: "승인 필요 — 원문과 초안을 대조해 확인한 뒤 발송하세요",
   WRITE_ANSWER: "답변 작성 필요 — 아직 보낼 초안이 없습니다",
+  REVIEW_AUTO: "사후 검수 — AI가 사람 승인 없이 보낸 답변이 맞는지 확인하세요",
 };
 export const DEPTH_HINT: Record<string, string> = {
   DEEP: "긴급(안전·설비 정지)이거나 우선순위 P1입니다. 걸린 문장과 근거를 하나씩 확인하세요",

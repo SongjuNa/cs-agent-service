@@ -48,6 +48,7 @@ function Body({ d, days, setDays, stale, refetch, deptName, navigate }: {
   const loadAvg = d.by_agent.reduce((s, a) => s + a.open, 0) / Math.max(1, d.by_agent.length);
   const heavy = d.by_agent[0];
   const edited = d.edited.sent ? pct(d.edited.edited, d.edited.sent) : null;
+  const autoRate = d.auto.total ? pct(d.auto.sent, d.auto.total) : null;
   const deptMax = Math.max(1, ...d.by_dept.map((x) => x.open));
   const agentMax = Math.max(1, ...d.by_agent.map((x) => x.open));
   const stageMax = Math.max(1, ...d.stages.map((x) => x.open));
@@ -71,6 +72,9 @@ function Body({ d, days, setDays, stale, refetch, deptName, navigate }: {
         </button>
         <div className="ops-kpi" data-kpi="edited"><span>고쳐 보낸 비율</span><b>{edited ?? "—"}{edited !== null && <small>%</small>}</b>
           <em>{d.edited.sent ? `AI 초안을 고쳐 보낸 ${d.edited.edited}건 / 보낸 ${d.edited.sent}건` : "이 시스템에서 보낸 답변이 아직 없어 계산하지 않음"}</em></div>
+        <button type="button" className="ops-kpi is-link" data-kpi="auto" onClick={() => navigate("/inbox?auto=true&m=0")}>
+          <span>AI 자동 처리율</span><b>{autoRate ?? "—"}{autoRate !== null && <small>%</small>}</b>
+          <em>{d.auto.total ? `자동 발송 ${d.auto.sent}건 중 사후 검수 ${d.auto.reviewed}건 · 사람 ${d.auto.human}건` : `최근 ${d.days}일 보낸 최종 답변이 없어 계산하지 않음`}</em></button>
       </div>
 
       <div className="ops-grid">
@@ -105,6 +109,16 @@ function Body({ d, days, setDays, stale, refetch, deptName, navigate }: {
           <p className="ops-insight">{heavy && heavy.open > loadAvg * 1.25 ? <><b>{heavy.agent}</b>에게 {heavy.open}건이 몰려 있습니다(평균 {loadAvg.toFixed(0)}건). 재배정을 검토하세요.</> : <>업무량이 고르게 나뉘어 있습니다(평균 {loadAvg.toFixed(0)}건).</>}</p>
         </section>
       </div>
+
+      <section className="ui-card ops-card" aria-label="AI와 사람 처리 비중" data-testid="ops-auto-share">
+        <header className="ops-card__h"><b>AI와 사람 처리 비중</b><span className="ops-sub">최근 {d.days}일 보낸 최종 답변</span></header>
+        <div className="ops-share" role="img" aria-label={`AI 자동 ${d.auto.sent}건, 사람 ${d.auto.human}건`}>
+          {d.auto.total > 0 ? (<><i className="ops-share__ai" style={{ width: `${(d.auto.sent / d.auto.total) * 100}%` }} /><i className="ops-share__human" style={{ width: `${(d.auto.human / d.auto.total) * 100}%` }} /></>) : null}
+        </div>
+        <p className="ops-insight">{d.auto.total
+          ? <>AI 자동 발송 <b>{d.auto.sent}건</b>({autoRate}%, 사후 검수 완료 {d.auto.reviewed}건), 사람이 보낸 답변 <b>{d.auto.human}건</b>입니다. 고위험 유형은 항상 사람이 확인합니다.</>
+          : "이 기간에 보낸 최종 답변이 없습니다."}</p>
+      </section>
 
       <section className="ui-card ops-card" aria-label="처리 단계별 현황">
         <header className="ops-card__h"><b>처리 단계별 현황</b><span className="ops-sub">지금 각 단계에 머무는 미해결 문의</span></header>

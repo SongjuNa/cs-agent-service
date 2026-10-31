@@ -52,3 +52,32 @@ test("SCR-12-AC-3: 상담원을 고르지 않으면 안내 띠가 보이고 스�
   await expect(page.getByRole("switch", { name: "자동 발송" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "기본값으로" })).toBeDisabled();
 });
+
+// ---- 화면 연동 (변경 add-auto-send-views). 자동 발송 건이 없어도 성립하는 값만 본다: 숫자는 서버가 센 값 그대로여야 한다.
+
+test("SCR-12-AC-4: 접수함 [자동 처리] 단추의 숫자가 서버 counts.auto와 같고, 누르면 auto=true로 거른 목록이 열리며 줄은 모두 자동 발송 표시가 있다", async ({ page, request }) => {
+  await useSession(page, { dept: "TS_LV", agent: "leo" });
+  const q = (extra = "") => `${API}/tickets?dept=TS_LV&size=50${extra}`;
+  const all = (await (await request.get(q())).json()).counts;
+  await page.goto("/inbox?m=0");
+  const chip = page.getByRole("button", { name: /^자동 처리/ });
+  await expect(chip).toContainText(String(all.auto));
+  await chip.click();
+  await expect(page).toHaveURL(/auto=true/);
+  const filtered = await (await request.get(q("&auto=true"))).json();
+  await expect(chip).toHaveAttribute("aria-pressed", "true");
+  if (filtered.rows.length) await expect(page.locator(".inbox-auto").first()).toBeVisible();
+  else await expect(page.getByText("처리할 티켓이 없습니다")).toBeVisible();
+  await chip.click();
+  await expect(page).not.toHaveURL(/auto=true/);
+});
+
+test("SCR-12-AC-5: 운영 대시보드 'AI 자동 처리율'과 'AI와 사람 처리 비중'이 서버 집계와 같다", async ({ page, request }) => {
+  await useSession(page, { dept: "TS_LV", agent: "leo", snapshot: true });
+  const d = await (await request.get(`${API}/dashboard/summary?days=30`)).json();
+  await page.goto("/dashboard");
+  const kpi = page.locator('[data-kpi="auto"]');
+  if (d.auto.total) await expect(kpi.locator("b")).toContainText(String(Math.round((d.auto.sent / d.auto.total) * 100)));
+  else await expect(kpi.locator("b")).toContainText("—");
+  await expect(page.getByTestId("ops-auto-share")).toBeVisible();
+});

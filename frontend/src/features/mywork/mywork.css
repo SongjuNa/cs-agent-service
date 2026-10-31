@@ -83,3 +83,5 @@
 .mw-perf__bar.is-today i { background: var(--color-brand); }
 .mw-perf__bar small { position: absolute; bottom: -16px; font-size: 10px; color: var(--color-fg-sub); }
 .mw-perf__bars { padding-bottom: 18px; }
+.mw-auto { display: flex; align-items: center; gap: var(--sp-12); padding: var(--sp-12) var(--sp-16); }
+.mw-auto > span { flex: 1; color: var(--color-fg-sub); font-size: var(--fs-s); }
