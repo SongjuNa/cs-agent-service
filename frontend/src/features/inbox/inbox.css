@@ -52,3 +52,21 @@
 .inbox-bulk__select { height: 32px; padding: 0 var(--sp-8); border: 1px solid var(--color-line); border-radius: var(--r-input); background: var(--color-surface); color: var(--color-fg); font: inherit; font-size: var(--fs-s); }
 .inbox-auto { display: block; margin-top: 2px; font-size: var(--fs-xs); color: var(--color-brand); font-weight: var(--fw-semibold); }
 .inbox-auto--reviewed { color: var(--color-fg-sub); font-weight: var(--fw-regular); }
+
+/* 최신 목업 모양(변경 add-inbox-look): 탭 줄 오른쪽 도구, 열 구성, 칩 */
+.inbox-tabrow { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-12); border-bottom: 1px solid var(--color-line); padding-right: var(--sp-16); }
+.inbox-tabrow .ui-tabs--seg { border-bottom: 0; }
+.inbox-tabrow__right { display: inline-flex; align-items: center; gap: var(--sp-12); }
+.inbox-tabrow .inbox-switch { margin-left: 0; }
+.inbox-chev { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; transform: rotate(90deg); transition: transform 0.15s; }
+.inbox-chev.is-open { transform: rotate(-90deg); }
+.inbox-newchip svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; }
+.inbox-chan { display: flex; margin-top: 2px; font-size: var(--fs-xs); color: var(--color-fg-sub); }
+.inbox-sub2 { display: block; margin-top: 2px; font-size: var(--fs-xs); color: var(--color-fg-sub); }
+.inbox-subject { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; max-width: 340px; font-weight: var(--fw-medium); }
+.inbox-co { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.inbox-co__meta { display: inline-flex; gap: var(--sp-6); font-size: var(--fs-xs); }
+.inbox-tier { font-weight: var(--fw-bold); letter-spacing: 0.02em; }
+.inbox-chips { flex-wrap: wrap; }
+.inbox-chips { flex-wrap: wrap; align-items: center; max-width: 250px; }
+.inbox-more { font-size: var(--fs-xs); color: var(--color-fg-sub); }
