@@ -56,6 +56,7 @@ export type CaseDetail = S["CaseDetail"];
 export type AssistAnswer = S["AssistAnswer"];
 export type Note = components["schemas"]["Note"];
 export type AssignResult = components["schemas"]["AssignResult"];
+export type DashboardSummary = components["schemas"]["DashboardSummary"];
 export type AssistSource = S["AssistSource"];
 export type RuleRows = Omit<S["RuleRows"], "rows"> & { rows: Record<string, unknown>[] };
 export type Product = S["Product"];
@@ -296,6 +297,7 @@ export const api = {
   // 해결사례 직접 검색 (변경 add-case-search, 화면 명세 SCR-09). 참고용, 초안에는 쓰지 않음
   cases: (query: URLSearchParams) => call<CaseRows>("GET", `/cases?${query.toString()}`),
   // 상담원 도우미 (변경 add-agent-assistant, 화면 명세 SCR-10). 상담원 참고용, 서버에 저장하지 않는다
+  dashboard: (p: URLSearchParams) => call<DashboardSummary>("GET", `/dashboard/summary?${p}`),
   assign: (subTicketIds: string[], assignee: string) => call<AssignResult>("POST", "/sub-tickets/assign", { sub_ticket_ids: subTicketIds, assignee }),
   notes: (ticketId: string) => call<Note[]>("GET", `/tickets/${encodeURIComponent(ticketId)}/notes`),
   addNote: (ticketId: string, body: string) => call<Note>("POST", `/tickets/${encodeURIComponent(ticketId)}/notes`, { body }),

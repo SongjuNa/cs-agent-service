@@ -944,3 +944,72 @@ class AssistAnswer(Out):
     sources: list[AssistSource]
     followups: list[str]
     notes: list[str]
+
+
+# ---- 운영 대시보드 (GET /dashboard/summary, 변경 add-ops-overview) ----
+
+class DashOpen(Out):
+    total: int  # 미해결 하위 문의 수
+    breach: int  # 기한 초과 경고가 있는 건
+    risk: int  # 기한 임박 경고만 있는 건
+    new_today: int  # as_of 날짜(UTC)에 접수된 건
+
+
+class DashSla(Out):
+    window_total: int  # 접수일이 기간 안인 건
+    fr_met: int
+    fr_breached: int
+    res_ok: int  # 해결 기한 위반이 아닌 건
+
+
+class DashDay(Out):
+    date: str
+    n: int
+
+
+class DashDept(Out):
+    dept: str
+    open: int
+    breach: int
+    esc_late: int  # 이관한 지 168시간이 지난 건
+
+
+class DashAgent(Out):
+    agent: str
+    dept: str | None
+    open: int
+    breach: int
+    risk: int
+
+
+class DashCountry(Out):
+    country: str
+    open: int
+    breach: int
+    risk: int
+    safety: int
+    esc_late: int
+
+
+class DashStage(Out):
+    stage: str  # NEW / REVIEW / IN_PROGRESS / WAITING_CUSTOMER / ESCALATED
+    open: int
+    breach: int
+
+
+class DashEdited(Out):
+    sent: int  # edited_yn이 기록된 발송 답변 수
+    edited: int  # 그중 AI 초안을 고쳐 보낸 수
+
+
+class DashboardSummary(Out):
+    as_of: datetime
+    days: int
+    open: DashOpen
+    sla: DashSla
+    daily: list[DashDay]
+    by_dept: list[DashDept]
+    by_agent: list[DashAgent]
+    by_country: list[DashCountry]
+    stages: list[DashStage]
+    edited: DashEdited

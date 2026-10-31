@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from fastapi import FastAPI
 
-from app.api import assign, assist, calls, cases, chunks, customers, gold_inputs, me, messages, notes, ref_lists, reference, runs, sub_tickets, tickets
+from app.api import assign, assist, dashboard, calls, cases, chunks, customers, gold_inputs, me, messages, notes, ref_lists, reference, runs, sub_tickets, tickets
 from app.api.deps import open_connection
 from app.config import get_settings
 from app.db.runs import close_stale_runs
@@ -51,3 +51,4 @@ app.include_router(cases.router)
 app.include_router(assist.router)
 app.include_router(notes.router)
 app.include_router(assign.router)
+app.include_router(dashboard.router)

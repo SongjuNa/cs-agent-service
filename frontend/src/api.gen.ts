@@ -178,6 +178,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/dashboard/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Summary
+         * @description 미해결 현황, 기한 충족, 일별 접수, 부서·상담원·나라별 쌓임, 처리 단계별 현황(기간은 as_of 이전 days일).
+         */
+        get: operations["get_summary_dashboard_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/gold/tickets/{source_ticket_id}": {
         parameters: {
             query?: never;
@@ -1217,6 +1237,113 @@ export interface components {
             };
             /** Total */
             total: number;
+        };
+        /** DashAgent */
+        DashAgent: {
+            /** Agent */
+            agent: string;
+            /** Breach */
+            breach: number;
+            /** Dept */
+            dept: string | null;
+            /** Open */
+            open: number;
+            /** Risk */
+            risk: number;
+        };
+        /** DashCountry */
+        DashCountry: {
+            /** Breach */
+            breach: number;
+            /** Country */
+            country: string;
+            /** Esc Late */
+            esc_late: number;
+            /** Open */
+            open: number;
+            /** Risk */
+            risk: number;
+            /** Safety */
+            safety: number;
+        };
+        /** DashDay */
+        DashDay: {
+            /** Date */
+            date: string;
+            /** N */
+            n: number;
+        };
+        /** DashDept */
+        DashDept: {
+            /** Breach */
+            breach: number;
+            /** Dept */
+            dept: string;
+            /** Esc Late */
+            esc_late: number;
+            /** Open */
+            open: number;
+        };
+        /** DashEdited */
+        DashEdited: {
+            /** Edited */
+            edited: number;
+            /** Sent */
+            sent: number;
+        };
+        /** DashOpen */
+        DashOpen: {
+            /** Breach */
+            breach: number;
+            /** New Today */
+            new_today: number;
+            /** Risk */
+            risk: number;
+            /** Total */
+            total: number;
+        };
+        /** DashSla */
+        DashSla: {
+            /** Fr Breached */
+            fr_breached: number;
+            /** Fr Met */
+            fr_met: number;
+            /** Res Ok */
+            res_ok: number;
+            /** Window Total */
+            window_total: number;
+        };
+        /** DashStage */
+        DashStage: {
+            /** Breach */
+            breach: number;
+            /** Open */
+            open: number;
+            /** Stage */
+            stage: string;
+        };
+        /** DashboardSummary */
+        DashboardSummary: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** By Agent */
+            by_agent: components["schemas"]["DashAgent"][];
+            /** By Country */
+            by_country: components["schemas"]["DashCountry"][];
+            /** By Dept */
+            by_dept: components["schemas"]["DashDept"][];
+            /** Daily */
+            daily: components["schemas"]["DashDay"][];
+            /** Days */
+            days: number;
+            edited: components["schemas"]["DashEdited"];
+            open: components["schemas"]["DashOpen"];
+            sla: components["schemas"]["DashSla"];
+            /** Stages */
+            stages: components["schemas"]["DashStage"][];
         };
         /** Department */
         Department: {
@@ -2923,6 +3050,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CustomerDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_summary_dashboard_summary_get: {
+        parameters: {
+            query?: {
+                as_of?: string | null;
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardSummary"];
                 };
             };
             /** @description Validation Error */
