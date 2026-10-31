@@ -158,6 +158,25 @@ const SPANS = [7, 14, 30] as const;
 const ratio = (n: number, d: number) => (d ? Math.round((n / d) * 100) : null);
 
 /** 최신 목업 "내 실적". 최근 며칠 동안 내가 한 발송·이관·조정을 날짜별 막대로, 내 담당 문의의 기한 충족을 숫자로 보인다(서버가 센 값, 변경 add-my-performance) */
+/** AI 자동 처리: 내 담당 문의 중 AI가 사람 승인 없이 보낸 것과 사후 검수 대기(변경 add-auto-send-views). 숫자는 내 실적 API가 센다 */
+function AutoCard({ agent, navigate }: { agent: string; navigate: (path: string) => void }) {
+  const { asOf } = useSession();
+  const q = useQuery({
+    queryKey: ["my-performance", { agent, asOf, span: 7 }],
+    queryFn: () => { const p = new URLSearchParams({ days: "7" }); if (asOf) p.set("as_of", asOf); return api.performance(p); },
+    placeholderData: keepPreviousData, refetchInterval: REFRESH_MS,
+  });
+  const a = q.data?.auto;
+  if (!a || (a.sent === 0 && a.pending === 0)) return null;
+  return (
+    <section className="ui-card mw-auto" aria-label="AI 자동 처리" data-testid="my-auto">
+      <b>AI 자동 처리</b>
+      <span>최근 7일 내 담당 {a.sent}건을 AI가 사람 승인 없이 보냈고, 사후 검수 대기는 <b>{a.pending}건</b>입니다.</span>
+      <Button size="sm" onClick={() => navigate("/inbox?auto=true")}>확인하기</Button>
+    </section>
+  );
+}
+
 function PerformanceCard({ agent }: { agent: string }) {
   const { asOf } = useSession();
   const [span, setSpan] = useState<number>(7);
@@ -302,6 +321,7 @@ function Body({ data, agent, stale, tab, setTab, page, setPage, onOpen, navigate
           )}
         </div>
       </section>
+      {mine && agent && <AutoCard agent={agent} navigate={navigate} />}
       {mine && agent && <PerformanceCard agent={agent} />}
     </div>
   );

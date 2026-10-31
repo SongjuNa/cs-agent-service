@@ -190,17 +190,17 @@ def list_tickets(dept: str | None = None, status: str | None = None, priority: s
                  include_closed: bool = False, page: int = Query(1, ge=1), size: int = Query(50, ge=1),
                  sort: str | None = None, as_of: datetime | None = None, assignee: str | None = None,
                  turn: str | None = None, depth: str | None = None, me: str | None = None,
-                 conn: Connection = Depends(get_conn)) -> dict:
+                 auto: bool = False, conn: Connection = Depends(get_conn)) -> dict:
     """접수함(FR-029, §8-1). 여러 값은 쉼표로(status=NEW,IN_PROGRESS).
 
     assignee: 담당 상담원 이름, turn: ME·DEPT·CUSTOMER·DONE, depth: DEEP·NORMAL·QUICK,
-    me: counts.mine을 셀 상담원 이름(변경 add-inbox-turn-depth)."""
+    me: counts.mine을 셀 상담원 이름(변경 add-inbox-turn-depth), auto: 자동 발송한 줄만(변경 add-auto-send-views)."""
     return inbox(conn, InboxQuery(dept=(dept or "").strip() or None, status=_list(status), priority=_list(priority),
                                   alert=_list(alert), channel=_list(channel), needs_info=needs_info,
                                   has_draft=has_draft, composite=composite, q=q, include_closed=include_closed,
                                   page=page, size=size, sort=sort, as_of=as_of,
                                   assignee=(assignee or "").strip() or None, turn=_list(turn), depth=_list(depth),
-                                  me=(me or "").strip() or None))
+                                  me=(me or "").strip() or None, auto=auto))
 
 
 @router.get("/tickets/{ticket_id}", response_model=schemas.Detail, response_model_exclude_unset=True)

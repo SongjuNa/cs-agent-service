@@ -52,8 +52,17 @@ def performance(conn: Connection, agent: str, as_of: datetime | None = None, day
                    count(*) FILTER (WHERE f.res_status <> 'BREACHED'), count(*)
               FROM {schema}.sub_ticket s JOIN f ON f.sub_ticket_id = s.sub_ticket_id
              WHERE s.assignee_masked = %(agent)s AND f.received_at_utc >= %(start)s AND f.received_at_utc <= %(as_of)s""", p).fetchone()
+    auto = {"sent": 0, "pending": 0}
+    if schema == "svc":  # 내가 담당인 문의 중 자동 발송된 것(기간 안)과 사후 검수 전(기간 무관)
+        auto["sent"], auto["pending"] = conn.execute(
+            """SELECT count(*) FILTER (WHERE m.sent_at_utc >= %(start)s AND m.sent_at_utc <= %(as_of)s),
+                      count(*) FILTER (WHERE r.message_id IS NULL AND m.sent_at_utc <= %(as_of)s)
+                 FROM svc.ticket_message m JOIN svc.sub_ticket s ON s.sub_ticket_id = m.sub_ticket_id
+                 LEFT JOIN svc.auto_review r ON r.message_id = m.message_id
+                WHERE m.sender = 'SYSTEM' AND m.sent_by_name = 'AI_AUTO' AND m.message_type = 'FINAL_REPLY'
+                  AND m.message_status = 'SENT' AND s.assignee_masked = %(agent)s""", p).fetchone()
     return {
-        "agent": agent, "as_of": as_of, "days": days,
+        "agent": agent, "as_of": as_of, "days": days, "auto": auto,
         "total": sum(x["n"] for x in daily),
         "daily": daily,
         "sla": {"window_total": total, "fr_met": fr_met, "fr_breached": fr_bad, "res_ok": res_ok},
