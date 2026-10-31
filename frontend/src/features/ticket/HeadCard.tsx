@@ -3,7 +3,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { api, ApiError, type Detail, type SubTicket } from "../../api";
 import { CATEGORY, CHANNEL, DEPTH, DEPTH_HINT, label, NEXT_HINT, STATUS } from "../../app/labels";
-import { useDepartments } from "../../app/queries";
 import { Icon } from "../../app/icons";
 import { Button, Chip, formatLeft } from "../../ui";
 
@@ -39,7 +38,6 @@ export function HeadCard({ detail, onBack, onReprocess, busy, nav, onEvidence, e
   /** [이관]: 부서 작성 영역만 있는 문의면 undefined(버튼 없음) */
   escalate?: { disabled: boolean; title: string; onClick: () => void };
 }) {
-  const depts = useDepartments();
   const { ticket, run, summary } = detail;
   const subs = detail.sub_tickets;
   const rep = repOf(detail);

@@ -165,7 +165,7 @@ test.describe.serial("이관 메일 (최신 목업)", () => {
     await expect(history.getByTestId("timeline")).toContainText("회신 메일 수신");
     await expect(history.getByTestId("mail-wait")).toHaveCount(0); // 회신이 오면 더는 기다리지 않는다
     const head = page.getByRole("region", { name: "티켓 요약" });
-    await expect(head.locator(".tk-stat").nth(0)).not.toContainText("이관됨");
+    await expect(head.locator(".tk-head__top .ui-chip").first()).not.toContainText("이관됨");
   });
 });
 
@@ -198,4 +198,14 @@ test("SCR-03-AC-29 (최신 목업, 변경 add-body-translation): 번역이 없�
   await block.getByRole("button", { name: "번역 보기" }).click();
   await expect(page.getByTestId("body-ko")).toHaveText(KO);
   await expect(block.getByRole("button", { name: "번역 보기" })).toHaveCount(0);
+});
+
+test("SCR-03-AC-30 (최신 목업, 변경 add-ticket-head-look): 머리에 숫자 6칸 대신 고객사·등급이 제목 줄에, 접수 줄 끝에 '해결 기한 … 초과/남음'이 보인다", async ({ page, request }) => {
+  const list = await (await request.get("http://localhost:8000/tickets?dept=TS_LV&size=1&as_of=2026-09-30T23:59:00Z")).json();
+  await useSession(page, { dept: "TS_LV", snapshot: true });
+  await page.goto(`/tickets/${list.rows[0].ticket_id}`);
+  const head = page.getByRole("region", { name: "티켓 요약" });
+  await expect(head.locator(".tk-stat")).toHaveCount(0);
+  await expect(head.locator(".tk-head__co")).toBeVisible();
+  await expect(head.getByTestId("sla-res")).toContainText(/해결 기한 .*(초과|남음|멈춤)/);
 });
