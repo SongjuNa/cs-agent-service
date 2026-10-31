@@ -90,6 +90,8 @@ class InboxCounts(Out):
     mine: int  # 요청의 me와 담당 상담원이 같은 줄
     turn_me: int  # 내 차례(turn=ME)인 줄
     deep: int  # 검토 모드 상세(review_depth=DEEP)인 줄
+    auto: int  # 자동 발송한 줄(사후 검수 끝난 것 포함)
+    auto_pending: int  # 자동 발송했고 사후 검수 전인 줄
 
 
 class InboxRow(Out):
@@ -125,8 +127,9 @@ class InboxRow(Out):
     has_unsent_draft: bool
     reminder_sent: bool
     turn: str  # ME·DEPT·CUSTOMER·DONE
-    next_action: str  # DONE·WAIT_DEPT·WAIT_CUSTOMER·SEND_INFO_REQUEST·CHECK_DEPT_REPLY·APPROVE_DRAFT·WRITE_ANSWER
+    next_action: str  # DONE·WAIT_DEPT·WAIT_CUSTOMER·SEND_INFO_REQUEST·CHECK_DEPT_REPLY·APPROVE_DRAFT·WRITE_ANSWER·REVIEW_AUTO
     review_depth: str  # DEEP·NORMAL·QUICK
+    auto_state: str  # NONE·PENDING·REVIEWED (자동 발송과 사후 검수, add-auto-send-views)
     memo_count: int  # 이 티켓의 내부 메모 수(add-internal-notes)
 
 
@@ -437,6 +440,7 @@ class SubTicket(Out):
     turn: str  # ME·DEPT·CUSTOMER·DONE (접수함 줄과 같은 규칙, add-inbox-turn-depth)
     next_action: str
     review_depth: str  # DEEP·NORMAL·QUICK
+    auto_state: str  # NONE·PENDING·REVIEWED
 
 
 class Detail(Out):
@@ -1002,6 +1006,13 @@ class DashEdited(Out):
     edited: int  # 그중 AI 초안을 고쳐 보낸 수
 
 
+class DashAuto(Out):
+    sent: int  # 기간 안 자동 발송한 최종 답변
+    reviewed: int  # 그중 사후 검수 끝
+    human: int  # 사람이 보낸 최종 답변
+    total: int  # sent + human
+
+
 class DashboardSummary(Out):
     as_of: datetime
     days: int
@@ -1013,6 +1024,7 @@ class DashboardSummary(Out):
     by_country: list[DashCountry]
     stages: list[DashStage]
     edited: DashEdited
+    auto: DashAuto
 
 
 # ---- 내 실적 (GET /me/performance, 변경 add-my-performance) ----
@@ -1032,6 +1044,11 @@ class PerfSla(Out):
     res_ok: int
 
 
+class PerfAuto(Out):
+    sent: int  # 기간 안 내 담당 문의에 자동 발송된 답변
+    pending: int  # 사후 검수 전(기간 무관)
+
+
 class Performance(Out):
     agent: str
     as_of: datetime
@@ -1039,6 +1056,7 @@ class Performance(Out):
     total: int  # 기간 처리 합
     daily: list[PerfDay]  # 오래된 날부터, 기준 시각이 든 날이 마지막
     sla: PerfSla
+    auto: PerfAuto
 
 
 # ---- 자동 처리 규칙·사후 검수 (변경 add-auto-send) ----

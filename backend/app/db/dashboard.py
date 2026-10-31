@@ -119,7 +119,24 @@ def dashboard(conn: Connection, as_of: datetime | None = None, days: int = DEFAU
         "by_country": [{"country": b["key"], "open": b["open"], "breach": b["breach"], "risk": b["risk"], "safety": b["safety"], "esc_late": b["esc_late"]} for b in by_country],
         "stages": [{"stage": k, **stages[k]} for k in STAGES],
         "edited": _edited(conn, since, as_of, schema),
+        "auto": _auto(conn, since, as_of, schema),
     }
+
+
+def _auto(conn: Connection, since: datetime, as_of: datetime, schema: str) -> dict[str, int]:
+    """AI와 사람의 처리 비중(변경 add-auto-send-views): 기간 안에 보낸 최종 답변 중 자동 발송(sent)과 그 사후 검수 완료(reviewed), 사람이 보낸 것(human).
+    사후 검수 표는 svc에만 있어 채점용 재생에는 자동 발송이 없다(0)."""
+    if schema != "svc":
+        return {"sent": 0, "reviewed": 0, "human": 0, "total": 0}
+    sent, reviewed, human = conn.execute(
+        """SELECT count(*) FILTER (WHERE m.sender = 'SYSTEM'),
+                  count(*) FILTER (WHERE m.sender = 'SYSTEM' AND r.message_id IS NOT NULL),
+                  count(*) FILTER (WHERE m.sender IN ('AGENT','DEPT'))
+             FROM svc.ticket_message m LEFT JOIN svc.auto_review r ON r.message_id = m.message_id
+            WHERE m.message_status = 'SENT' AND m.message_type = 'FINAL_REPLY'
+              AND ((m.sender = 'SYSTEM' AND m.sent_by_name = 'AI_AUTO') OR m.sender IN ('AGENT','DEPT'))
+              AND m.sent_at_utc > %s AND m.sent_at_utc <= %s""", (since, as_of)).fetchone()
+    return {"sent": sent, "reviewed": reviewed, "human": human, "total": sent + human}
 
 
 def _edited(conn: Connection, since: datetime, as_of: datetime, schema: str) -> dict[str, int]:

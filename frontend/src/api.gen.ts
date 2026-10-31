@@ -685,7 +685,7 @@ export interface paths {
          * @description 접수함(FR-029, §8-1). 여러 값은 쉼표로(status=NEW,IN_PROGRESS).
          *
          *     assignee: 담당 상담원 이름, turn: ME·DEPT·CUSTOMER·DONE, depth: DEEP·NORMAL·QUICK,
-         *     me: counts.mine을 셀 상담원 이름(변경 add-inbox-turn-depth).
+         *     me: counts.mine을 셀 상담원 이름(변경 add-inbox-turn-depth), auto: 자동 발송한 줄만(변경 add-auto-send-views).
          */
         get: operations["list_tickets_tickets_get"];
         put?: never;
@@ -1381,6 +1381,17 @@ export interface components {
             /** Risk */
             risk: number;
         };
+        /** DashAuto */
+        DashAuto: {
+            /** Human */
+            human: number;
+            /** Reviewed */
+            reviewed: number;
+            /** Sent */
+            sent: number;
+            /** Total */
+            total: number;
+        };
         /** DashCountry */
         DashCountry: {
             /** Breach */
@@ -1459,6 +1470,7 @@ export interface components {
              * Format: date-time
              */
             as_of: string;
+            auto: components["schemas"]["DashAuto"];
             /** By Agent */
             by_agent: components["schemas"]["DashAgent"][];
             /** By Country */
@@ -1864,6 +1876,10 @@ export interface components {
         InboxCounts: {
             /** Alert */
             alert: number;
+            /** Auto */
+            auto: number;
+            /** Auto Pending */
+            auto_pending: number;
             /** Breach */
             breach: number;
             /** Deep */
@@ -1895,6 +1911,8 @@ export interface components {
             assigned_dept: string | null;
             /** Assignee Masked */
             assignee_masked: string | null;
+            /** Auto State */
+            auto_state: string;
             /** Category Code */
             category_code: string | null;
             /** Channel */
@@ -2070,6 +2088,13 @@ export interface components {
             /** Body */
             body: string;
         };
+        /** PerfAuto */
+        PerfAuto: {
+            /** Pending */
+            pending: number;
+            /** Sent */
+            sent: number;
+        };
         /** PerfDay */
         PerfDay: {
             /** Adjusted */
@@ -2103,6 +2128,7 @@ export interface components {
              * Format: date-time
              */
             as_of: string;
+            auto: components["schemas"]["PerfAuto"];
             /** Daily */
             daily: components["schemas"]["PerfDay"][];
             /** Days */
@@ -2546,6 +2572,8 @@ export interface components {
             adjustments: components["schemas"]["Adjustment"][];
             /** Alerts */
             alerts: components["schemas"]["AlertRow"][];
+            /** Auto State */
+            auto_state: string;
             /** Checks */
             checks: components["schemas"]["CheckFlag"][];
             /** Customer Followups */
@@ -4125,6 +4153,7 @@ export interface operations {
                 turn?: string | null;
                 depth?: string | null;
                 me?: string | null;
+                auto?: boolean;
             };
             header?: never;
             path?: never;

@@ -1950,6 +1950,34 @@
         "title": "DashAgent",
         "type": "object"
       },
+      "DashAuto": {
+        "properties": {
+          "human": {
+            "title": "Human",
+            "type": "integer"
+          },
+          "reviewed": {
+            "title": "Reviewed",
+            "type": "integer"
+          },
+          "sent": {
+            "title": "Sent",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sent",
+          "reviewed",
+          "human",
+          "total"
+        ],
+        "title": "DashAuto",
+        "type": "object"
+      },
       "DashCountry": {
         "properties": {
           "breach": {
@@ -2138,6 +2166,9 @@
             "title": "As Of",
             "type": "string"
           },
+          "auto": {
+            "$ref": "#/components/schemas/DashAuto"
+          },
           "by_agent": {
             "items": {
               "$ref": "#/components/schemas/DashAgent"
@@ -2197,7 +2228,8 @@
           "by_agent",
           "by_country",
           "stages",
-          "edited"
+          "edited",
+          "auto"
         ],
         "title": "DashboardSummary",
         "type": "object"
@@ -3478,6 +3510,14 @@
             "title": "Alert",
             "type": "integer"
           },
+          "auto": {
+            "title": "Auto",
+            "type": "integer"
+          },
+          "auto_pending": {
+            "title": "Auto Pending",
+            "type": "integer"
+          },
           "breach": {
             "title": "Breach",
             "type": "integer"
@@ -3535,7 +3575,9 @@
           "risk",
           "mine",
           "turn_me",
-          "deep"
+          "deep",
+          "auto",
+          "auto_pending"
         ],
         "title": "InboxCounts",
         "type": "object"
@@ -3570,6 +3612,10 @@
               }
             ],
             "title": "Assignee Masked"
+          },
+          "auto_state": {
+            "title": "Auto State",
+            "type": "string"
           },
           "category_code": {
             "anyOf": [
@@ -3832,6 +3878,7 @@
           "turn",
           "next_action",
           "review_depth",
+          "auto_state",
           "memo_count"
         ],
         "title": "InboxRow",
@@ -4179,6 +4226,24 @@
         "title": "NoteIn",
         "type": "object"
       },
+      "PerfAuto": {
+        "properties": {
+          "pending": {
+            "title": "Pending",
+            "type": "integer"
+          },
+          "sent": {
+            "title": "Sent",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sent",
+          "pending"
+        ],
+        "title": "PerfAuto",
+        "type": "object"
+      },
       "PerfDay": {
         "properties": {
           "adjusted": {
@@ -4251,6 +4316,9 @@
             "title": "As Of",
             "type": "string"
           },
+          "auto": {
+            "$ref": "#/components/schemas/PerfAuto"
+          },
           "daily": {
             "items": {
               "$ref": "#/components/schemas/PerfDay"
@@ -4276,7 +4344,8 @@
           "days",
           "total",
           "daily",
-          "sla"
+          "sla",
+          "auto"
         ],
         "title": "Performance",
         "type": "object"
@@ -6006,6 +6075,10 @@
             "title": "Alerts",
             "type": "array"
           },
+          "auto_state": {
+            "title": "Auto State",
+            "type": "string"
+          },
           "checks": {
             "items": {
               "$ref": "#/components/schemas/CheckFlag"
@@ -6202,7 +6275,8 @@
           "dept_mails",
           "turn",
           "next_action",
-          "review_depth"
+          "review_depth",
+          "auto_state"
         ],
         "title": "SubTicket",
         "type": "object"
@@ -9374,7 +9448,7 @@
     },
     "/tickets": {
       "get": {
-        "description": "접수함(FR-029, §8-1). 여러 값은 쉼표로(status=NEW,IN_PROGRESS).\n\nassignee: 담당 상담원 이름, turn: ME·DEPT·CUSTOMER·DONE, depth: DEEP·NORMAL·QUICK,\nme: counts.mine을 셀 상담원 이름(변경 add-inbox-turn-depth).",
+        "description": "접수함(FR-029, §8-1). 여러 값은 쉼표로(status=NEW,IN_PROGRESS).\n\nassignee: 담당 상담원 이름, turn: ME·DEPT·CUSTOMER·DONE, depth: DEEP·NORMAL·QUICK,\nme: counts.mine을 셀 상담원 이름(변경 add-inbox-turn-depth), auto: 자동 발송한 줄만(변경 add-auto-send-views).",
         "operationId": "list_tickets_tickets_get",
         "parameters": [
           {
@@ -9630,6 +9704,16 @@
                 }
               ],
               "title": "Me"
+            }
+          },
+          {
+            "in": "query",
+            "name": "auto",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Auto",
+              "type": "boolean"
             }
           }
         ],

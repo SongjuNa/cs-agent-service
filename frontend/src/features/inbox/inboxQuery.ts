@@ -5,7 +5,7 @@ import { REFRESH_MS } from "../../app/queries";
 
 export const SIZE = 50; // FR-029 처리 7, SCR-02 입력 검증 "size는 50 고정"
 export const ALL_ALERTS = "FR_AT_RISK,FR_BREACHED,RES_AT_RISK,RES_BREACHED"; // "아무 경고"
-export const FILTER_KEYS = ["status", "priority", "alert", "channel", "needs_info", "has_draft", "composite", "include_closed", "q"] as const;
+export const FILTER_KEYS = ["status", "priority", "alert", "channel", "needs_info", "has_draft", "composite", "include_closed", "auto", "q"] as const;
 
 const LAST_KEY = "cs-inbox-url";
 
