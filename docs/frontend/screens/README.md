@@ -31,6 +31,7 @@
 | SCR-09 (임시) | 접수 이력(해결사례 검색) | 접수 › 접수 이력 | FR-초안-06, FR-019 | `GET /cases*` (add-case-search) | [SCR-09](SCR-09-case-search.md) |
 | SCR-10 (임시) | 상담원 도우미(문서 근거 질의응답) | 모든 화면 오른쪽 아래 떠 있는 창 | FR-초안-07 | `POST /assist/ask`, `GET /chunks/{id}` (add-agent-assistant) | [SCR-10](SCR-10-assistant.md) |
 | SCR-11 (임시) | 문의 배정 관리(부서·담당 상담원·사유로 거르고 줄·일괄 재배정) | 왼쪽 메뉴 대시보드 > 문의 배정 관리(`/admin/assign`) | FR-초안-08 | `GET /tickets`, `POST /sub-tickets/assign`(add-reassign, add-assign-admin) | [SCR-11](SCR-11-assign.md) |
+| SCR-12 (임시) | 자동 처리 규칙(자동 발송 스위치, 유형·채널별 대상, 고정 조건) | 왼쪽 메뉴 대시보드 > 자동 처리 규칙(`/admin/auto`) | FR-초안-09 | `GET·PUT /auto-rules` (add-auto-send) | [SCR-12](SCR-12-auto-rules.md) |
 
 SCR-05~09는 화면 정의서에 없는 새 화면이라 번호를 임시로 붙였다. 화면 정의서에 넣을 때 번호를 정한다.
 

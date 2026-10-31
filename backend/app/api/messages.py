@@ -1,6 +1,6 @@
 """초안 다루기: 임시 저장, 대역 다시 만들기, 다시 검증, 승인·발송 (FR-031, FR-039, FR-049, 기술 명세서 v1.4 §8-1).
 
-발송은 SENT 행을 새로 쓰는 이 API만 한다(CLAUDE.md 규칙 3). 발송 뒤 상태 전이는 FR-025·FR-031 처리 4.
+발송은 SENT 행을 새로 쓰는 이 API와 자동 발송(status/autosend.py)만 한다(CLAUDE.md 규칙 3, 변경 add-auto-send). 발송 뒤 상태 전이는 FR-025·FR-031 처리 4.
 예외 부서 메일(sender DEPT)은 자체 대조·대역·검증 없이 본문만 저장·발송하고 DEPT_MAIL_SENT로 전이한다(FR-031 처리 9, D34).
 """
 
@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 from app.api import schemas
 from app.api.deps import Clients, get_clients, get_conn
-from app.db.detail import verify_state
+from app.db.sendcheck import send_issues
 from app.db.store import (add_self_check, add_step, body_sha, check_body, draft_object, draft_sources, finish_run,
                           insert_gloss, intake_step, load_draft, save_verify, send_draft, start_run, update_draft_body)
 from app.llm.drafts import FLAG_GLOSS_FAILED, write_gloss
@@ -167,7 +167,7 @@ def post_send(message_id: int, data: SendIn, conn: Connection = Depends(get_conn
         _dept_check(conn, draft, x_agent_dept)
         issues, notes = [], []
     else:
-        issues, notes = _send_issues(conn, draft, data.final_body)
+        issues, notes = send_issues(conn, draft, data.final_body)
     if issues and not data.override_check:
         return JSONResponse(status_code=409, content={"detail": "확인 필요", "issues": issues, "notes": notes})
     try:
@@ -183,34 +183,3 @@ def post_send(message_id: int, data: SendIn, conn: Connection = Depends(get_conn
             "status_changed": refused is None}
 
 
-def _send_issues(conn: Connection, draft: dict, final_body: str) -> tuple[list[dict], list[str]]:
-    """확인을 받아야 하는 것(issues)과 줄로만 알리는 것(notes). 화면 정의서 v2 P7."""
-    issues: list[dict] = []
-    notes: list[str] = []
-    check = check_body(conn, draft["message_type"], draft["sub_ticket_id"], final_body)
-    bad = check["bad_citations"] + check["bad_numbers"]
-    if bad:
-        issues.append({"kind": "DRAFT_CHECK", "text": f"근거 밖 인용/숫자 {len(bad)}곳", "items": bad})
-    if check.get("missing_labels"):
-        issues.append({"kind": "DRAFT_CHECK", "text": f"요청할 항목이 본문에 없음: {', '.join(check['missing_labels'])}",
-                       "items": check["missing_labels"]})
-    if draft["message_type"] == "FINAL_REPLY":
-        (blocking,) = conn.execute("SELECT missing_blocking_info FROM svc.sub_ticket WHERE sub_ticket_id = %s",
-                                   (draft["sub_ticket_id"],)).fetchone()
-        if blocking:
-            labels = (intake_step(conn, draft["sub_ticket_id"], "Q5") or {}).get("labels", {})
-            names = [labels.get(f, f) for f in blocking]
-            issues.append({"kind": "BLOCKING", "text": f"막는 정보({', '.join(names)})가 아직 없습니다", "items": names})
-    verify = conn.execute(
-        """SELECT passed_yn, detail FROM eval.self_check WHERE message_id = %s AND check_type = 'VERIFY'
-            ORDER BY checked_at_utc DESC, check_id DESC LIMIT 1""", (draft["message_id"],)).fetchone()
-    state, text, findings = verify_state(None if verify is None else {"passed_yn": verify[0], "detail": verify[1]},
-                                         draft["body"])
-    if state == "FOUND":
-        issues.append({"kind": "VERIFY", "text": f"⑤ 검증 에이전트 지적 {len(findings)}곳",
-                       "items": [f"{KIND_NAMES.get(f['kind'], f['kind'])} — {f['quote']}" for f in findings]})
-    elif state == "FAILED":
-        notes.append("⑤ 검증 못 함 — 검증 없이 보냅니다")
-    elif state == "STALE":
-        notes.append("⑤ 고친 뒤 검증 안 함")
-    return issues, notes

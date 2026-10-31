@@ -34,7 +34,8 @@ def test_ac_contract_1_every_api_has_named_response():
     # + 담당 변경 1(add-reassign: POST /sub-tickets/assign)
     # + 운영 대시보드 1(add-ops-overview: GET /dashboard/summary)
     # + 내 실적 1(add-my-performance: GET /me/performance)
-    assert sum(len(ops) for ops in spec["paths"].values()) == 42
+    # + 자동 발송 3(add-auto-send: GET·PUT /auto-rules, POST /sub-tickets/{id}/auto-review)
+    assert sum(len(ops) for ops in spec["paths"].values()) == 45
 
 
 def test_ac_contract_2_frontend_copy_is_current():

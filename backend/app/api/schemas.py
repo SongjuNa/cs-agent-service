@@ -1039,3 +1039,35 @@ class Performance(Out):
     total: int  # 기간 처리 합
     daily: list[PerfDay]  # 오래된 날부터, 기준 시각이 든 날이 마지막
     sla: PerfSla
+
+
+# ---- 자동 처리 규칙·사후 검수 (변경 add-auto-send) ----
+
+class AutoRulesIn(BaseModel):
+    enabled: bool
+    cats: dict[str, bool] = {}
+    channels: dict[str, bool] = {}
+
+
+class AutoStats(Out):
+    auto_total: int  # 지금까지 자동 발송한 문의 수
+    auto_pending: int  # 그중 사후 검수 전
+    total: int  # 전체 하위 문의 수
+
+
+class AutoRules(Out):
+    enabled: bool
+    cats: dict[str, bool]
+    channels: dict[str, bool]
+    always_human: list[str]  # 어떤 설정으로도 자동 발송하지 않는 유형(코드 고정)
+    auto_cats: list[str]  # 켜고 끌 수 있는 유형
+    channel_list: list[str]
+    category_names: dict[str, str]
+    stats: AutoStats
+
+
+class AutoReviewed(Out):
+    sub_ticket_id: str
+    message_id: int
+    reviewed_by: str
+    reviewed_at_utc: datetime

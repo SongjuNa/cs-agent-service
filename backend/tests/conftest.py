@@ -1,10 +1,16 @@
 """시험 공통 준비: ref·gold를 한 번 적재하고 DB 연결을 나눠 쓴다."""
 
+import os
+
 import psycopg
 import pytest
 
 from app.config import get_settings
 from jobs import load_gold, load_reference
+
+# 자동 발송(변경 add-auto-send)은 설정을 저장하지 않은 시험에서는 꺼 둔다. 기존 시험은 초안이 DRAFT로 남는다고 가정한다.
+# 자동 발송 시험은 설정을 직접 켠다(save_rules).
+os.environ.setdefault("AUTO_SEND_DEFAULT", "false")
 
 
 @pytest.fixture(scope="session")

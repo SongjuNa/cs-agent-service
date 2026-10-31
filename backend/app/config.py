@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     data_dir: str = "data/CS_AI_Agent_Training_Data_v1"
     log_full_llm_io: bool = False  # 실행 로그에 지시문·응답 전문(가린 글)을 남긴다(FR-036 처리 4, §1-5)
     scheduler_enabled: bool = True  # 5분 주기 점검(§6-4). 끄면 periodic_check를 직접 부른다
+    auto_send_default: bool = True  # 자동 처리 설정을 아직 저장하지 않았을 때의 켜짐 여부(변경 add-auto-send). 실제 메일을 연동하면 먼저 false로
 
     @property
     def data_path(self) -> Path:

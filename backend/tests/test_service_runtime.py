@@ -6,8 +6,9 @@ from fastapi.testclient import TestClient
 from app.config import get_settings
 from app.main import app
 
-# 테이블 정의서 v1.3 §1 (뷰 제외)
-EXPECTED_TABLES = {"ref": 25, "gold": 2, "svc": 11, "scoring": 11, "eval": 8}
+# 테이블 정의서 §1 (뷰 제외). svc는 처음 11개에 최신 목업 반영으로 더한 4개: internal_note(add-internal-notes),
+# assignment_history(add-reassign), auto_setting·auto_review(add-auto-send). scoring은 svc의 추가 표를 따라 만들지 않는다.
+EXPECTED_TABLES = {"ref": 25, "gold": 2, "svc": 15, "scoring": 11, "eval": 8}
 
 
 def test_w7_1_db_table_counts_match_table_spec():

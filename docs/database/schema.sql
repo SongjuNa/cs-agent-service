@@ -436,7 +436,7 @@ CREATE TABLE svc.status_transition (
   note        text,
   CONSTRAINT status_transition_uq UNIQUE NULLS NOT DISTINCT (from_status, to_status, event_kind)
 );
-COMMENT ON TABLE svc.status_transition IS '허용 전이표 13행. transition()이 이 표에 있는 전이만 허락한다. 자동 발송 전이 없음(D32), 상담원 직접 종료 없음(D20)';
+COMMENT ON TABLE svc.status_transition IS '허용 전이표 13행. transition()이 이 표에 있는 전이만 허락한다(행위자는 기록만 한다). 자동 발송은 상담원 발송과 같은 전이(FINAL_REPLY_SENT)를 AI_AUTO 행위자로 쓴다(변경 add-auto-send, D32 변경). 상담원 직접 종료 없음(D20)';
 
 INSERT INTO svc.status_transition (from_status, to_status, event_kind, actor_kind, note) VALUES
   (NULL,               'NEW',              'INTAKE',                       'SYSTEM', '접수'),
@@ -616,6 +616,8 @@ CREATE TABLE svc.ticket_message (
              (message_status IN ('DRAFT','APPROVED') AND sender IN ('SYSTEM','AGENT'))
           OR (message_status = 'SENT' AND sender = 'AGENT' AND notice_transition IS DISTINCT FROM 'REMINDER')
           OR (message_status = 'SENT' AND sender = 'SYSTEM' AND notice_transition IS NOT DISTINCT FROM 'REMINDER')
+          -- 자동 발송(변경 add-auto-send, 규칙 3·D32 변경): 검증을 통과한 최종 답변을 SYSTEM이 AI_AUTO 이름으로 보낸다
+          OR (message_type = 'FINAL_REPLY' AND message_status = 'SENT' AND sender = 'SYSTEM' AND sent_by_name = 'AI_AUTO' AND notice_transition IS NULL)
           -- 예외 부서(FIELD_SVC, SALES_OPS) 고객 메일: 초안부터 발송까지 DEPT (D34, v1.3)
           OR (message_type = 'FINAL_REPLY' AND sender = 'DEPT' AND message_status IN ('DRAFT','APPROVED','SENT'))
     END),
@@ -796,6 +798,24 @@ CREATE TABLE svc.assignment_history (
 );
 COMMENT ON TABLE svc.assignment_history IS '담당 변경 이력. 자동 배정(접수 때)은 남기지 않고, 상담원이 손으로 바꾼 것만 남긴다. 넣기만 한다';
 CREATE INDEX assignment_history_sub ON svc.assignment_history (sub_ticket_id, changed_at_utc);
+
+-- ---------------------------------------------------------------------
+-- 4-14. auto_setting 자동 처리 설정 / auto_review 자동 발송 사후 검수 (변경 add-auto-send)
+-- ---------------------------------------------------------------------
+CREATE TABLE svc.auto_setting (
+  key             text PRIMARY KEY,                               -- 지금은 'rules' 하나
+  value           jsonb NOT NULL,                                 -- {enabled, cats{유형:true|false}, channels{채널:true|false}}
+  updated_by      text NOT NULL,
+  updated_at_utc  timestamptz NOT NULL DEFAULT now()
+);
+COMMENT ON TABLE svc.auto_setting IS '자동 처리 규칙 설정. 행이 없으면 기본값(켜짐, MANUAL·TECH_SPEC·FW_UPDATE 켜짐, COMPLIANCE 꺼짐, PHONE 꺼짐). 항상 사람이 확인하는 유형은 코드가 고정한다';
+
+CREATE TABLE svc.auto_review (
+  message_id       bigint PRIMARY KEY REFERENCES svc.ticket_message (message_id),  -- 자동 발송된 SENT 메시지
+  reviewed_by      text NOT NULL,
+  reviewed_at_utc  timestamptz NOT NULL DEFAULT now()
+);
+COMMENT ON TABLE svc.auto_review IS '자동 발송의 사후 검수. 행이 있으면 검수 완료. 넣기만 한다';
 
 -- ---------------------------------------------------------------------
 -- 4-10. agent_run 실행 / agent_step 노드 실행 (FR-036, 보존 90일 T31)
@@ -1210,6 +1230,8 @@ CREATE TABLE scoring.ticket_message (
              (message_status IN ('DRAFT','APPROVED') AND sender IN ('SYSTEM','AGENT'))
           OR (message_status = 'SENT' AND sender = 'AGENT' AND notice_transition IS DISTINCT FROM 'REMINDER')
           OR (message_status = 'SENT' AND sender = 'SYSTEM' AND notice_transition IS NOT DISTINCT FROM 'REMINDER')
+          -- 자동 발송(변경 add-auto-send, 규칙 3·D32 변경): 검증을 통과한 최종 답변을 SYSTEM이 AI_AUTO 이름으로 보낸다
+          OR (message_type = 'FINAL_REPLY' AND message_status = 'SENT' AND sender = 'SYSTEM' AND sent_by_name = 'AI_AUTO' AND notice_transition IS NULL)
           -- 예외 부서(FIELD_SVC, SALES_OPS) 고객 메일: 초안부터 발송까지 DEPT (D34, v1.3)
           OR (message_type = 'FINAL_REPLY' AND sender = 'DEPT' AND message_status IN ('DRAFT','APPROVED','SENT'))
     END),
