@@ -53,7 +53,7 @@ def _refuse_not_escalated(conn: Connection, ticket_id: str, sub_ticket_id: str, 
 
 
 def register_reply(conn: Connection, sub_ticket_id: str, body: str | None, agent_id: str, agent_dept: str | None,
-                   at: datetime, expected_version: int | None = None) -> dict[str, Any]:
+                   at: datetime, expected_version: int | None = None, via_mail: bool = False) -> dict[str, Any]:
     """[회신 등록]: 검사 순서 본문 → 문의 → 버전 → 부서 → 상태(design 결정 1). 다시 처리 run 번호를 돌려준다."""
     body = (body or "").strip()
     if not body:
@@ -62,14 +62,15 @@ def register_reply(conn: Connection, sub_ticket_id: str, body: str | None, agent
         ticket_id, status, version, escalated_to, _ = _locked(conn, sub_ticket_id)
         if expected_version is not None and expected_version != version:
             raise ConcurrentChange()
-        if not escalated_to or (agent_dept or "").strip() != escalated_to:
+        # 메일로 온 회신은 메일 스레드가 부서를 가리키므로 화면에서 고른 부서와 같지 않아도 된다(add-escalation-mail)
+        if not escalated_to or (not via_mail and (agent_dept or "").strip() != escalated_to):
             raise DeptError(MSG_WRONG_DEPT, 403)
         if status == "ESCALATED":
             (message_id,) = conn.execute(
                 """INSERT INTO svc.ticket_message (ticket_id, sub_ticket_id, sender, message_type, message_status, sent_at_utc,
-                       language, body, sent_by_name, mask_count)
-                   VALUES (%s, %s, 'DEPT', 'ESCALATION_NOTE', 'RECEIVED', %s, %s, %s, %s, %s) RETURNING message_id""",
-                (ticket_id, sub_ticket_id, at, REPLY_LANGUAGE, body, agent_id, mask_text(body)[1])).fetchone()
+                       language, body, sent_by_name, mask_count, via_mail)
+                   VALUES (%s, %s, 'DEPT', 'ESCALATION_NOTE', 'RECEIVED', %s, %s, %s, %s, %s, %s) RETURNING message_id""",
+                (ticket_id, sub_ticket_id, at, REPLY_LANGUAGE, body, agent_id, mask_text(body)[1], via_mail)).fetchone()
             transition(conn, sub_ticket_id, "IN_PROGRESS", "DEPT_REPLY", at, agent_id)
             run_id = start_run(conn, ticket_id, sub_ticket_id, "DEPT_REPLY")  # §2-4 새 run
     if status != "ESCALATED":

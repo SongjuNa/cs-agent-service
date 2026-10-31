@@ -1833,6 +1833,11 @@
               }
             ],
             "title": "Expected Version"
+          },
+          "via_mail": {
+            "default": false,
+            "title": "Via Mail",
+            "type": "boolean"
           }
         },
         "title": "DeptBodyIn",
@@ -2578,6 +2583,11 @@
               }
             ],
             "title": "Reason Code"
+          },
+          "send_mail": {
+            "default": false,
+            "title": "Send Mail",
+            "type": "boolean"
           }
         },
         "title": "EscalateIn",

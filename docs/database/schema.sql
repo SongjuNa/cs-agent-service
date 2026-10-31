@@ -599,6 +599,7 @@ CREATE TABLE svc.ticket_message (
   sent_by_name      text NOT NULL,                                        -- 상담원 ID(부서 글은 부서 상담원 ID), SYSTEM, CUSTOMER, DEPT
   notice_transition text CHECK (notice_transition IN ('REMINDER','ACK','ESCALATED','REPLY_RECEIVED','RESOLVED')),
   override_check    boolean NOT NULL DEFAULT false,
+  via_mail          boolean NOT NULL DEFAULT false,                       -- 이 글이 메일로 오갔는가(이관 요청 메일 발송·부서 회신 메일 수신, add-escalation-mail). 실제 메일 연동은 아직 없고 표시만 한다
   mask_count        integer NOT NULL DEFAULT 0 CHECK (mask_count >= 0),
   superseded_at     timestamptz,                                          -- _utc 규칙의 예외(기술 명세서 v1.4 이름)
   created_at_utc    timestamptz NOT NULL DEFAULT now(),
@@ -1192,6 +1193,7 @@ CREATE TABLE scoring.ticket_message (
   sent_by_name      text NOT NULL,                                        -- 상담원 ID(부서 글은 부서 상담원 ID), SYSTEM, CUSTOMER, DEPT
   notice_transition text CHECK (notice_transition IN ('REMINDER','ACK','ESCALATED','REPLY_RECEIVED','RESOLVED')),
   override_check    boolean NOT NULL DEFAULT false,
+  via_mail          boolean NOT NULL DEFAULT false,                       -- 이 글이 메일로 오갔는가(이관 요청 메일 발송·부서 회신 메일 수신, add-escalation-mail). 실제 메일 연동은 아직 없고 표시만 한다
   mask_count        integer NOT NULL DEFAULT 0 CHECK (mask_count >= 0),
   superseded_at     timestamptz,                                          -- _utc 규칙의 예외(기술 명세서 v1.4 이름)
   created_at_utc    timestamptz NOT NULL DEFAULT now(),

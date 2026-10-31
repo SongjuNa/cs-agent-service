@@ -272,10 +272,10 @@ export const api = {
     call<unknown>("POST", `/sub-tickets/${encodeURIComponent(subId)}/priority`, data),
   reply: (id: string, data: { body: string; language: string; received_at: string | null; target_sub_ticket_ids: string[] | null }) =>
     call<{ processing: boolean }>("POST", `/tickets/${encodeURIComponent(id)}/replies`, data),
-  escalate: (subId: string, data: { dept: string; reason_code: string; memo: string; expected_version: number }) =>
+  escalate: (subId: string, data: { dept: string; reason_code: string; memo: string; expected_version: number; send_mail?: boolean }) =>
     call<unknown>("POST", `/sub-tickets/${encodeURIComponent(subId)}/escalate`, data),
-  deptReply: (subId: string, body: string) =>
-    call<{ processing: boolean }>("POST", `/sub-tickets/${encodeURIComponent(subId)}/dept-reply`, { body }),
+  deptReply: (subId: string, body: string, viaMail = false) =>
+    call<{ processing: boolean }>("POST", `/sub-tickets/${encodeURIComponent(subId)}/dept-reply`, { body, via_mail: viaMail }),
   deptMail: (subId: string, body: string) =>
     call<{ message_id: number }>("POST", `/sub-tickets/${encodeURIComponent(subId)}/dept-mail`, { body }),
   departments: () => call<Department[]>("GET", "/ref/departments"),
