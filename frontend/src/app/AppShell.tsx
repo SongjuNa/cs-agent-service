@@ -1,6 +1,6 @@
 // SCR-00 공통 틀. 목업 v1.42 updateShell·renderProf·MENU의 배치: 남색 머리 막대 + 왼쪽 메뉴(프로필, 메뉴 묶음) + 경로 표시.
 // 목업의 글자 크기·세션 시간·설정·로그아웃은 로그인이 없어(D23) 두지 않는다. 근무 상태는 저장하지 않는 목업 요소(N-00-01).
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { AssistantDock } from "../features/assistant/AssistantDock";
 import { Banner, Field } from "../ui";
 import { Bell } from "./Bell";
@@ -9,23 +9,20 @@ import { useAgents, useDepartments, useInboxCounts, useMyStats } from "./queries
 import { useSession } from "./session";
 import "./shell.css";
 
-export interface MenuItem { key: string; label: string; path: string; ready?: boolean; external?: boolean }
+export interface MenuItem { key: string; label: string; path: string; ready?: boolean; external?: boolean; /** 이 항목부터 새 소제목(목업 side-label) */ section?: string }
 export interface MenuGroup { key: string; label: string; items: MenuItem[] }
 
 // 목업 MENU 그대로(SCR-00-05). ready = 이 화면이 있다. 나머지는 다음 슬라이스이거나 목업 화면으로 둔다(README)
 export const MENU: MenuGroup[] = [
   { key: "main", label: "홈", items: [
-    { key: "notice", label: "공지사항", path: "/notice" },
-    { key: "sysnote", label: "시스템 알림", path: "/sysnote" },
+    { key: "home", label: "나의 업무 현황", path: "/my", ready: true },
   ] },
   { key: "recv", label: "접수", items: [
-    { key: "home", label: "나의 업무 현황", path: "/my", ready: true },
     { key: "inbox", label: "접수함", path: "/inbox", ready: true },
-    { key: "phone", label: "전화 상담", path: "/phone", ready: true },
-    { key: "similar", label: "접수 이력", path: "/history", ready: true },
+    { key: "similar", label: "접수 이력", path: "/history", ready: true, section: "조회" },
     { key: "customers", label: "고객 관리", path: "/customers", ready: true },
-    { key: "chatbot", label: "챗봇 관리", path: "/chatbot" },
-    { key: "portal", label: "고객포털 바로가기", path: "/portal", external: true },
+    { key: "portal", label: "고객 포털 미리보기", path: "/portal", section: "시연" },
+    { key: "phone", label: "전화 상담", path: "/phone", ready: true },
   ] },
   { key: "docs", label: "지식 관리", items: [
     { key: "docs", label: "문서 관리", path: "/docs", ready: true },
@@ -68,7 +65,7 @@ export function AppShell({ active, crumbs, navigate, children }: {
           {MENU.map((g) => (
             <a key={g.key} href={g.items[0].path} className={g.key === group ? "is-on" : undefined}
                aria-current={g.key === group ? "true" : undefined}
-               onClick={go(g.key === "recv" ? "/my" : g.items[0].path)}>{g.label}</a>
+               onClick={go(g.items[0].path)}>{g.label}</a>
           ))}
         </nav>
         <div className="shell-spacer" />
@@ -84,17 +81,20 @@ export function AppShell({ active, crumbs, navigate, children }: {
         <nav className="shell-nav" aria-label="주 메뉴">
           <Profile />
           {/* 목업 MENU처럼 위 탭(대메뉴)의 묶음 하나만 보인다(2026-10-29 조장 "목업처럼 맞춥니다") */}
-          {MENU.filter((g) => g.key === (group ?? "recv")).map((g) => (
+          {MENU.filter((g) => g.key === (group ?? "main")).map((g) => (
             <div key={g.key} className="shell-grp is-on">
               <div className="shell-grp__h">{g.label}</div>
               {g.items.map((i) => (
-                <a key={i.key} href={i.path} className={i.key === active ? "is-on" : undefined} title={i.label}
+                <Fragment key={i.key}>
+                {i.section && <div className="shell-grp__sub">{i.section}</div>}
+                <a href={i.path} className={i.key === active ? "is-on" : undefined} title={i.label}
                    aria-current={i.key === active ? "page" : undefined} onClick={go(i.path)}>
                   <Icon name={i.key} />
                   <span className="shell-nav__label">{i.label}</span>
                   {i.key === "inbox" && counts.data && <span className="shell-nav__count" data-testid="nav-inbox-count">{counts.data.total}</span>}
                   {i.external && <Icon name="ext" className="shell-nav__ext" />}
                 </a>
+                </Fragment>
               ))}
             </div>
           ))}

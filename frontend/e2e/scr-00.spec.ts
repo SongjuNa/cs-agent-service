@@ -68,6 +68,20 @@ test("SCR-00-AC-5: 새로고침해도 고른 부서·상담원·기준 시각이
   await expect(page.getByText("기준 시각: 스냅샷 2026-09-30 23:59 UTC")).toBeVisible();
 });
 
+test("SCR-00-AC-6: 위 탭마다 왼쪽 메뉴가 다르다 — 홈은 나의 업무 현황만, 접수는 접수함과 시연 항목", async ({ page }) => {
+  await useSession(page, { dept: "TS_LV" });
+  await page.goto("/my");
+  const gnav = page.getByRole("navigation", { name: "대메뉴" });
+  await expect(gnav.getByRole("link", { name: "홈" })).toHaveAttribute("aria-current", "true");
+  const side = page.getByRole("navigation", { name: "주 메뉴" });
+  await expect(side.getByRole("link", { name: "나의 업무 현황" })).toHaveAttribute("aria-current", "page");
+  await expect(side.getByRole("link", { name: "접수함" })).toHaveCount(0);
+  await page.goto("/inbox");
+  await expect(gnav.getByRole("link", { name: "접수" })).toHaveAttribute("aria-current", "true");
+  await expect(side.getByRole("link", { name: "접수함" })).toBeVisible();
+  await expect(side.getByText("시연", { exact: true })).toBeVisible();
+  await expect(side.getByRole("link", { name: "고객 포털 미리보기" })).toBeVisible();
+
 test("SCR-00-AC-7: 상단 오른쪽에 도움말·세션 시간(연장)·설정·로그아웃이 있고, 로그아웃하면 부서·상담원이 비워진다", async ({ page }) => {
   await useSession(page, { dept: "TS_LV" });
   await page.goto("/inbox");

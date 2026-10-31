@@ -1,10 +1,20 @@
 /* SCR-10 상담원 도우미. 색·간격·글자 크기는 tokens.css 변수만 쓴다(principles §3). */
 
-.as-fab { position: fixed; right: var(--sp-16); bottom: var(--sp-16); z-index: 40; height: 44px; padding: 0 var(--sp-16); border: 0; border-radius: 22px; background: var(--color-brand); color: var(--color-brand-fg); font: inherit; font-weight: var(--fw-semibold); cursor: pointer; box-shadow: 0 4px 14px rgba(10, 30, 90, 0.28); }
+.as-fab { position: fixed; z-index: 40; display: grid; place-items: center; width: 52px; height: 52px; padding: 0; border: 0; border-radius: 50%; background: var(--color-brand); overflow: hidden; cursor: grab; touch-action: none; user-select: none; box-shadow: 0 8px 24px rgba(10, 30, 90, 0.35); }
+.as-fab img { width: 40px; height: 40px; object-fit: contain; pointer-events: none; }
 .as-fab:hover { background: var(--color-brand-hover); }
 
-.as-panel { position: fixed; right: var(--sp-16); bottom: var(--sp-16); z-index: 40; display: flex; flex-direction: column; width: 380px; max-width: calc(100vw - 2 * var(--sp-16)); height: 520px; max-height: calc(100vh - 2 * var(--sp-16)); border: 1px solid var(--color-line); border-radius: var(--r-lg); background: var(--color-surface); box-shadow: 0 8px 28px rgba(10, 30, 90, 0.24); overflow: hidden; }
-.as-head { display: flex; align-items: center; gap: var(--sp-4); padding: var(--sp-8) var(--sp-12); border-bottom: 1px solid var(--color-line); font-size: var(--fs-b); }
+.as-panel { position: fixed; z-index: 40; display: flex; flex-direction: column; width: 380px; max-width: calc(100vw - 2 * var(--sp-16)); height: 520px; max-height: calc(100vh - 2 * var(--sp-16)); border: 1px solid var(--color-line); border-radius: var(--r-lg); background: var(--color-surface); box-shadow: 0 8px 28px rgba(10, 30, 90, 0.24); overflow: hidden; }
+.as-head { display: flex; align-items: center; gap: var(--sp-8); padding: var(--sp-8) var(--sp-12); border-bottom: 1px solid var(--color-line); font-size: var(--fs-b); cursor: grab; touch-action: none; user-select: none; }
+.as-head:active { cursor: grabbing; }
+.as-sub { margin-left: var(--sp-4); font-size: var(--fs-xs); font-weight: var(--fw-regular); color: var(--color-fg-sub); }
+.as-av { display: grid; place-items: center; flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; background: var(--color-info-bg); overflow: hidden; }
+.as-av img { width: 24px; height: 24px; object-fit: contain; }
+.as-av--sm { width: 26px; height: 26px; align-self: flex-start; }
+.as-av--sm img { width: 20px; height: 20px; }
+.as-bot { display: flex; gap: var(--sp-6); align-items: flex-start; max-width: 100%; }
+.as-hello { display: flex; flex-direction: column; align-items: center; gap: var(--sp-8); text-align: center; }
+.as-big { width: 72px; height: auto; }
 .as-spacer { flex: 1; }
 .as-log { flex: 1; display: flex; flex-direction: column; gap: var(--sp-10); padding: var(--sp-12); overflow-y: auto; background: var(--color-hover); }
 .as-hint { margin: 0; color: var(--color-fg-sub); font-size: var(--fs-s); }

@@ -22,18 +22,18 @@ test("SCR-02-AC-1: 미해결 360건 재생 + 스냅샷, TS_LV 요약 '전체 n'�
   expect(api.counts.total).toBeGreaterThanOrEqual(69);
   const alerts = await column(page, "기한");
   expect(alerts[0].trim()).not.toBe("");
-  const left = (await column(page, "남은 시간")).map((t) => Number(t.replace("−", "-").replace(/[^\d.-]/g, "")));
+  const left = (await column(page, "해결 기한까지")).map((t) => Number(t.replace("−", "-").replace(/[^\d.-]/g, "")));
   const withAlert = left.filter((v, i) => alerts[i].trim() !== "" && !Number.isNaN(v));
   expect(left[0]).toBe(Math.min(...withAlert));
 });
 
-test("SCR-02-AC-2: '정보 요청 필요' 요약을 누르면 모든 행의 '기한 · 경고' 칸에 '정보 요청 필요'가 보인다", async ({ page }) => {
+test("SCR-02-AC-2: '정보 요청 필요' 요약을 누르면 모든 행의 '경고' 칸에 '정보 요청 필요'가 보인다", async ({ page }) => {
   await useSession(page, { dept: "TS_LV", snapshot: true });
   await page.goto("/inbox");
   await page.getByRole("tab", { name: /^정보 요청 필요/ }).click();
   await expect(page).toHaveURL(/needs_info=true/);
   await expect(rows(page).first()).toBeVisible();
-  for (const v of await column(page, "기한")) expect(v).toContain("정보 요청 필요"); // "기한 · 경고" 칸에 칩으로 보인다
+  for (const v of await column(page, "경고")) expect(v).toContain("정보 요청 필요"); // "경고 (1차 응답·해결 기한)" 칸에 칩으로 보인다
 });
 
 test("SCR-02-AC-3: CSV1-000008(→ CSV1-004003)을 접수하면 담당 부서 접수함에 '복합 2건 중 1'·'2건 중 2' 행이 있다", async ({ page }) => {

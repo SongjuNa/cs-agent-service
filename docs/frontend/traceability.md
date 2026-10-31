@@ -8,7 +8,7 @@
 
 | 화면 | 명세 | 수용 기준 | 화면 시험으로 확인 | 덮지 않은 것 |
 |---|---|---|---|---|
-| SCR-00 공통 틀 | [SCR-00](screens/SCR-00-shell.md) | 6 | 6 | |
+| SCR-00 공통 틀 | [SCR-00](screens/SCR-00-shell.md) | 7 | 7 | |
 | SCR-01 접수 시뮬레이터 | [SCR-01](screens/SCR-01-intake-simulator.md) | 6 | 6 | |
 | SCR-02 접수함 | [SCR-02](screens/SCR-02-inbox.md) | 14 | 14 | |
 | SCR-03 티켓 상세 | [SCR-03](screens/SCR-03-ticket-detail.md) | 29 | 29 | AC-22~29는 `scr-03-head.spec.ts`. AC-29(번역)는 번역 호출만 흉내 냄(Gemini) |
@@ -21,7 +21,7 @@
 | SCR-10 상담원 도우미 | [SCR-10](screens/SCR-10-assistant.md) | 8 | 8 | 전부 목 응답으로 확인(Gemini 호출 때문). 실제 연결은 [슬라이스 10](slices/10-assistant.md)의 손으로 확인한 것 |
 | SCR-11 문의 배정 | [SCR-11](screens/SCR-11-assign.md) | 4 | 4 | |
 | SCR-12 자동 처리 규칙 | [SCR-12](screens/SCR-12-auto-rules.md) | 5 | 5 | AC-4·5는 자동 발송 건 없이 성립하는 값(서버 숫자 일치)만 확인 |
-| 합계 | | 105 | 105 | |
+| 합계 | | 106 | 106 | |
 
 - 목(흉내 낸 응답)은 오류·빈 상태 시험에만 썼다: SCR-01-AC-4, SCR-02-AC-7, SCR-03-AC-5·7·12·20, SCR-05-AC-6, SCR-08-AC-1("색인 없음" 문서가 시연 DB에 없음). SCR-10은 8개 모두 목(답마다 Gemini를 부름).
 - AC가 아닌 화면 시험 2개: SCR-08 「왜?」 → [규칙표에서 보기], SCR-09 티켓 상세 → [접수 이력에서 보기].
@@ -47,7 +47,7 @@
 | FR-028 | 우선순위 조정·SLA 재계산 | SCR-03 P3 | `ticket/ActionPopups.tsx` | SCR-03-AC-13·14 | test_priority_override |
 | FR-033 | 이관 처리 | SCR-03 P4, 부서 회신 | `ticket/ActionPopups.tsx`, `ticket/DeptWriter.tsx` | SCR-03-AC-15·16 | test_escalation, test_dept_reply |
 | FR-032 | 고객 회신 입력 | SCR-03 P6 | `ticket/ActionPopups.tsx` | SCR-03-AC-17·18 | test_customer_reply |
-| FR-019 | 유사 해결사례 | SCR-03 ② "비슷한 해결사례", SCR-09 | `ticket/SystemTab.tsx`, `features/cases/CaseSearchPage.tsx` | SCR-03-AC-19, SCR-09 연결 시험 | test_similar_cases |
+| FR-019 | 유사 해결사례 | SCR-09 접수 이력(② 탭 블록은 ELLO로 대체해 뺌) | `features/cases/CaseSearchPage.tsx` | SCR-03-AC-19(블록 없음) | test_similar_cases |
 | R-06 (add-manual-draft) | 근거 없음 → 직접 작성 | SCR-03 ③ | `ticket/SendTab.tsx` | SCR-03-AC-20 | test_ticket_detail_full |
 | FR-047 | 나의 업무 현황 | SCR-04 | `features/mywork/MyWorkPage.tsx` | SCR-04-AC-1~8 | test_my_work |
 | FR-050 | 통화 받아쓰기·메모 초안 | SCR-05 | `features/phone/PhonePage.tsx` | SCR-05-AC-1~6 | test_call_transcription |

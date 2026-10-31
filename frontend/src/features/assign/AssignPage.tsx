@@ -92,7 +92,7 @@ export function AssignPage({ onOpen }: { onOpen: (ticketId: string) => void }) {
     { key: "prio", header: "우선순위", render: (r) => r.priority ? <PriorityBadge priority={r.priority} adjusted={!!r.priority_adjusted} /> : "—" },
     { key: "status", header: "상태", render: (r) => <StatusBadge status={r.status} /> },
     { key: "reason", header: "사유", render: (r) => <span className="asg-chips">{r.alerts.map((a) => <AlertChip key={a} alert={a} />)}</span> },
-    { key: "left", header: "남은 시간", align: "right", render: (r) => (r.remaining_h === null || r.remaining_h === undefined || r.status === "WAITING_CUSTOMER" ? "—" : formatRemaining(Number(r.remaining_h))) },
+    { key: "left", header: "해결 기한까지", align: "right", render: (r) => (r.remaining_h === null || r.remaining_h === undefined || r.status === "WAITING_CUSTOMER" ? "—" : formatRemaining(Number(r.remaining_h))) },
     { key: "who", header: "담당 상담원", render: (r) => (
       <select className="asg-select" aria-label={`${r.ticket_id} #${r.seq} 담당 상담원 변경`} value={r.assignee_masked ?? ""} onClick={(e) => e.stopPropagation()}
         onChange={(e) => void reassign([r.sub_ticket_id], e.target.value)}>

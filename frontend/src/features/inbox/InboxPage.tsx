@@ -103,8 +103,8 @@ const columnsFor = (sel: Set<string>, toggle: (id: string) => void, pageAll: boo
       </span>
     </>
   ) },
-  { key: "remaining", header: "남은 시간", sortKey: "remaining", align: "right", render: remainingCell },
-  { key: "alerts", header: "기한 · 경고", render: (r) => (
+  { key: "remaining", header: "해결 기한까지", sortKey: "remaining", align: "right", render: remainingCell },
+  { key: "alerts", header: "경고 (1차 응답·해결 기한)", render: (r) => (
     <span className="inbox-chips">
       {topAlerts(r.alerts).map((a) => <AlertChip key={a} alert={a} />)}
       {r.alerts.length > 1 && <span className="inbox-more" title={r.alerts.map((a) => ALERT[a] ?? a).join(" · ")}>+{r.alerts.length - 1}</span>}
