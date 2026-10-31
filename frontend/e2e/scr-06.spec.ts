@@ -19,7 +19,7 @@ test("SCR-06-AC-1: 숫자 카드와 한 줄 요약이 서버 집계와 같고 �
   const fr = Math.round((d.sla.fr_met / (d.sla.fr_met + d.sla.fr_breached)) * 100);
   await expect(kpi(page, "fr").locator("b")).toContainText(String(fr));
   await expect(page.getByTestId("ops-lead")).toContainText(`미해결 ${d.open.total}건 중 ${d.open.breach}건이 기한을 넘겼고 ${d.open.risk}건이 임박했습니다`);
-  await expect(page.getByRole("link", { name: "운영 대시보드" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("link", { name: "운영 현황" })).toHaveAttribute("aria-current", "page");
 });
 
 test("SCR-06-AC-2: 기간을 90일로 바꾸면 서버에 days=90으로 다시 묻고 카드 설명이 '최근 90일'이 된다", async ({ page, request }) => {
