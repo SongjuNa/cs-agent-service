@@ -215,6 +215,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/performance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Performance
+         * @description 내 실적(변경 add-my-performance): 최근 days일 동안 내가 한 발송·이관·조정을 날짜별로, 내 담당 문의의 기한 충족을.
+         */
+        get: operations["get_performance_me_performance_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me/workload": {
         parameters: {
             query?: never;
@@ -1940,6 +1960,47 @@ export interface components {
             /** Body */
             body: string;
         };
+        /** PerfDay */
+        PerfDay: {
+            /** Adjusted */
+            adjusted: number;
+            /** Date */
+            date: string;
+            /** Escalated */
+            escalated: number;
+            /** N */
+            n: number;
+            /** Sent */
+            sent: number;
+        };
+        /** PerfSla */
+        PerfSla: {
+            /** Fr Breached */
+            fr_breached: number;
+            /** Fr Met */
+            fr_met: number;
+            /** Res Ok */
+            res_ok: number;
+            /** Window Total */
+            window_total: number;
+        };
+        /** Performance */
+        Performance: {
+            /** Agent */
+            agent: string;
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Daily */
+            daily: components["schemas"]["PerfDay"][];
+            /** Days */
+            days: number;
+            sla: components["schemas"]["PerfSla"];
+            /** Total */
+            total: number;
+        };
         /** PriorityIn */
         PriorityIn: {
             /**
@@ -3113,6 +3174,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Loaded"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_performance_me_performance_get: {
+        parameters: {
+            query?: {
+                as_of?: string | null;
+                days?: number;
+            };
+            header?: {
+                "x-agent-id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Performance"];
                 };
             };
             /** @description Validation Error */

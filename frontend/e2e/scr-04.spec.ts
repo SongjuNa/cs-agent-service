@@ -202,3 +202,41 @@ test("SCR-04-AC-9 (최신 목업): '새 문의' 타일, '지금 처리할 건', 
   await page.getByTestId("now-list").locator("li").first().getByRole("button").click();
   await expect(page).toHaveURL(new RegExp(`/tickets/${first.ticket_id}$`));
 });
+
+test("SCR-04-AC-10 (최신 목업): '내 실적'의 오늘·기간 처리와 기한 충족이 서버 값과 같고, 오늘 처리한 건수 카드와 맞으며, 기간을 바꾸면 다시 묻는다", async ({ page, request }) => {
+  const asOf = "2026-09-30T23:59:00Z";
+  const agents: { name: string }[] = await (await request.get("http://localhost:8000/ref/agents?dept=TS_LV")).json();
+  let name = "", perf: { total: number; days: number; daily: { n: number; sent: number; escalated: number; adjusted: number }[]; sla: { window_total: number; fr_met: number; fr_breached: number; res_ok: number } } | null = null;
+  for (const a of agents) { // 재생 이력에서 이 기간에 처리한 기록이 있는 상담원
+    const r = await (await request.get(`http://localhost:8000/me/performance?as_of=${asOf}&days=30`, { headers: { "X-Agent-Id": a.name } })).json();
+    if (r.total > 0 && r.sla.window_total > 0) { name = a.name; break; }
+  }
+  expect(name, "30일 안에 처리 기록이 있는 TS_LV 상담원").not.toBe("");
+  perf = await (await request.get(`http://localhost:8000/me/performance?as_of=${asOf}&days=7`, { headers: { "X-Agent-Id": name } })).json();
+  const today = perf!.daily[perf!.daily.length - 1];
+  await useSession(page, { dept: "TS_LV", agent: name, snapshot: true });
+  await page.goto("/my");
+  const card = page.getByTestId("my-performance");
+  await expect(card).toBeVisible();
+  await expect(card.locator('[data-stat="today"] b')).toHaveText(String(today.n));
+  await expect(card.locator('[data-stat="total"] b')).toHaveText(String(perf!.total));
+  await expect(card.locator('[data-stat="total"] span')).toContainText("최근 7일 처리");
+  const fr = Math.round((perf!.sla.fr_met / (perf!.sla.fr_met + perf!.sla.fr_breached)) * 100);
+  await expect(card.locator('[data-stat="fr"] b')).toContainText(String(fr));
+  // 기존 '오늘 처리한 건수' 카드와 오늘 숫자가 같다(같은 정의)
+  const t = page.getByTestId("today");
+  await expect(t).toContainText(`발송${today.sent}`);
+  await expect(t).toContainText(`이관${today.escalated}`);
+  // 기간 바꾸기 → days=14로 다시 묻는다
+  const asked = page.waitForRequest((r) => r.url().includes("/me/performance") && r.url().includes("days=14"));
+  await card.getByRole("group", { name: "기간" }).getByRole("button", { name: "14일" }).click();
+  await asked;
+  await expect(card.locator('[data-stat="total"] span')).toContainText("최근 14일 처리");
+});
+
+test("SCR-04-AC-11: 상담원을 고르지 않은 '부서 전체' 보기에는 '내 실적'이 없다", async ({ page }) => {
+  await useSession(page, { dept: "TS_LV", snapshot: true });
+  await page.goto("/my");
+  await expect(page.getByTestId("greet")).toBeVisible();
+  await expect(page.getByTestId("my-performance")).toHaveCount(0);
+});

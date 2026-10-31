@@ -1013,3 +1013,29 @@ class DashboardSummary(Out):
     by_country: list[DashCountry]
     stages: list[DashStage]
     edited: DashEdited
+
+
+# ---- 내 실적 (GET /me/performance, 변경 add-my-performance) ----
+
+class PerfDay(Out):
+    date: str
+    n: int  # 그날 처리 = sent + escalated + adjusted
+    sent: int
+    escalated: int
+    adjusted: int
+
+
+class PerfSla(Out):
+    window_total: int  # 내가 담당이고 접수일이 기간 안인 문의
+    fr_met: int
+    fr_breached: int
+    res_ok: int
+
+
+class Performance(Out):
+    agent: str
+    as_of: datetime
+    days: int
+    total: int  # 기간 처리 합
+    daily: list[PerfDay]  # 오래된 날부터, 기준 시각이 든 날이 마지막
+    sla: PerfSla

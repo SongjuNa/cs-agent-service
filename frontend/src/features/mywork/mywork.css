@@ -63,3 +63,23 @@
 .mw-now__top > b { display: block; padding: var(--sp-12) var(--sp-16) 0; font-size: var(--fs-s); }
 .mw-now__top button { flex-direction: column; align-items: flex-start; gap: var(--sp-4); }
 .mw-now .mw-sub { white-space: nowrap; }
+
+/* 내 실적(add-my-performance) */
+.mw-perf { display: flex; flex-direction: column; gap: var(--sp-10); padding: var(--sp-14) var(--sp-16); }
+.mw-perf__h { display: flex; align-items: center; gap: var(--sp-10); font-size: var(--fs-s); }
+.mw-perf__span { margin-left: auto; display: inline-flex; border: 1px solid var(--color-line); border-radius: var(--r-md); overflow: hidden; }
+.mw-perf__span button { height: 28px; padding: 0 var(--sp-10); border: 0; background: var(--color-surface); color: var(--color-fg); font: inherit; font-size: var(--fs-xs); cursor: pointer; }
+.mw-perf__span button + button { border-left: 1px solid var(--color-line); }
+.mw-perf__span button.is-on { background: var(--color-brand); color: #fff; }
+.mw-perf__err { margin: 0; color: var(--color-neg); font-size: var(--fs-s); }
+.mw-perf__body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--sp-20, 20px); align-items: end; }
+@media (max-width: 1000px) { .mw-perf__body { grid-template-columns: minmax(0, 1fr); } }
+.mw-perf__nums { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-12); }
+.mw-perf__nums b { display: block; font-size: 22px; font-weight: var(--fw-semibold); font-variant-numeric: tabular-nums; }
+.mw-perf__nums span { font-size: var(--fs-xs); color: var(--color-fg-sub); }
+.mw-perf__bars { display: flex; align-items: flex-end; gap: 3px; height: 96px; }
+.mw-perf__bar { position: relative; flex: 1; min-width: 4px; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+.mw-perf__bar i { display: block; width: 100%; min-height: 2px; border-radius: 3px 3px 0 0; background: var(--color-line); }
+.mw-perf__bar.is-today i { background: var(--color-brand); }
+.mw-perf__bar small { position: absolute; bottom: -16px; font-size: 10px; color: var(--color-fg-sub); }
+.mw-perf__bars { padding-bottom: 18px; }
