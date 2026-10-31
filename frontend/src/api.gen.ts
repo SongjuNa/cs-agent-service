@@ -2107,14 +2107,20 @@ export interface components {
             fields: components["schemas"]["Field"][];
             /** History */
             history: components["schemas"]["StatusHistory"][];
+            /** Next Action */
+            next_action: string;
             /** Other Flags */
             other_flags: string[];
             /** Product Name */
             product_name: string | null;
+            /** Review Depth */
+            review_depth: string;
             similar_cases?: components["schemas"]["SimilarCases"] | null;
             sla: components["schemas"]["Sla"] | null;
             state: components["schemas"]["SubState"];
             sub_ticket: components["schemas"]["SubTicketRow"];
+            /** Turn */
+            turn: string;
             /** Version */
             version: number;
             /** Wait Intervals */

@@ -26,6 +26,26 @@ export function rememberInboxUrl(url: string): void {
   }
 }
 
+const ORDER_KEY = "cs-inbox-order";
+
+/** 접수함이 지금 보여 주는 문의 번호 순서(복합 문의는 한 번). 상세의 이전·다음 문의 이동이 쓴다 */
+export function rememberInboxOrder(ticketIds: string[]): void {
+  try {
+    sessionStorage.setItem(ORDER_KEY, JSON.stringify([...new Set(ticketIds)]));
+  } catch {
+    // 저장을 못 쓰면 이전·다음 이동이 없을 뿐이다
+  }
+}
+
+export function inboxOrder(): string[] {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(ORDER_KEY) ?? "[]");
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
 export function hasFilters(search: URLSearchParams): boolean {
   return FILTER_KEYS.some((k) => search.has(k));
 }

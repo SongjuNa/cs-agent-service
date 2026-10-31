@@ -409,6 +409,9 @@ class SubTicket(Out):
     writer: Literal["CS", "DEPT_REPLY", "DEPT_MAIL"]
     dept_replies: list[DeptReply]
     dept_mails: list[DeptMail]
+    turn: str  # ME·DEPT·CUSTOMER·DONE (접수함 줄과 같은 규칙, add-inbox-turn-depth)
+    next_action: str
+    review_depth: str  # DEEP·NORMAL·QUICK
 
 
 class Detail(Out):

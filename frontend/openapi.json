@@ -5295,6 +5295,10 @@
             "title": "History",
             "type": "array"
           },
+          "next_action": {
+            "title": "Next Action",
+            "type": "string"
+          },
           "other_flags": {
             "items": {
               "type": "string"
@@ -5312,6 +5316,10 @@
               }
             ],
             "title": "Product Name"
+          },
+          "review_depth": {
+            "title": "Review Depth",
+            "type": "string"
           },
           "similar_cases": {
             "anyOf": [
@@ -5338,6 +5346,10 @@
           },
           "sub_ticket": {
             "$ref": "#/components/schemas/SubTicketRow"
+          },
+          "turn": {
+            "title": "Turn",
+            "type": "string"
           },
           "version": {
             "title": "Version",
@@ -5382,7 +5394,10 @@
           "customer_followups",
           "writer",
           "dept_replies",
-          "dept_mails"
+          "dept_mails",
+          "turn",
+          "next_action",
+          "review_depth"
         ],
         "title": "SubTicket",
         "type": "object"

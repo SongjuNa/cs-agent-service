@@ -10,7 +10,7 @@ import {
   AlertChip, Banner, Button, Chip, DataTable, EmptyState, formatRemaining, PageHeader, Pager, PriorityBadge, Tabs,
   type Column,
 } from "../../ui";
-import { ALL_ALERTS, hasFilters, rememberInboxUrl, SIZE, useInbox } from "./inboxQuery";
+import { ALL_ALERTS, hasFilters, rememberInboxOrder, rememberInboxUrl, SIZE, useInbox } from "./inboxQuery";
 import "./inbox.css";
 
 const FAIL = "목록을 불러오지 못함. 새로고침"; // FR-029 예외 4행
@@ -136,6 +136,7 @@ export function InboxPage({ onOpen, flash, navigate }: {
   const data = inbox.data ?? last.current;
 
   useEffect(() => { rememberInboxUrl(`/inbox${window.location.search}`); }, [search]);
+  useEffect(() => { if (data) rememberInboxOrder(data.rows.map((r) => r.ticket_id)); }, [data]);
   useEffect(() => {
     const onPop = () => setSearch(new URLSearchParams(window.location.search));
     window.addEventListener("popstate", onPop);

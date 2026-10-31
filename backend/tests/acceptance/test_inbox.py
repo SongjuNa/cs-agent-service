@@ -217,3 +217,19 @@ def test_inbox_assignee_turn_depth_filters(snapshot):
     assert me_rows and all(r["turn"] == "ME" for r in me_rows)
     deep = ts_lv(snapshot, depth=["DEEP"])
     assert deep["counts"]["deep"] == len(deep["rows"]) and all(r["review_depth"] == "DEEP" for r in deep["rows"])
+
+
+def test_detail_turn_depth_same_as_inbox_row(api):
+    """add-inbox-turn-depth: 상세의 하위 문의 turn·next_action·review_depth가 접수함 줄과 같다."""
+    detail = compound(api)
+    tid = detail["ticket"]["ticket_id"]
+    client = api[0]
+    got = client.get(f"/tickets/{tid}").json()
+    by_id = {s["sub_ticket"]["sub_ticket_id"]: s for s in got["sub_tickets"]}
+    checked = 0
+    for dept in ("TS_ENERGY", "GCS_L1"):
+        for row in client.get("/tickets", params={"dept": dept, "q": tid}).json()["rows"]:
+            sub = by_id[row["sub_ticket_id"]]
+            assert (sub["turn"], sub["next_action"], sub["review_depth"]) == (row["turn"], row["next_action"], row["review_depth"])
+            checked += 1
+    assert checked == 2

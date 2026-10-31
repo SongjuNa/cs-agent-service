@@ -1,7 +1,7 @@
 // SCR-03 머리 카드 H-01~H-05와 경고 띠 H-03. 배치는 목업 v1.42 `viewTicket`의 .obj-head(제목 줄 + 숫자 6칸)와 .strip.
 import type { ReactNode } from "react";
 import type { Detail, SubTicket } from "../../api";
-import { CATEGORY, CHANNEL, label, STATUS } from "../../app/labels";
+import { CATEGORY, CHANNEL, DEPTH, DEPTH_HINT, label, NEXT_HINT, STATUS } from "../../app/labels";
 import { useDepartments } from "../../app/queries";
 import { Button, Chip, PriorityBadge } from "../../ui";
 
@@ -45,8 +45,10 @@ function resolutionText(sub: SubTicket): { value: ReactNode; sub: string } {
   };
 }
 
-export function HeadCard({ detail, onBack, onReprocess, busy }: {
-  detail: Detail; onBack: () => void; onReprocess: () => void; busy: boolean;
+export interface InboxNav { ids: string[]; index: number; go: (ticketId: string) => void }
+
+export function HeadCard({ detail, onBack, onReprocess, busy, nav }: {
+  detail: Detail; onBack: () => void; onReprocess: () => void; busy: boolean; nav?: InboxNav;
 }) {
   const depts = useDepartments();
   const { ticket, run, summary } = detail;
@@ -79,12 +81,22 @@ export function HeadCard({ detail, onBack, onReprocess, busy }: {
           {runLine}
         </span>
         <span className="tk-head__actions">
+          {nav && nav.ids.length > 0 && nav.index >= 0 && (
+            <span className="tk-nav" role="group" aria-label="이전·다음 문의">
+              <button type="button" disabled={nav.index === 0} aria-label="이전 문의 (k)" title="이전 문의 · k" onClick={() => nav.go(nav.ids[nav.index - 1])}>‹</button>
+              <span>{nav.index + 1} / {nav.ids.length}</span>
+              <button type="button" disabled={nav.index >= nav.ids.length - 1} aria-label="다음 문의 (j)" title="다음 문의 · j" onClick={() => nav.go(nav.ids[nav.index + 1])}>›</button>
+            </span>
+          )}
           {(detail.can_reprocess || detail.can_retry) && (
             <Button onClick={onReprocess} busy={busy}>{detail.can_retry ? "다시 시도" : "다시 처리"}</Button>
           )}
           <Button className="tk-back" onClick={onBack}>접수함으로</Button>
         </span>
       </div>
+      <p className="tk-recv">
+        접수 <b>{ticket.received_at_utc.replace("T", " ").slice(0, 16)}</b> · {label(CHANNEL, ticket.channel)} · {ticket.country ?? "국가 미상"} · 답장 {ticket.language}
+      </p>
       <div className="tk-stats">
         <Stat k="상태" sub={subs.length > 1 ? "가장 급한 문의 기준" : undefined}>{label(STATUS, summary?.status ?? rep?.sub_ticket.status)}</Stat>
         <Stat k="채널">{label(CHANNEL, ticket.channel)}</Stat>
@@ -99,6 +111,27 @@ export function HeadCard({ detail, onBack, onReprocess, busy }: {
         <Stat k="해결 기한" sub={res?.sub}>{res?.value ?? "—"}</Stat>
         <Stat k="담당" small>{deptsShown.map(deptName).join(", ")}</Stat>
       </div>
+    </section>
+  );
+}
+
+/** 지금 할 일 한 줄과 검토 모드. 접수함 줄과 같은 서버 규칙(turn·next_action·review_depth, 변경 add-inbox-turn-depth) */
+export function NowStrip({ detail, deptName }: { detail: Detail; deptName: (code: string | null) => string }) {
+  const rep = repOf(detail);
+  if (!rep || detail.processing) return null;
+  const done = rep.turn === "DONE";
+  const waiting = rep.turn === "DEPT" || rep.turn === "CUSTOMER";
+  const text = rep.next_action === "WAIT_DEPT"
+    ? `${deptName(rep.sub_ticket.escalated_to)} 회신 대기 — ${NEXT_HINT.WAIT_DEPT}` : label(NEXT_HINT, rep.next_action);
+  return (
+    <section className={`tk-now tk-now--${done ? "done" : waiting ? "wait" : "me"}`} aria-label="지금 할 일" data-testid="now-strip">
+      <span className="tk-now__k">{done ? "완료" : waiting ? "대기" : "내 차례"}</span>
+      <span className="tk-now__t">{text}</span>
+      {!done && (
+        <span className={`tk-now__depth tk-now__depth--${rep.review_depth.toLowerCase()}`} title={DEPTH_HINT[rep.review_depth]}>
+          검토 모드 · {DEPTH[rep.review_depth]}
+        </span>
+      )}
     </section>
   );
 }

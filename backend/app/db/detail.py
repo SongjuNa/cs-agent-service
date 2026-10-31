@@ -17,6 +17,7 @@ from app.db.runs import agent_edits, latest_pipeline_run, pipeline_run, run_for_
 from app.pipeline.reprocess import last_pipeline_step
 from app.pipeline.state import VerifyFinding
 from app.rules.escalation import load_team_rules
+from app.rules.turn import depth_of, turn_of
 from app.sla.adjust import adjustments
 from app.sla.alerts import alert_history
 from app.sla.clock import clocks
@@ -69,6 +70,12 @@ def ticket_detail(conn: Connection, ticket_id: str, agent_dept: str | None = Non
     # 하위 문의마다 자기 run(복합 문의는 하위 문의별 run, AC-036-4)
     subs = [_sub_detail(conn, s, run_for_sub(conn, s["sub_ticket_id"])) | _state(conn, s, sla.get(s["sub_ticket_id"]))
             | _dept(conn, s, agent_dept) for s in rows]
+    for sd in subs:  # 접수함 줄과 같은 규칙(변경 add-inbox-turn-depth): 누구 차례, 다음 행동, 검토 모드
+        row = sd["sub_ticket"]
+        unsent = any(d["message_status"] in ("DRAFT", "APPROVED") and not d.get("sent") for d in sd["drafts"])
+        needs_info = bool(row["missing_blocking_info"])
+        sd["turn"], sd["next_action"] = turn_of(row["status"], needs_info, unsent, bool(sd["dept_replies"]))
+        sd["review_depth"] = depth_of(row["priority"], row["urgency_flag"], needs_info)
     # FR-006 출력: 티켓의 유형 = 하위 문의 유형을 순번 순으로 ';'로 이은 값(표에 열이 없어 계산, 기술 명세서 §6-2)
     ticket["category_code"] = ";".join(r["category_code"] for r in rows if r["category_code"]) or None
     summary = _row(conn, """SELECT status, rep_sub_ticket_id, rep_res_status, rep_remaining_h, open_count, inquiry_count
