@@ -100,6 +100,9 @@ a.shell-crumb__seg:hover { color: var(--color-brand); text-decoration: underline
 .shell-prof__stats b.is-bad { color: var(--color-neg); }
 .shell-prof__stats span { font-size: 10.5px; color: var(--color-fg-sub); white-space: nowrap; }
 .shell.is-collapsed .shell-prof__body { display: none; }
+.shell-nav__new { margin-left: auto; padding: 0 var(--sp-8); height: 20px; display: inline-flex; align-items: center; border-radius: var(--r-pill); background: var(--color-info-bg); color: var(--color-info); font-size: var(--fs-xs); font-weight: var(--fw-bold); }
+.shell-nav__new + .shell-nav__count { margin-left: var(--sp-6); }
+.shell.is-collapsed .shell-nav__new { display: none; }
 
 .shell-session { display: inline-flex; align-items: center; gap: var(--sp-6); height: 34px; padding: 0 var(--sp-6) 0 var(--sp-12); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: var(--r-pill); font-size: var(--fs-s); white-space: nowrap; }
 .shell-session svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; }
@@ -110,6 +113,3 @@ a.shell-crumb__seg:hover { color: var(--color-brand); text-decoration: underline
 .shell-logout { display: inline-flex; align-items: center; gap: var(--sp-6); height: 34px; padding: 0 var(--sp-12); border: 0; background: transparent; color: var(--color-side-fg); font: inherit; font-size: var(--fs-s); cursor: pointer; }
 .shell-logout:hover { background: var(--color-side-hover); border-radius: var(--r-pill); }
 .shell-logout svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; }
-.shell-nav__new { margin-left: auto; padding: 0 var(--sp-8); height: 20px; display: inline-flex; align-items: center; border-radius: var(--r-pill); background: var(--color-info-bg); color: var(--color-info); font-size: var(--fs-xs); font-weight: var(--fw-bold); }
-.shell-nav__new + .shell-nav__count { margin-left: var(--sp-6); }
-.shell.is-collapsed .shell-nav__new { display: none; }
