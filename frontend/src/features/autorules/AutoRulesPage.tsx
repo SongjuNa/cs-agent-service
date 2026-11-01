@@ -43,7 +43,7 @@ export function AutoRulesPage() {
 
   return (
     <div className="auto">
-      <PageHeader title="자동 처리 규칙" meta="간단한 문의는 검증을 통과하면 사람 승인 없이 보내고, 복잡하거나 고위험인 문의는 상담원이 확인합니다"
+      <PageHeader title="자동 처리 규칙"
         actions={<Button disabled={!agent || busy} onClick={() => set(DEFAULTS)}>기본값으로</Button>} />
       {!agent && <Banner tone="info">상단에서 상담원을 고르면 설정을 바꿀 수 있습니다. 바꾼 사람이 기록됩니다.</Banner>}
       {error && <Banner tone="neg">{error}</Banner>}
@@ -51,7 +51,7 @@ export function AutoRulesPage() {
       <section className="ui-card auto-card" aria-label="자동 발송 스위치">
         <div className="auto-row">
           <div className="auto-grow"><b>검증 AI 자동 발송</b>
-            <p className="auto-note">켜면 아래 조건을 모두 만족하는 문의는 상담원 승인 없이 발송 기록이 남고, 상담원이 나중에 사후 검수합니다. 끄면 어떤 문의도 자동으로 보내지 않습니다.</p></div>
+            <p className="auto-note">간단한 문의는 검증 AI가 확인해 사람 승인 없이 보내고, 복잡하거나 고위험인 문의는 상담원이 확인합니다. 켜면 아래 조건을 모두 만족하는 문의는 상담원 승인 없이 발송 기록이 남고, 상담원이 나중에 사후 검수합니다. 끄면 어떤 문의도 자동으로 보내지 않습니다.</p></div>
           <label className="auto-sw"><input type="checkbox" role="switch" aria-label="자동 발송" checked={r.enabled} disabled={!agent || busy} onChange={(e) => set({ enabled: e.target.checked })} />{r.enabled ? "켜짐" : "꺼짐"}</label>
         </div>
         <p className="auto-stat" data-testid="auto-stat">지금까지 자동 발송 <b>{r.stats.auto_total}건</b> (사후 검수 전 <b>{r.stats.auto_pending}건</b>) · 전체 {r.stats.total}건 중 {pct}%</p>

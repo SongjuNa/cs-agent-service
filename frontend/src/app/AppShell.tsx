@@ -32,7 +32,7 @@ export const MENU: MenuGroup[] = [
     { key: "etc", label: "기타 관리", path: "/etc", ready: true },
   ] },
   { key: "ops", label: "대시보드", items: [
-    { key: "ops", label: "운영 대시보드", path: "/dashboard" },
+    { key: "ops", label: "운영 현황", path: "/dashboard" },
     { key: "assign", label: "문의 배정 관리", path: "/admin/assign", ready: true },
     { key: "auto", label: "자동 처리 규칙", path: "/admin/auto", ready: true },
   ] },

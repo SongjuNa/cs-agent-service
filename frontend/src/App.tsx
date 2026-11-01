@@ -74,7 +74,7 @@ function crumbsOf(page: Page): Crumb[] {
   if (page.kind === "ticket") return [{ label: "접수", path: "/inbox" }, { label: "접수함", path: lastInboxUrl() }, { label: page.id }];
   if (page.kind === "intake") return [{ label: "접수", path: "/inbox" }, { label: "접수함", path: "/inbox" }, { label: "접수 시뮬레이터" }];
   if (page.kind === "assign") return [{ label: "대시보드" }, { label: "문의 배정 관리" }];
-  if (page.kind === "ops") return [{ label: "대시보드" }, { label: "운영 대시보드" }];
+  if (page.kind === "ops") return [{ label: "대시보드" }, { label: "운영 현황" }];
   if (page.kind === "auto") return [{ label: "대시보드" }, { label: "자동 처리 규칙" }];
   if (page.kind === "my") return [{ label: "홈", path: "/my" }, { label: "나의 업무 현황" }];
   if (page.kind === "phone") return [{ label: "접수", path: "/inbox" }, { label: "전화 상담" }];

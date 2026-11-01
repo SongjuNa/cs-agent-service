@@ -30,7 +30,7 @@ export function OpsDashboardPage({ navigate }: { navigate: (path: string) => voi
   const deptName = (code: string) => depts.data?.find((d) => d.dept_code === code)?.dept_name_ko ?? code;
   const d = q.data;
   if (!d) {
-    return <><PageHeader title="운영 대시보드" />{q.isError ? <Banner tone="neg" action={<Button size="sm" onClick={() => void q.refetch()}>새로고침</Button>}>불러오지 못함. 새로고침</Banner> : <div className="ops-skel" aria-busy="true" />}</>;
+    return <><PageHeader title="운영 현황" />{q.isError ? <Banner tone="neg" action={<Button size="sm" onClick={() => void q.refetch()}>새로고침</Button>}>불러오지 못함. 새로고침</Banner> : <div className="ops-skel" aria-busy="true" />}</>;
   }
   return <Body d={d} days={days} setDays={setDays} stale={q.isError} refetch={() => void q.refetch()} deptName={deptName} navigate={navigate} />;
 }
@@ -48,7 +48,6 @@ function Body({ d, days, setDays, stale, refetch, deptName, navigate }: {
   const peak = perDay.indexOf(Math.max(...perDay));
   const loadAvg = d.by_agent.reduce((s, a) => s + a.open, 0) / Math.max(1, d.by_agent.length);
   const heavy = d.by_agent[0];
-  const edited = d.edited.sent ? pct(d.edited.edited, d.edited.sent) : null;
   const autoRate = d.auto.total ? pct(d.auto.sent, d.auto.total) : null;
   const deptMax = Math.max(1, ...d.by_dept.map((x) => x.open));
   const agentMax = Math.max(1, ...d.by_agent.map((x) => x.open));
@@ -56,7 +55,7 @@ function Body({ d, days, setDays, stale, refetch, deptName, navigate }: {
 
   return (
     <div className={stale ? "ops is-stale" : "ops"} data-testid="ops">
-      <PageHeader title="운영 대시보드" meta={`전체 부서 · 기준 ${d.as_of.slice(0, 16).replace("T", " ")} UTC · 기한 충족과 접수 추이는 최근 ${d.days}일 접수분`} />
+      <PageHeader title="운영 현황" actions={<span className="ops-scope" title={`기준 ${d.as_of.slice(0, 16).replace("T", " ")} UTC · 기한 충족과 접수 추이는 최근 ${d.days}일 접수분`}>관리자 · 전체 부서</span>} />
       {stale && <Banner tone="neg" action={<Button size="sm" onClick={refetch}>새로고침</Button>}>불러오지 못함. 새로고침</Banner>}
       <p className="ops-lead" data-testid="ops-lead">
         미해결 <b>{d.open.total}건</b> 중 <b className={d.open.breach ? "is-bad" : undefined}>{d.open.breach}건</b>이 기한을 넘겼고 {d.open.risk}건이 임박했습니다.
@@ -71,8 +70,6 @@ function Body({ d, days, setDays, stale, refetch, deptName, navigate }: {
         <button type="button" className="ops-kpi is-link" data-kpi="breach" onClick={() => navigate("/admin/assign?kind=breach")}>
           <span>기한 위반</span><b className={d.open.breach ? "is-bad" : undefined}>{d.open.breach}<small>건</small></b><em>임박 {d.open.risk}건 · 누르면 배정 관리</em>
         </button>
-        <div className="ops-kpi" data-kpi="edited"><span>고쳐 보낸 비율</span><b>{edited ?? "—"}{edited !== null && <small>%</small>}</b>
-          <em>{d.edited.sent ? `AI 초안을 고쳐 보낸 ${d.edited.edited}건 / 보낸 ${d.edited.sent}건` : "이 시스템에서 보낸 답변이 아직 없어 계산하지 않음"}</em></div>
         <button type="button" className="ops-kpi is-link" data-kpi="auto" onClick={() => navigate("/inbox?auto=true&m=0")}>
           <span>AI 자동 처리율</span><b>{autoRate ?? "—"}{autoRate !== null && <small>%</small>}</b>
           <em>{d.auto.total ? `자동 발송 ${d.auto.sent}건 중 사후 검수 ${d.auto.reviewed}건 · 사람 ${d.auto.human}건` : `최근 ${d.days}일 보낸 최종 답변이 없어 계산하지 않음`}</em></button>

@@ -22,6 +22,8 @@ const PATHS: Record<string, string> = {
   timer: "<line x1=\"10\" x2=\"14\" y1=\"2\" y2=\"2\"></line><line x1=\"12\" x2=\"15\" y1=\"14\" y2=\"11\"></line><circle cx=\"12\" cy=\"14\" r=\"8\"></circle>",
   sliders: "<path d=\"M20 7h-9\"></path><path d=\"M14 17H5\"></path><circle cx=\"17\" cy=\"17\" r=\"3\"></circle><circle cx=\"7\" cy=\"7\" r=\"3\"></circle>",
   logout: "<path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4\"></path><polyline points=\"16 17 21 12 16 7\"></polyline><line x1=\"21\" x2=\"9\" y1=\"12\" y2=\"12\"></line>",
+  assign: "<circle cx=\"9\" cy=\"7\" r=\"4\"></circle><path d=\"M3 21v-1a6 6 0 0 1 6-6\"></path><circle cx=\"18\" cy=\"18\" r=\"2\"></circle><path d=\"M18 13v1M18 22v-2M22.3 15.5l-.9.5M14.6 20l-.9.5M22.3 20.5l-.9-.5M14.6 16l-.9-.5\"></path>",
+  auto: "<path d=\"M12 8V4H8\"></path><rect x=\"4\" y=\"8\" width=\"16\" height=\"12\" rx=\"2\"></rect><path d=\"M2 14h2M20 14h2M15 13v2M9 13v2\"></path>",
   help: "<circle cx=\"12\" cy=\"12\" r=\"9\"></circle><path d=\"M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6\"></path><path d=\"M12 17.2h.01\"></path>",
   collapse: "<path d=\"m15 6-6 6 6 6\"></path>",
   crumbHome: "<path d=\"M12 3.2 2.5 11.1l1.3 1.5L5 11.6V21h5.2v-6h3.6v6H19v-9.4l1.2 1 1.3-1.5z\"></path>",

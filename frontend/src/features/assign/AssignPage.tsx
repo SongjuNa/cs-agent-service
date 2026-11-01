@@ -6,7 +6,7 @@ import { api, ApiError, type InboxRow } from "../../api";
 import { CATEGORY, label } from "../../app/labels";
 import { useAgents, useDepartments } from "../../app/queries";
 import { useSession } from "../../app/session";
-import { AlertChip, Banner, Button, DataTable, EmptyState, formatRemaining, PageHeader, Pager, PriorityBadge, StatusBadge, type Column } from "../../ui";
+import { AlertChip, Banner, Button, Chip, DataTable, EmptyState, formatLeft, formatRemaining, PageHeader, Pager, PriorityBadge, StatusBadge, type Column } from "../../ui";
 import "./assign.css";
 
 const SIZE = 15; // 목업 쪽당 15건
@@ -91,8 +91,8 @@ export function AssignPage({ onOpen }: { onOpen: (ticketId: string) => void }) {
     { key: "dept", header: "부서", render: (r) => depts.data?.find((d) => d.dept_code === r.assigned_dept)?.dept_name_ko ?? r.assigned_dept ?? "—" },
     { key: "prio", header: "우선순위", render: (r) => r.priority ? <PriorityBadge priority={r.priority} adjusted={!!r.priority_adjusted} /> : "—" },
     { key: "status", header: "상태", render: (r) => <StatusBadge status={r.status} /> },
-    { key: "reason", header: "사유", render: (r) => <span className="asg-chips">{r.alerts.map((a) => <AlertChip key={a} alert={a} />)}</span> },
-    { key: "left", header: "해결 기한까지", align: "right", render: (r) => (r.remaining_h === null || r.remaining_h === undefined || r.status === "WAITING_CUSTOMER" ? "—" : formatRemaining(Number(r.remaining_h))) },
+    { key: "reason", header: "사유", render: (r) => <span className="asg-chips">{[...r.alerts].sort((a, b) => ["FR_BREACHED", "RES_BREACHED", "FR_AT_RISK", "RES_AT_RISK"].indexOf(a) - ["FR_BREACHED", "RES_BREACHED", "FR_AT_RISK", "RES_AT_RISK"].indexOf(b)).slice(0, 1).map((a) => <AlertChip key={a} alert={a} />)}{r.alerts.length > 1 && <span className="sub" title={r.alerts.join(" · ")}>+{r.alerts.length - 1}</span>}</span> },
+    { key: "left", header: "해결 기한까지", align: "right", render: (r) => (r.remaining_h === null || r.remaining_h === undefined || r.status === "WAITING_CUSTOMER" ? "—" : <span title={formatRemaining(Number(r.remaining_h))}><Chip tone={r.res_status === "BREACHED" ? "neg" : r.res_status === "AT_RISK" ? "crit" : "pos"}>{formatLeft(Number(r.remaining_h))}</Chip></span>) },
     { key: "who", header: "담당 상담원", render: (r) => (
       <select className="asg-select" aria-label={`${r.ticket_id} #${r.seq} 담당 상담원 변경`} value={r.assignee_masked ?? ""} onClick={(e) => e.stopPropagation()}
         onChange={(e) => void reassign([r.sub_ticket_id], e.target.value)}>
@@ -104,7 +104,7 @@ export function AssignPage({ onOpen }: { onOpen: (ticketId: string) => void }) {
   if (!dept) return <><PageHeader title="문의 배정 관리" /><EmptyState title="부서를 선택하세요">왼쪽 위 프로필을 눌러 부서를 고릅니다.</EmptyState></>;
   return (
     <div className="asg">
-      <PageHeader title="문의 배정 관리" meta="부서와 담당 상담원, 사유로 미해결 문의를 거르고 담당을 바꿉니다" />
+      <PageHeader title="문의 배정 관리" actions={<span className="asg-scope">담당 상담원 변경</span>} />
       {notice && <Banner tone={notice.tone} action={<Button size="sm" variant="ghost" onClick={() => setNotice(null)}>닫기</Button>}>{notice.text}</Banner>}
       {list.isError && <Banner tone="neg" action={<Button size="sm" onClick={() => void list.refetch()}>새로고침</Button>}>목록을 불러오지 못함. 새로고침</Banner>}
       <section className="ui-card">

@@ -9,3 +9,4 @@
 .asg-sub { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-xs); color: var(--color-fg-sub); }
 .asg-chips { display: inline-flex; flex-wrap: wrap; gap: var(--sp-4); }
 .asg-select { width: 112px; height: 30px; }
+.asg-scope { display: inline-flex; align-items: center; height: 28px; padding: 0 var(--sp-12); border-radius: var(--r-pill); background: var(--color-teal-bg); color: var(--color-teal-ink); font-size: var(--fs-xs); font-weight: var(--fw-semibold); }
