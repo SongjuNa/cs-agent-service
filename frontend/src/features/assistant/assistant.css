@@ -33,3 +33,5 @@
 .as-form { display: flex; gap: var(--sp-8); align-items: flex-end; padding: var(--sp-10) var(--sp-12); border-top: 1px solid var(--color-line); }
 .as-form textarea { flex: 1; resize: none; padding: var(--sp-8) var(--sp-10); border: 1px solid var(--color-line); border-radius: var(--r-md); font: inherit; font-size: var(--fs-b); color: var(--color-fg); }
 .as-input-error { margin: 0; padding: 0 var(--sp-12) var(--sp-10); font-size: var(--fs-s); color: var(--color-neg); }
+.as-chips { display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-6); width: 100%; margin-top: var(--sp-4); }
+.as-chips .as-chip { padding: var(--sp-8) var(--sp-12); border-radius: var(--r-md); font-size: var(--fs-s); text-align: left; }
