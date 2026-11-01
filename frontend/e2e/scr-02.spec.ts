@@ -20,9 +20,9 @@ test("SCR-02-AC-1: 미해결 360건 재생 + 스냅샷, TS_LV 요약 '전체 n'�
   await expect(rows(page).first()).toBeVisible();
   await expect(page.getByRole("tab", { name: new RegExp(`^전체\\s*${api.counts.total}$`) })).toBeVisible();
   expect(api.counts.total).toBeGreaterThanOrEqual(69);
-  const alerts = await column(page, "기한");
+  const alerts = await column(page, "경고");
   expect(alerts[0].trim()).not.toBe("");
-  const left = (await column(page, "해결 기한까지")).map((t) => Number(t.replace("−", "-").replace(/[^\d.-]/g, "")));
+  const left = (await rows(page).locator("td [data-hours]").evaluateAll((els) => els.map((e) => e.getAttribute("data-hours")))).map((t) => (t === "" ? Number.NaN : Number(t)));
   const withAlert = left.filter((v, i) => alerts[i].trim() !== "" && !Number.isNaN(v));
   expect(left[0]).toBe(Math.min(...withAlert));
 });
@@ -159,7 +159,7 @@ test("SCR-02-AC-11: 요약 탭에 회신 대기·이관이 있고, 새 문의 �
   await page.getByRole("tab", { name: /^회신 대기/ }).click();
   await expect(page).toHaveURL(/status=WAITING_CUSTOMER/);
   // 응답이 느리면 이전 목록이 남아 있으므로, 모든 줄이 고객 회신 대기가 될 때까지 기다린다
-  await expect.poll(async () => { const v = await column(page, "처리 상태"); return v.length > 0 && v.every((t) => /^고객 회신 대기|^회신 대기/.test(t.trim())); }).toBe(true);
+  await expect.poll(async () => { const v = await column(page, "처리 상태"); return v.length > 0 && v.every((t) => /^[⏸\s]*(고객 )?회신 대기/.test(t.trim())); }).toBe(true);
   // 새 문의 칩 → status=NEW, 다시 누르면 풀린다
   await page.getByRole("tab", { name: /^전체/ }).click();
   const chip = page.getByRole("button", { name: /^새 문의/ });
@@ -260,4 +260,16 @@ test("SCR-02-AC-14 (최신 목업): 행을 골라 [우선순위 조정]에서 �
         data: { new_priority: r.priority, reason_kind: "OTHER", reason_text: "시험 되돌리기", confirm_breach: true, expected_version: p.version } });
     }
   }
+});
+
+test("SCR-02-AC-12: 해결 기한까지는 '6일 10시간 초과'·'2시간 남음' 같은 말로 색 칩에, 처리 상태는 칩에 보이고 왼쪽 메뉴 접수함 옆에 새 문의 수가 보인다", async ({ page, request }) => {
+  const api = await (await request.get("http://localhost:8000/tickets?dept=TS_LV&as_of=2026-09-30T23:59:00Z&size=1")).json();
+  await useSession(page, { dept: "TS_LV", snapshot: true });
+  await page.goto("/inbox");
+  await expect(rows(page).first()).toBeVisible();
+  const left = await column(page, "해결 기한까지");
+  expect(left.some((t) => /\d+(일|시간|분)[\d일시간분 ]*(초과|남음)/.test(t))).toBe(true);
+  await expect(rows(page).first().locator("td").nth(6).locator(".ui-chip")).toBeVisible();
+  const pill = page.getByTestId("nav-inbox-new");
+  if (api.counts.new > 0) await expect(pill).toHaveText(`새 ${api.counts.new}`); else await expect(pill).toHaveCount(0);
 });
