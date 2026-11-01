@@ -88,3 +88,31 @@ test("SCR-10-AC-8 [새 대화]를 누르면 대화 목록이 비고 안내 글�
   await expect(page.getByTestId("assist-answer")).toHaveCount(0);
   await expect(page.getByText("오류 코드나 제품 이름을 넣어 물어보세요")).toBeVisible();
 });
+
+test("SCR-10-AC-9 (최신 목업): 첫 화면에 질문 후보가 있고, 누르면 그 질문이 그대로 가서 답이 나온다", async ({ page }) => {
+  const bodies: { question: string; product_code: string | null }[] = [];
+  await page.route("**/api/assist/ask", (r) => { bodies.push(r.request().postDataJSON()); return json(r, 200, FOUND); });
+  await open(page);
+  const chips = page.getByTestId("assist-chips").getByRole("button");
+  await expect(chips).toHaveCount(4);
+  await page.getByTestId("assist-chips").getByRole("button", { name: "반품 정책" }).click();
+  await expect(page.getByTestId("assist-answer")).toBeVisible();
+  expect(bodies[0].question).toBe("반품 정책");
+  await expect(page.getByTestId("assist-chips")).toHaveCount(0); // 대화가 시작되면 후보는 사라지고 이어 묻기 칩이 대신한다
+});
+
+test("SCR-10-AC-10 (최신 목업): 문의 화면에서는 그 문의의 제품·오류 코드로 후보가 바뀌고, 질문에 제품 코드가 실려 간다", async ({ page, request }) => {
+  const list = await (await request.get("http://localhost:8000/tickets?dept=TS_LV&size=1&as_of=2026-09-30T23:59:00Z")).json();
+  const id = list.rows[0].ticket_id as string;
+  const bodies: { question: string; product_code: string | null }[] = [];
+  await page.route("**/api/assist/ask", (r) => { bodies.push(r.request().postDataJSON()); return json(r, 200, FOUND); });
+  await useSession(page, { dept: "TS_LV", snapshot: true });
+  await page.goto(`/tickets/${id}`);
+  await page.getByTestId("assist-open").click();
+  await expect(page.getByText(id, { exact: true })).toBeVisible(); // "지금은 {번호}를 보고 있어…"
+  const first = page.getByTestId("assist-chips").getByRole("button").first();
+  await expect(first).not.toHaveText("E.OC 오류 원인과 조치");
+  await first.click();
+  await expect(page.getByTestId("assist-answer")).toBeVisible();
+  expect(bodies[0].product_code).not.toBeNull();
+});

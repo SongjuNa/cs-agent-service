@@ -1,10 +1,13 @@
 // SCR-10 상담원 도우미 (화면 명세 SCR-10, 변경 add-agent-assistant). 모든 화면의 오른쪽 아래에 떠 있는 창.
 // 문서 절 안에서만 답하고 출처를 붙인다. 답은 상담원 참고용이라 초안·고객 발송에 쓰이지 않는다(CLAUDE.md 규칙 3).
 // 대화는 이 컴포넌트 상태에만 둔다(서버에 저장하지 않는다, 규칙 4). 이어 묻기는 직전 대화를 같이 보낸다.
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from "react";
 import { api, ApiError, type AssistAnswer } from "../../api";
+import { useSession } from "../../app/session";
 import { Banner, Button } from "../../ui";
+import { repOf } from "../ticket/HeadCard";
+import { ticketKey } from "../ticket/ticketQuery";
 import ello from "../../assets/ello.png";
 import { SourcePopup, type SourceTarget } from "../ticket/Popups";
 import "./assistant.css";
@@ -30,7 +33,32 @@ const keepInside = (p: Pos, el: HTMLElement | null): Pos => {
   return { r: Math.min(Math.max(8, p.r), Math.max(8, window.innerWidth - w - 8)), b: Math.min(Math.max(8, p.b), Math.max(8, window.innerHeight - h - 8)) };
 };
 
+const FIRST_CHIPS = ["E.OC 오류 원인과 조치", "MCCB 400AF 사양", "보증 기간과 RMA 절차", "반품 정책"];
+const CAT_CHIP: Record<string, string> = { RETURN: "반품 정책", WARRANTY: "보증 기간과 RMA 절차", QUOTE: "납기와 주문 정책", ORDER_LEAD: "납기와 주문 정책" };
+
+/** 지금 보고 있는 문의(/tickets/{번호})가 있으면 그 문의의 제품·에러 코드·유형을 돌려준다(목업 suggestions의 ctx) */
+function useTicketContext() {
+  const { asOf } = useSession();
+  const id = decodeURIComponent(window.location.pathname.match(/^\/tickets\/([^/]+)$/)?.[1] ?? "");
+  const q = useQuery({ queryKey: ticketKey(id, asOf), queryFn: () => api.ticket(id, asOf), enabled: !!id });
+  const rep = q.data ? repOf(q.data) : undefined;
+  if (!id || !rep) return null;
+  const code = rep.fields.find((f) => f.field === "error_code");
+  return { id, product: rep.sub_ticket.product_code, error: code?.value_norm ?? code?.value_raw ?? null, category: rep.sub_ticket.category_code };
+}
+
+/** 시작 화면의 질문 후보. 문의 화면에서는 그 문의에 맞춘다(목업 ELLO와 같은 구성) */
+function chipsFor(ctx: ReturnType<typeof useTicketContext>): string[] {
+  if (!ctx) return FIRST_CHIPS;
+  const out: string[] = [];
+  if (ctx.error) out.push(`${ctx.error} 오류 원인과 조치`);
+  out.push(`${ctx.product ?? "이 제품"} 관련 문서`);
+  if (ctx.category && CAT_CHIP[ctx.category]) out.push(CAT_CHIP[ctx.category]);
+  return out.slice(0, 4);
+}
+
 export function AssistantDock() {
+  const ctx = useTicketContext();
   const [pos, setPos] = useState<Pos>(readPos);
   const box = useRef<HTMLElement>(null);
   const drag = useRef<{ x: number; y: number; p: Pos; moved: boolean } | null>(null);
@@ -65,8 +93,8 @@ export function AssistantDock() {
   const end = useRef<HTMLDivElement>(null);
 
   const ask = useMutation({
-    mutationFn: ({ question, history }: { question: string; history: { role: "user" | "assistant"; text: string }[] }) =>
-      api.assist(question, history, null),
+    mutationFn: ({ question, history, product }: { question: string; history: { role: "user" | "assistant"; text: string }[]; product: string | null }) =>
+      api.assist(question, history, product),
   });
 
   useLayoutEffect(() => { setPos((p) => keepInside(p, box.current)); }, [open]);
@@ -90,7 +118,7 @@ export function AssistantDock() {
       .filter((m) => m.text);
     setMsgs((cur) => [...cur.filter((m) => m.role !== "error"), { role: "user", text: question }]);
     setText("");
-    ask.mutate({ question, history }, {
+    ask.mutate({ question, history, product: ctx?.product ?? null }, {
       onSuccess: (a) => setMsgs((cur) => [...cur, { role: "assistant", text: a.answer, found: a.found, sources: a.sources, followups: a.followups, notes: a.notes }]),
       onError: (e) => {
         // 400은 입력 칸 아래에 서버 문구 그대로, 그 밖은 말풍선에 다시 시도 단추(frontend/CLAUDE.md 규칙 3)
@@ -130,7 +158,10 @@ export function AssistantDock() {
           <div className="as-hello">
             <img className="as-big" src={ello} alt="LS 캐릭터" />
             <b>안녕하세요, ELLO예요. 무엇을 찾으세요?</b>
-            <p className="as-hint">오류 코드나 제품 이름을 넣어 물어보세요. 문서에 없는 내용은 찾지 못했다고 답합니다.</p>
+            <p className="as-hint">오류 코드나 제품 이름을 넣어 물어보세요. 문서에 없는 내용은 찾지 못했다고 답합니다.{ctx && <> 지금은 <b>{ctx.id}</b>를 보고 있어 이 문의의 제품 기준으로 찾습니다.</>}</p>
+            <div className="as-chips" aria-label="추천 문구" data-testid="assist-chips">
+              {chipsFor(ctx).map((c) => <button key={c} type="button" className="as-chip" onClick={() => send(c)} disabled={ask.isPending}>{c}</button>)}
+            </div>
           </div>
         )}
         {msgs.map((m, i) => m.role === "user" ? (
