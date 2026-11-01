@@ -24,4 +24,4 @@
 - [x] 3.1 `test_drafts.py`: 제안 AC-021-6·7·8, 칸 없음, 실제 Gemini 한 쌍 (design 결정 5)
 - [x] 3.2 `frontend/e2e/scr-03-draft.spec.ts`: 근거 후보가 있는데 초안이 없는 문의의 화면 (design 결정 5)
 - [x] 3.3 팀 정답지 확인: `score_team_gold.py --only GS-065 GS-066 GS-067 GS-011 GS-013 GS-014 GS-015 GS-068` → GS-065~067 초안 없음, 나머지 초안 있음 (design 결정 5)
-- [x] 3.4 `pytest` 전체(`backend/tests/`)와 `npx playwright test` 전체를 돌려 AC-021-1·2·3, 제안 AC-021-6·7·8, AC-022-3, SCR-03-AC-20 통과 확인
+- [ ] 3.4 `pytest` 전체(`backend/tests/`)와 `npx playwright test` 전체를 돌려 AC-021-1·2·3, 제안 AC-021-6·7·8, AC-022-3, SCR-03-AC-20 통과 확인 — 2026-11-01 백엔드 전체 459 통과·3 실패(흔들리는 Gemini 2, test_run_log 1). 화면 시험 전체는 시연 DB에서 11/2 D가 돌림
