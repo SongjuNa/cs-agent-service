@@ -7,7 +7,7 @@ import { useSession } from "./session";
 import { intakeCopy } from "./ticket";
 
 const DB = process.env.E2E_DATABASE_URL ?? "postgresql://cs:change-me@localhost:5432/cs_agent"; // .env.example 기본값
-const sql = (q: string) => execFileSync("psql", [DB, "-v", "ON_ERROR_STOP=1", "-qAtc", q], { encoding: "utf8" }).trim();
+const sql = (q: string) => execFileSync("psql", ["-v", "ON_ERROR_STOP=1", "-qAtc", q, DB], { encoding: "utf8" }).trim();
 const rows = (page: Page) => page.locator("table.ui-table tbody tr.is-link");
 const col = (page: Page, n: number) => page.locator(`table.ui-table tbody tr.is-link td:nth-child(${n})`);
 

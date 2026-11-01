@@ -12,7 +12,7 @@ import { api, useSession } from "./session";
 const CALLS = path.join(path.dirname(fileURLToPath(import.meta.url)), "calls");
 const OUT = path.join(CALLS, "out");
 const DB = process.env.E2E_DATABASE_URL ?? "postgresql://cs:change-me@localhost:5432/cs_agent"; // .env.example 기본값
-const lastTicket = () => execFileSync("psql", [DB, "-qAtc", "SELECT max(ticket_id) FROM svc.ticket"], { encoding: "utf8" }).trim();
+const lastTicket = () => execFileSync("psql", ["-qAtc", "SELECT max(ticket_id) FROM svc.ticket", DB], { encoding: "utf8" }).trim();
 const plain = (s: string) => s.replace(/[\s-]/g, "").toUpperCase();
 
 type Meta = { duration_sec: number; garbled: { start_sec: number; end_sec: number }; serial: string };

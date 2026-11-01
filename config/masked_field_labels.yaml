@@ -1,0 +1,57 @@
+# 가린 값(**MASKED**)을 "고객이 준 항목"으로 세는 항목 이름 목록 v1 (2026-11-01)
+# 운영진 데이터는 일련번호·주문서 번호 값을 **MASKED**로 가려 두었고, 정답(provided_info)은 이를 "줬다"로 센다
+#   (tickets.csv: "Serial number (nameplate)" 751건 → serial_no 751건, "PO or invoice number" 255건 → purchase_doc 255건,
+#    "PO number" 121건 → po_number 121건, 다국어 이름도 모두 같은 항목으로 100% 일치).
+# 사용: 본문의 "항목 이름: **MASKED**" 또는 "항목 이름=**MASKED**"(통화 메모)를 찾아 그 항목을 제공 항목에 더한다(llm/extract.py).
+# 영어 이름은 ref.info_field의 label도 함께 쓴다. 여기에는 운영진 데이터·팀 정답지에 나온 이름을 모두 적었다.
+serial_no:
+  - Serial number (nameplate)
+  - Número de serie (placa de características)
+  - Numéro de série (plaque signalétique)
+  - Número de série (placa de identificação)
+  - Numero di serie (targa dati)
+  - Seriennummer (Typenschild)
+  - Numer seryjny (tabliczka znamionowa)
+  - Seri numarası (etiket üzerindeki)
+  - Серийный номер (с заводской таблички)
+  - الرقم التسلسلي (لوحة البيانات)
+  - หมายเลขซีเรียล (จากเนมเพลต)
+  - Nomor seri (nameplate)
+  - Số serial (trên nhãn thiết bị)
+  - Số sê-ri (nhãn máy)
+  - 序列号（铭牌）
+  - シリアル番号（銘板）
+purchase_doc:
+  - PO or invoice number
+  - Número de orden de compra o factura
+  - Numéro de commande ou de facture
+  - Número do pedido ou da nota fiscal
+  - Número do pedido ou da fatura
+  - Numero di ordine d'acquisto o fattura
+  - Bestell- oder Rechnungsnummer
+  - Numer zamówienia lub faktury
+  - Sipariş (PO) veya fatura numarası
+  - Номер заказа (PO) или счёта
+  - رقم أمر الشراء أو الفاتورة
+  - เลขที่ PO หรือใบแจ้งหนี้
+  - Nomor PO atau faktur
+  - Số PO hoặc số hóa đơn
+  - 采购订单号或发票号
+  - 采购订单或发票号
+  - 注文書番号または請求書番号
+po_number:
+  - PO number
+  - Número de orden de compra
+  - Numéro de commande
+  - Número do pedido de compra
+  - Numero ordine d'acquisto
+  - Bestellnummer
+  - Numer zamówienia
+  - Sipariş (PO) numarası
+  - Номер заказа (PO)
+  - رقم أمر الشراء
+  - เลขที่ PO
+  - Nomor PO
+  - Số PO
+  - 采购订单号
+  - 注文書番号

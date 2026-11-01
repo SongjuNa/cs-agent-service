@@ -8,7 +8,12 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from datetime import date
+from functools import lru_cache
+from pathlib import Path
 
+import yaml
+
+from app.config import REPO_ROOT
 from app.llm.client import LlmError, Transport, generate_json
 from app.pipeline.state import ProvidedField
 
@@ -27,6 +32,11 @@ INT_FIELDS = {"quantity"}
 _FW = re.compile(r"[0-9]+(?:\.[0-9]+)*")
 _FW_PREFIX = re.compile(r"^(?:version|ver\.?|v)\s*", re.IGNORECASE)
 _DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
+
+# 가린 값: 운영진 데이터는 일련번호·주문서 번호를 **MASKED**로 가려 두었고, 정답은 이를 "고객이 줬다"로 센다.
+# L2는 값이 안 보여 빼기 쉬우므로 코드가 "항목 이름: **MASKED**"를 찾아 제공 항목에 더한다(2026-11-01 결정).
+MASKED = "**MASKED**"
+MASKED_LABELS_FILE = REPO_ROOT / "config" / "masked_field_labels.yaml"
 
 
 def build_schema(field_codes: list[str]) -> dict:
@@ -159,6 +169,49 @@ def clean_fields(
     return out, flags
 
 
+@lru_cache(maxsize=4)
+def load_masked_labels(path: Path = MASKED_LABELS_FILE) -> dict[str, tuple[str, ...]]:
+    """config/masked_field_labels.yaml → {항목 코드: (항목 이름, …)}. 파일이 없으면 빈 표(영어 이름만 쓴다)."""
+    if not path.is_file():
+        return {}
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    return {name: tuple(str(label) for label in labels or []) for name, labels in data.items()}
+
+
+def masked_fields(body_masked: str, info_fields: list[tuple[str, str]],
+                  labels: dict[str, tuple[str, ...]] | None = None) -> list[ProvidedField]:
+    """본문의 "항목 이름: **MASKED**"·"항목 이름=**MASKED**" → 그 항목을 준 것으로 본다(항목마다 첫 곳 하나).
+
+    항목 이름 = ref.info_field의 영어 이름 + config/masked_field_labels.yaml의 다국어 이름. 대소문자는 가리지 않는다.
+    """
+    if MASKED not in body_masked:
+        return []
+    table = load_masked_labels() if labels is None else labels
+    names: dict[str, set[str]] = {}
+    for code, label in info_fields:
+        if label:
+            names.setdefault(code, set()).add(label.strip())
+    known = {code for code, _ in info_fields}
+    for code, extra in table.items():
+        if code in known:
+            names.setdefault(code, set()).update(x.strip() for x in extra if x.strip())
+    found: list[tuple[int, ProvidedField]] = []
+    for code, labels_ in names.items():
+        alt = "|".join(re.escape(x) for x in sorted(labels_, key=len, reverse=True))
+        m = re.search(rf"(?:{alt})\s*[:=\uff1a]\s*{re.escape(MASKED)}", body_masked, re.IGNORECASE)
+        if m:
+            start = m.end() - len(MASKED)
+            found.append((start, ProvidedField(field=code, value_raw=MASKED, value_norm=MASKED,
+                                               span=(start, m.end()))))
+    return [pf for _, pf in sorted(found, key=lambda x: x[0])]
+
+
+def add_masked(provided: list[ProvidedField], masked: list[ProvidedField]) -> list[ProvidedField]:
+    """L2가 이미 뽑은 항목은 그대로 두고, 빠뜨린 가린 항목만 뒤에 더한다."""
+    have = {pf.field for pf in provided}
+    return provided + [pf for pf in masked if pf.field not in have]
+
+
 def _first(fields: list[ProvidedField], name: str) -> str | None:
     for pf in fields:
         if pf.field == name and pf.value_norm:
@@ -187,13 +240,15 @@ def extract(
         "evidence_sentences": "\n".join(f"- {s}" for s in evidence_sentences) or "(none)",
         "body_masked": body_masked,
     }
+    masked = masked_fields(body_masked, info_fields)
     try:
         result = generate_json(transport, "L2", PROMPT_FILE, fields, build_schema(codes), CHECK_SCHEMA)
     except LlmError:
-        return Extraction(flags=[FLAG_EXTRACT_FAILED], field_names=list(fields),
+        return Extraction(provided_fields=masked, flags=[FLAG_EXTRACT_FAILED], field_names=list(fields),
                           prompt_version=PROMPT_FILE.removesuffix(".md"))
 
     provided, flags = clean_fields(result.data["fields"], body_masked, set(codes), product_codes)
+    provided = add_masked(provided, masked)
     ext = Extraction(provided_fields=provided, flags=flags,
                      field_names=result.field_names, prompt_version=result.prompt_version)
 

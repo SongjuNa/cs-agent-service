@@ -9,7 +9,7 @@ import { api, useSession } from "./session";
 import { H, intakeCopy } from "./ticket";
 
 const DB = process.env.E2E_DATABASE_URL ?? "postgresql://cs:change-me@localhost:5432/cs_agent"; // .env.example 기본값
-const sql = (q: string) => execFileSync("psql", [DB, "-v", "ON_ERROR_STOP=1", "-qAtc", q], { encoding: "utf8" }).trim();
+const sql = (q: string) => execFileSync("psql", ["-v", "ON_ERROR_STOP=1", "-qAtc", q, DB], { encoding: "utf8" }).trim();
 
 const SNAPSHOT = "2026-09-30T23:59:00Z";
 const AGENT = "zara"; // TS_LV 명단(app/roster/agent_roster.json)
