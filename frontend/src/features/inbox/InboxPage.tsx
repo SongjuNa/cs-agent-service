@@ -8,7 +8,7 @@ import { ALERT, CATEGORY, CHANNEL, DEPTH, NEXT_ACTION, STATUS, TURN_GROUP, label
 import { useSession } from "../../app/session";
 import { Icon } from "../../app/icons";
 import {
-  AlertChip, Banner, Button, Chip, DataTable, EmptyState, formatRemaining, PageHeader, Pager, PriorityBadge, Tabs,
+  AlertChip, Banner, Button, Chip, DataTable, EmptyState, formatLeft, formatRemaining, PageHeader, Pager, PriorityBadge, StatusBadge, Tabs,
   type Column,
 } from "../../ui";
 import { BulkAdjustPopup } from "./BulkAdjustPopup";
@@ -42,10 +42,11 @@ const time = (iso: string | null) => (iso ? iso.replace("T", " ").slice(0, 16) :
 const closed = (r: InboxRow) => r.status === "RESOLVED" || r.status === "CLOSED";
 
 function remainingCell(r: InboxRow) {
-  if (r.status === "WAITING_CUSTOMER") return <span className="sub">멈춤</span>;
-  if (r.res_status === "MET" || closed(r)) return <span className="sub">—</span>;
-  if (r.remaining_h === null || r.remaining_h === undefined) return <span className="sub">SLA 미정</span>;
-  return <span className={r.res_status === "BREACHED" ? "neg-t" : undefined}>{formatRemaining(Number(r.remaining_h))}</span>;
+  if (r.status === "WAITING_CUSTOMER") return <span className="sub" data-hours="">멈춤</span>;
+  if (r.res_status === "MET" || closed(r)) return <span className="sub" data-hours="">—</span>;
+  if (r.remaining_h === null || r.remaining_h === undefined) return <span className="sub" data-hours="">SLA 미정</span>;
+  const h = Number(r.remaining_h);
+  return <span data-hours={h} title={formatRemaining(h)}><Chip tone={r.res_status === "BREACHED" ? "neg" : r.res_status === "AT_RISK" ? "crit" : "pos"}>{formatLeft(h)}</Chip></span>;
 }
 
 /** 칸이 좁아서 가장 급한 경고 하나만 칩으로 보이고 나머지는 +N(마우스를 올리면 전부). 초과가 임박보다, 1차 응답이 해결보다 먼저다 */
@@ -93,7 +94,7 @@ const columnsFor = (sel: Set<string>, toggle: (id: string) => void, pageAll: boo
     <>
       {r.escalated_in_from ? <>{r.escalated_in_from}에서 이관됨</> : (
         <>
-          {label(STATUS, r.status)}
+          <StatusBadge status={r.status} />
           {r.status === "ESCALATED" && r.escalated_to ? <span className="sub"> → {r.escalated_to}</span> : null}
         </>
       )}
@@ -113,7 +114,7 @@ const columnsFor = (sel: Set<string>, toggle: (id: string) => void, pageAll: boo
       {r.status === "WAITING_CUSTOMER" && r.reminder_sent && <Chip>리마인드 발송됨</Chip>}
     </span>
   ) },
-  { key: "received", header: "접수 시각", sortKey: "received_at", render: (r) => <span className="sub">{time(r.received_at_utc)}</span> },
+  { key: "received", header: "접수 시각", sortKey: "received_at", render: (r) => <span className="sub" title={time(r.received_at_utc)}>{time(r.received_at_utc).slice(5)}</span> },
 ];
 
 /** 선택한 행을 엑셀에서 열 수 있는 CSV로 저장한다(한글이 깨지지 않게 BOM을 붙인다). 화면에 보이는 값 그대로다 */
@@ -372,6 +373,7 @@ export function InboxPage({ onOpen, flash, navigate }: {
           rowKey={(r) => r.sub_ticket_id}
           onRowClick={(r) => onOpen(r.ticket_id, r.seq)}
           faded={closed}
+          hot={(r) => r.turn === "ME" && (r.priority === "P1" || r.res_status === "BREACHED")}
           sort={sort}
           onSortChange={(next) => update((q) => { if (next) q.set("sort", next); else q.delete("sort"); }, false)}
           empty={

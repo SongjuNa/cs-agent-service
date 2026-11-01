@@ -91,7 +91,7 @@ export function AppShell({ active, crumbs, navigate, children }: {
                    aria-current={i.key === active ? "page" : undefined} onClick={go(i.path)}>
                   <Icon name={i.key} />
                   <span className="shell-nav__label">{i.label}</span>
-                  {i.key === "inbox" && counts.data && <span className="shell-nav__count" data-testid="nav-inbox-count">{counts.data.total}</span>}
+                  {i.key === "inbox" && counts.data && <>{counts.data.new > 0 && <span className="shell-nav__new" data-testid="nav-inbox-new">새 {counts.data.new}</span>}<span className="shell-nav__count" data-testid="nav-inbox-count">{counts.data.total}</span></>}
                   {i.external && <Icon name="ext" className="shell-nav__ext" />}
                 </a>
                 </Fragment>
