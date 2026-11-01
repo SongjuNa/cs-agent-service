@@ -194,8 +194,8 @@ test.describe.serial("000017 사본 A: 발송 → 충돌 → 회신", () => {
     await expect(card).toHaveAttribute("data-state", "sent");
     await expect(card.getByTestId("sent-line")).toContainText(/발송됨 \d{4}-\d\d-\d\d \d\d:\d\d UTC · leo/);
     const head = page.getByRole("region", { name: "티켓 요약" });
-    await expect(head.locator(".tk-stat").nth(0)).toContainText("고객 회신 대기");
-    await expect(head.locator(".tk-stat").nth(3)).toContainText("보냄");
+    await expect(head.locator(".tk-head__top .ui-chip").first()).toContainText("고객 회신 대기");
+    await expect(head.getByTestId("sla-fr")).toHaveCount(0); // 1차 응답을 보냈으면 1차 응답 기한 문장이 없다
 
     await other.getByTestId("draft-card").first().getByRole("button", { name: "승인하고 발송" }).click();
     await dialog(other, "발송 전 확인").getByRole("button", { name: /^(발송|그래도 발송)$/ }).click();
@@ -247,7 +247,7 @@ test.describe.serial("000017 사본 B: 이관", () => {
     await p4.getByRole("button", { name: "이관", exact: true }).click();
     await expect(p4).toBeHidden();
     const head = page.getByRole("region", { name: "티켓 요약" });
-    await expect(head.locator(".tk-stat").nth(0)).toContainText("이관됨");
+    await expect(head.locator(".tk-head__top .ui-chip").first()).toContainText("이관됨");
     await expect(page.getByRole("button", { name: "이관", exact: true })).toBeDisabled();
   });
 });

@@ -222,3 +222,8 @@
 /* 고객 원문의 한국어 번역(add-body-translation) */
 .tk-text--ko { background: var(--color-filter-bg); }
 .tk-ko-empty { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-10); padding: var(--sp-10) 0; }
+
+.tk-head__co { font-size: var(--fs-m); color: var(--color-fg-sub); font-variant-numeric: tabular-nums; }
+.tk-head__tier { font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--color-fg-faint); letter-spacing: 0.04em; }
+.tk-recv .tk-sla { margin-left: var(--sp-8); font-weight: var(--fw-semibold); color: var(--color-fg); }
+.tk-recv .tk-sla.is-bad { color: var(--color-neg); }
