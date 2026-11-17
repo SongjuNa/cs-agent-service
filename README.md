@@ -146,42 +146,20 @@ sequenceDiagram
 
 문의 1건을 요청별로 나눠 **동시에** 처리하고, 고객에게 가는 글은 모두 상담원 확인을 거칩니다.
 
-🟪 LLM · 🟦 규칙(코드) · 🟧 검증 · 🟩 사람
-
-```mermaid
-flowchart LR
-    IN([📩 문의 접수]):::io --> U["문의 이해<br/><small>언어·유형·긴급도<br/>요청 분리</small>"]:::ai
-    U --> X
-
-    subgraph SUB[" 요청마다 동시에 "]
-        direction LR
-        X[정보 추출]:::ai --> RULE["규칙 엔진<br/><small>우선순위·부서·SLA</small>"]:::rule
-        RULE --> D1{필수 정보<br/>있음?}:::rule
-        D1 -->|예| SR["근거 검색<br/><small>문서 107개</small>"]:::ai
-        D1 -->|아니오| ASK[정보 요청 문안]:::ai
-        SR --> D2{근거<br/>있음?}:::rule
-        D2 -->|예| DR[답변 초안]:::ai
-        D2 -->|아니오| NO[초안 없이 넘김]:::rule
-        DR --> CK["발송 전 검증<br/><small>인용·숫자 대조</small>"]:::check
-        ASK --> CK
-    end
-
-    CK --> HU([👤 상담원 확인 후 발송]):::human
-    NO --> HU
-
-    classDef io fill:#F3F4F6,stroke:#9CA3AF,color:#111827
-    classDef ai fill:#EFEAFF,stroke:#7C5CFF,color:#2D1B69
-    classDef rule fill:#E8F1FF,stroke:#3B82F6,color:#0B2A5B
-    classDef check fill:#FFF4E5,stroke:#F59E0B,color:#5B3A00
-    classDef human fill:#E7F8EC,stroke:#22C55E,color:#0B3D1E
-    style SUB fill:#FAFAFB,stroke:#D1D5DB,stroke-dasharray:4 3,color:#6B7280
-```
+<p align="center"><img src="docs/assets/readme/cs-flow.png" alt="처리 흐름: 문의 이해 → (요청마다 동시에) 정보 추출 → 규칙 엔진 → 근거 검색 → 답변 초안 → 발송 전 검증 → 상담원 확인" width="100%"></p>
 
 **LangGraph를 쓴 이유**는 똑똑한 자율 에이전트가 필요해서가 아니라, 반대로 **처리 순서를 고정해 모델의 재량을 줄이면서도** 복합 문의의 요청을 동시에 돌리고 단계마다 실행 기록을 남기기 위해서였습니다. 우선순위·부서·기한처럼 규칙표로 100% 재현되는 것은 모델에 묻지 않습니다.
 
 ## 데이터 모델
 
-스키마를 용도별로 나눴습니다. `ref`(기준정보 24표), `svc`(서비스 데이터), `gold`(운영진 정답 데이터, 서비스는 입력 열만 읽음), `eval`·`scoring`(팀 정답지와 채점)입니다. 아래는 서비스의 핵심 표입니다.
+스키마를 용도별로 나눴습니다. `ref`(기준정보 24표), `svc`(서비스 데이터), `gold`(운영진 정답 데이터, 서비스는 입력 열만 읽음), `eval`·`scoring`(팀 정답지와 채점)입니다. 설계에서 정한 원칙은 세 가지입니다.
+
+- **상태·우선순위·기한은 하위 문의 단위**: 한 메일에 요청이 여러 개면 요청마다 부서와 기한이 다르기 때문입니다. 동시 수정은 `version`으로 막습니다.
+- **지우지 않는 기록**: 메시지, 상태 이력, 실행 기록은 넣기만 합니다. 발송된 메시지(SENT)는 DB 트리거가 수정·삭제를 막습니다(이관 메일 설계에 영향을 준 제약).
+- **정답 격리**: 서비스 코드는 정답 열을 읽지 않고 `gold.v_inputs`(입력 열)만 읽어, 평가가 오염되지 않게 했습니다.
+
+<details>
+<summary><b>핵심 표 관계도(ERD) 보기</b></summary>
 
 ```mermaid
 erDiagram
@@ -194,42 +172,9 @@ erDiagram
     TICKET ||--o{ AGENT_RUN : "처리 실행"
     AGENT_RUN ||--|{ AGENT_STEP : "단계 기록"
     PRODUCT ||--o{ SUB_TICKET : "제품"
-    TICKET {
-        text ticket_id PK
-        text customer_id FK
-        text language
-        text inquiry_body
-    }
-    SUB_TICKET {
-        text sub_ticket_id PK
-        text category_code
-        text urgency_flag
-        text priority
-        text assigned_dept
-        text escalated_to
-        text status
-        int version
-    }
-    TICKET_MESSAGE {
-        bigint message_id PK
-        text message_type
-        text message_status
-        text sender
-        text body
-        bool via_mail
-    }
-    AGENT_STEP {
-        bigint step_id PK
-        text step_name
-        text result
-        jsonb output_json
-        int input_tokens
-    }
 ```
 
-- **상태·우선순위·기한은 하위 문의 단위**: 한 메일에 요청이 여러 개면 요청마다 부서와 기한이 다르기 때문입니다. 동시 수정은 `version`으로 막습니다.
-- **지우지 않는 기록**: 메시지, 상태 이력, 실행 기록은 넣기만 합니다. 발송된 메시지(SENT)는 DB 트리거가 수정·삭제를 막습니다(이관 메일 설계에 영향을 준 제약).
-- **정답 격리**: 서비스 코드는 정답 열을 읽지 않고 `gold.v_inputs`(입력 열)만 읽어, 평가가 오염되지 않게 했습니다.
+</details>
 
 자세한 열 정의는 [테이블 정의서](docs/database/table-specification.md)에 있습니다.
 
