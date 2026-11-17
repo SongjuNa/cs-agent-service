@@ -17,28 +17,37 @@ SKKU × LS AI CAMPUS 1기 2조의 팀 프로젝트(주제 1)를 개인 저장소
 > 원본 팀 저장소: [skkuls-final-team/CS-agent-service](https://github.com/skkuls-final-team/CS-agent-service) · 팀원 4명 · 2026.10 ~ 2026.11
 > 팀 프로젝트 이후 개인적으로 고도화한 내용은 [원본 이후 개인 고도화](#원본-이후-개인-고도화)에 있습니다.
 
-<p align="center"><img src="docs/assets/readme/cs-hero.gif" alt="접수함에서 문의를 열면 AI 분류, 근거 기반 회신 초안과 출처, ELLO 상담원 도우미 답변, 발송 전 검증 확인이 차례로 나오는 화면" width="100%"></p>
-
 <table>
   <tr>
-    <th width="33%">읽기 · 정하기</th>
-    <th width="33%">찾기 · 쓰기</th>
-    <th width="33%">검사 · 사람 확인</th>
-  </tr>
-  <tr>
-    <td valign="top">
+    <td width="50%" valign="top">
+      <a href="docs/assets/readme/cs-1-intake.gif"><img src="docs/assets/readme/cs-1-intake.gif" alt="접수함에서 문의 번호를 검색해 열면 AI 요약과 판단 칩이 보이는 화면" width="100%"></a>
+      <p><b>① 접수·분류</b></p>
       <ul>
-        <li>AI가 문의 언어, 유형 10종, 긴급도를 판정하고 여러 요청이 섞인 문의는 나눠서 동시에 처리합니다.</li>
+        <li>AI가 문의 언어, 유형 10종, 긴급도를 판정하고 여러 요청이 섞인 문의는 요청별로 나눠 동시에 처리합니다.</li>
         <li>우선순위·담당 부서·필수 정보·응답 기한(SLA)은 AI가 아닌 <b>규칙 엔진</b>이 정합니다.</li>
       </ul>
     </td>
-    <td valign="top">
+    <td width="50%" valign="top">
+      <a href="docs/assets/readme/cs-2-draft.gif"><img src="docs/assets/readme/cs-2-draft.gif" alt="회신 초안과 한국어 대역을 보고, 값 옆의 출처를 눌러 근거 문서 절을 확인하는 화면" width="100%"></a>
+      <p><b>② 근거 기반 회신 초안</b></p>
       <ul>
-        <li>기술 문서 107개(절 895개)를 임베딩으로 검색하고, 가격·납기·사양·펌웨어는 표에서 조회합니다.</li>
-        <li>근거가 있을 때만 고객 언어로 회신 초안을 쓰고, 빠진 정보가 있으면 정보 요청 문안을 만듭니다.</li>
+        <li>제품·정책 문서 107개(절 895개)를 검색하고, 가격·납기·사양·펌웨어는 표에서 조회합니다.</li>
+        <li>근거가 있을 때만 고객 언어로 초안을 쓰고, 값마다 근거 문서·절을 바로 확인할 수 있습니다.</li>
       </ul>
     </td>
-    <td valign="top">
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <a href="docs/assets/readme/cs-3-ello.gif"><img src="docs/assets/readme/cs-3-ello.gif" alt="ELLO 상담원 도우미에 차단 용량을 묻고 출처가 붙은 답을 받는 화면" width="100%"></a>
+      <p><b>③ ELLO 상담원 도우미</b></p>
+      <ul>
+        <li>상담원 전용 챗봇. 보고 있는 문의의 제품·오류 코드에 맞춰 질문 후보를 띄웁니다.</li>
+        <li>문서를 검색해 출처와 함께 답하고, 고객에게 가는 글에는 쓰지 않습니다.</li>
+      </ul>
+    </td>
+    <td width="50%" valign="top">
+      <a href="docs/assets/readme/cs-4-check.gif"><img src="docs/assets/readme/cs-4-check.gif" alt="승인하고 발송을 누르면 검증 에이전트 경고가 뜨고 상담원이 돌아가서 고치는 화면" width="100%"></a>
+      <p><b>④ 발송 전 검증 · 사람 승인</b></p>
       <ul>
         <li>초안의 인용·숫자를 코드로 대조하고, 검증 에이전트가 근거와 다른 문장·확정적 약속 표현을 찾습니다.</li>
         <li>고객에게 가는 글은 모두 초안이며, <b>상담원이 확인한 뒤에만</b> 발송됩니다.</li>
