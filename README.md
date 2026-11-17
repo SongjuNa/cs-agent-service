@@ -132,20 +132,7 @@ sequenceDiagram
 
 ## 시스템 구성
 
-```mermaid
-flowchart LR
-    U[상담원 브라우저<br/>React · TypeScript · Vite] -->|REST /api| P
-    subgraph API[FastAPI 서버]
-        P[처리 흐름<br/>LangGraph] --> R[규칙 엔진<br/>우선순위·부서·SLA]
-        P --> M[개인정보 가림]
-        S[스케줄러<br/>SLA 경고·리마인드·메일 확인]
-    end
-    M -->|가린 글만| G[Gemini<br/>분류·초안·검증·임베딩]
-    P --> DB[(PostgreSQL 16<br/>+ pgvector)]
-    R --> DB
-    S --> DB
-    S <-->|SMTP · HTTP API| MP[Mailpit<br/>로컬 메일 서버]
-```
+<p align="center"><img src="docs/assets/readme/cs-architecture.png" alt="CS Agent 시스템 구성: React 화면, FastAPI·LangGraph 서버, Docker Compose(api, PostgreSQL+pgvector, Mailpit), Gemini" width="100%"></p>
 
 | 기술적 결정 | 근거 |
 | --- | --- |
@@ -157,28 +144,37 @@ flowchart LR
 
 ## 처리 흐름
 
-문의 1건마다 **티켓 그래프**가 돌고, 나뉜 요청마다 **하위 문의 그래프**가 동시에 돕니다.
+문의 1건을 요청별로 나눠 **동시에** 처리하고, 고객에게 가는 글은 모두 상담원 확인을 거칩니다.
+
+🟪 LLM · 🟦 규칙(코드) · 🟧 검증 · 🟩 사람
 
 ```mermaid
-flowchart TB
-    subgraph T[티켓 그래프 · 문의 1건]
-        T1[접수] --> T2[문의 이해<br/>언어·유형·긴급도·요청 나누기]
-        T2 --> T3[요청별 하위 그래프<br/>동시 실행]
-        T3 --> T4[결과 모아 메일 구성]
+flowchart LR
+    IN([📩 문의 접수]):::io --> U["문의 이해<br/><small>언어·유형·긴급도<br/>요청 분리</small>"]:::ai
+    U --> X
+
+    subgraph SUB[" 요청마다 동시에 "]
+        direction LR
+        X[정보 추출]:::ai --> RULE["규칙 엔진<br/><small>우선순위·부서·SLA</small>"]:::rule
+        RULE --> D1{필수 정보<br/>있음?}:::rule
+        D1 -->|예| SR["근거 검색<br/><small>문서 107개</small>"]:::ai
+        D1 -->|아니오| ASK[정보 요청 문안]:::ai
+        SR --> D2{근거<br/>있음?}:::rule
+        D2 -->|예| DR[답변 초안]:::ai
+        D2 -->|아니오| NO[초안 없이 넘김]:::rule
+        DR --> CK["발송 전 검증<br/><small>인용·숫자 대조</small>"]:::check
+        ASK --> CK
     end
-    subgraph Q[하위 문의 그래프 · 요청 1개]
-        Q1[제공 정보 추출] --> Q2[규칙 엔진<br/>우선순위·부서·필수정보·SLA]
-        Q2 --> Q3{막는 정보?}
-        Q3 -->|있음| Q4[정보 요청 문안]
-        Q3 -->|없음| Q5[문서 검색·표 조회]
-        Q5 --> Q6{근거 있음?}
-        Q6 -->|없음| Q7[초안 없이 상담원에게]
-        Q6 -->|있음| Q8[회신 초안]
-        Q4 & Q8 --> Q9[인용·숫자 대조<br/>검증 에이전트]
-    end
-    T3 -.-> Q1
-    Q9 -.-> T4
-    T4 --> H[상담원 확인·발송]
+
+    CK --> HU([👤 상담원 확인 후 발송]):::human
+    NO --> HU
+
+    classDef io fill:#F3F4F6,stroke:#9CA3AF,color:#111827
+    classDef ai fill:#EFEAFF,stroke:#7C5CFF,color:#2D1B69
+    classDef rule fill:#E8F1FF,stroke:#3B82F6,color:#0B2A5B
+    classDef check fill:#FFF4E5,stroke:#F59E0B,color:#5B3A00
+    classDef human fill:#E7F8EC,stroke:#22C55E,color:#0B3D1E
+    style SUB fill:#FAFAFB,stroke:#D1D5DB,stroke-dasharray:4 3,color:#6B7280
 ```
 
 **LangGraph를 쓴 이유**는 똑똑한 자율 에이전트가 필요해서가 아니라, 반대로 **처리 순서를 고정해 모델의 재량을 줄이면서도** 복합 문의의 요청을 동시에 돌리고 단계마다 실행 기록을 남기기 위해서였습니다. 우선순위·부서·기한처럼 규칙표로 100% 재현되는 것은 모델에 묻지 않습니다.
