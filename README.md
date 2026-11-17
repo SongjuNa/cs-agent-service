@@ -56,19 +56,21 @@ SKKU × LS AI CAMPUS 1기 2조의 팀 프로젝트(주제 1)를 개인 저장소
   </tr>
 </table>
 
-## 내 역할 — 나송주 · AI(언어 모델·검색) 담당
+## 내 역할 — 나송주 · AI · BE · FE
 
-팀은 AI·DB·BE·FE로 나눴고, 저는 **언어 모델과 검색이 들어가는 단계**를 맡았습니다. 아래 표는 팀 기획서·WBS의 분담 기준입니다. 우선순위·부서·SLA를 정하는 규칙 엔진, DB, 화면은 다른 팀원이 맡았습니다.
+팀은 역할을 **기능 단위**로 나눴습니다. 저는 문의를 이해하고 근거를 찾아 초안을 쓰는 **AI 처리 단계의 기능들**을 맡았고, 원본 이후에는 이관 메일 연동을 서버부터 화면까지 혼자 구현했습니다.
 
-| 맡은 일 | 내용 | 코드 |
-| --- | --- | --- |
-| 모델 선정 | 언어 모델·임베딩 모델과 임베딩 크기 결정, 분류 출력 형식 제안 | `backend/app/config.py` |
-| 문의 이해 | 언어 식별, 유형 10종 분류, 복합 문의 요청 나누기, 긴급도 판단을 **LLM 호출 한 번**으로 묶음 (FR-004~007) | `backend/app/llm/understand.py`, `prompts/l1_*` |
-| 제공 정보 추출 | 본문에서 제품·일련번호 등 고객이 준 정보를 뽑아 필수 정보 확인(규칙)에 넘김 (FR-008) | `backend/app/llm/extract.py`, `prompts/l2_*` |
-| 문서 근거 검색 | 제품·정책 문서 107개에서 문의에 맞는 근거 절을 찾음 (FR-016) | `backend/app/retrieval/search.py` |
-| 정보 요청 문안 · 답변 초안 | 빠진 정보를 고객 언어로 요청하고, 근거가 있을 때만 답변 초안을 쓴 뒤 인용·숫자를 자체 대조 (FR-015, FR-021) | `backend/app/llm/drafts.py`, `backend/app/checks/draft_check.py`, `prompts/l3_*`, `prompts/l4_*` |
-| 진행 안내 · 초안 대역 | 상태가 바뀔 때 안내 초안, 상담원용 한국어 대역 표시 (FR-023, FR-039) | `prompts/l7_gloss_v1.md` |
-| 프롬프트 개선 | 분류·긴급도·추출, 검색·다국어 초안 프롬프트를 버전별로 개선 | `prompts/*_v2.md`, `prompts/l4_draft_v3.md` |
+| 구분 | 맡은 기능 | 내용 | 코드 |
+| --- | --- | --- | --- |
+| 팀 | 모델 선정 | 언어 모델·임베딩 모델과 임베딩 크기 결정, 분류 출력 형식 제안 | `backend/app/config.py` |
+| 팀 | 문의 이해 | 언어 식별, 유형 10종 분류, 복합 문의 요청 나누기, 긴급도 판단을 **LLM 호출 한 번**으로 묶음 (FR-004~007) | `backend/app/llm/understand.py`, `prompts/l1_*` |
+| 팀 | 제공 정보 추출 | 본문에서 제품·일련번호 등 고객이 준 정보를 뽑아 필수 정보 확인(규칙)에 넘김 (FR-008) | `backend/app/llm/extract.py`, `prompts/l2_*` |
+| 팀 | 문서 근거 검색 | 제품·정책 문서 107개에서 문의에 맞는 근거 절을 찾음 (FR-016) | `backend/app/retrieval/search.py` |
+| 팀 | 정보 요청 문안 · 답변 초안 | 빠진 정보를 고객 언어로 요청하고, 근거가 있을 때만 답변 초안을 쓴 뒤 인용·숫자를 자체 대조 (FR-015, FR-021) | `backend/app/llm/drafts.py`, `backend/app/checks/draft_check.py`, `prompts/l3_*`, `prompts/l4_*` |
+| 팀 | 진행 안내 · 초안 대역 | 상태가 바뀔 때 안내 초안, 상담원용 한국어 대역 표시 (FR-023, FR-039) | `prompts/l7_gloss_v1.md` |
+| 팀 | 프롬프트 개선 | 분류·긴급도·추출, 검색·다국어 초안 프롬프트를 버전별로 개선 | `prompts/*_v2.md`, `prompts/l4_draft_v3.md` |
+| 개인 | 이관 메일 발송·수신 (BE) | SMTP 발송, 메일함 확인으로 부서 답장을 문의에 자동 연결, API 3개와 주기 확인 작업 추가, 시험 11개 | `backend/app/mail/`, `backend/app/api/mail.py`, `backend/app/scheduler.py` |
+| 개인 | 이관·이력 화면 메일 연동 (FE) | 이관 팝업에 실제 부서 주소·발송 결과 표시, 이력 탭에 메일함 열기·지금 확인·부서 답장 시연 | `frontend/src/features/ticket/ActionPopups.tsx`, `HistoryTab.tsx` |
 
 > 팀은 공용 Claude 계정으로 OpenSpec 기반 개발(스펙 → 구현 → archive)을 진행해, 원본 저장소의 커밋 작성자는 Claude·팀 계정으로 기록되어 있습니다.
 
