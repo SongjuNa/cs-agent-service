@@ -14,8 +14,8 @@ SKKU × LS AI CAMPUS 1기 2조의 팀 프로젝트(주제 1)를 개인 저장소
 ![Gemini](https://img.shields.io/badge/Gemini-3.8%20flash-8E75B2?logo=googlegemini&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker%20Compose-2496ED?logo=docker&logoColor=white)
 
-> 원본 팀 저장소: [skkuls-final-team/CS-agent-service](https://github.com/skkuls-final-team/CS-agent-service) · 팀원 4명 · 2026.10 ~ 2026.11
-> 팀 프로젝트 이후 개인적으로 고도화한 내용은 [원본 이후 개인 고도화](#원본-이후-개인-고도화)에 있습니다.
+> 원본 팀 저장소: [skkuls-final-team/CS-agent-service](https://github.com/skkuls-final-team/CS-agent-service) · 팀원 4명 · 2026.10.12 ~ 2026.11.01
+> 11월 초 팀의 주제 1이 다른 서비스로 바뀌면서 이 서비스는 최종 발표에 포함되지 않았습니다. 이후 개인적으로 이어서 고도화한 내용은 [원본 이후 개인 고도화](#원본-이후-개인-고도화)에 있습니다.
 
 <table>
   <tr>
@@ -56,21 +56,39 @@ SKKU × LS AI CAMPUS 1기 2조의 팀 프로젝트(주제 1)를 개인 저장소
   </tr>
 </table>
 
-## 내 역할 — 나송주 · 주제 1 BE·FE · 현장 앱·사무실 웹 화면
+## 내 역할 — 나송주 · AI(언어 모델·검색) 담당
 
-| 맡은 일 | 내용 |
-| --- | --- |
-| FastAPI 서버와 API | 화면이 쓰는 백엔드 API 설계와 구현 |
-| React·PWA 앱 | 현장에서 쓰는 앱과 사무실 웹 화면 구현 |
-| 오프라인 문서 저장 | 네트워크가 끊긴 현장에서도 문서를 볼 수 있도록 기기에 저장 |
+팀은 AI·DB·BE·FE로 나눴고, 저는 **언어 모델과 검색이 들어가는 단계**를 맡았습니다. 아래 표는 팀 기획서·WBS의 분담 기준입니다. 우선순위·부서·SLA를 정하는 규칙 엔진, DB, 화면은 다른 팀원이 맡았습니다.
 
-<!-- TODO: 위 표에 직접 만든 화면 이름, API 예시, 해결한 문제(예: 오프라인 동기화 방식)와 결과를 한두 줄씩 더하면 좋습니다. -->
+| 맡은 일 | 내용 | 코드 |
+| --- | --- | --- |
+| 모델 선정 | 언어 모델·임베딩 모델과 임베딩 크기 결정, 분류 출력 형식 제안 | `backend/app/config.py` |
+| 문의 이해 | 언어 식별, 유형 10종 분류, 복합 문의 요청 나누기, 긴급도 판단을 **LLM 호출 한 번**으로 묶음 (FR-004~007) | `backend/app/llm/understand.py`, `prompts/l1_*` |
+| 제공 정보 추출 | 본문에서 제품·일련번호 등 고객이 준 정보를 뽑아 필수 정보 확인(규칙)에 넘김 (FR-008) | `backend/app/llm/extract.py`, `prompts/l2_*` |
+| 문서 근거 검색 | 제품·정책 문서 107개에서 문의에 맞는 근거 절을 찾음 (FR-016) | `backend/app/retrieval/search.py` |
+| 정보 요청 문안 · 답변 초안 | 빠진 정보를 고객 언어로 요청하고, 근거가 있을 때만 답변 초안을 쓴 뒤 인용·숫자를 자체 대조 (FR-015, FR-021) | `backend/app/llm/drafts.py`, `backend/app/checks/draft_check.py`, `prompts/l3_*`, `prompts/l4_*` |
+| 진행 안내 · 초안 대역 | 상태가 바뀔 때 안내 초안, 상담원용 한국어 대역 표시 (FR-023, FR-039) | `prompts/l7_gloss_v1.md` |
+| 프롬프트 개선 | 분류·긴급도·추출, 검색·다국어 초안 프롬프트를 버전별로 개선 | `prompts/*_v2.md`, `prompts/l4_draft_v3.md` |
 
 > 팀은 공용 Claude 계정으로 OpenSpec 기반 개발(스펙 → 구현 → archive)을 진행해, 원본 저장소의 커밋 작성자는 Claude·팀 계정으로 기록되어 있습니다.
 
+## AI 활용과 직접 판단·검증한 영역
+
+이 프로젝트는 팀 단계와 개인 고도화 단계 모두 **AI 코딩 도구(Claude Code)로 구현하고, 사람은 스펙·설계 결정·검증을 맡는 방식**으로 만들었습니다.
+
+| 단계 | AI가 한 일 | 내가 판단·검증한 일 |
+| --- | --- | --- |
+| 스펙 | OpenSpec 제안서·작업 목록 초안 작성 | 무엇을 만들고 무엇을 범위 밖으로 둘지 결정 (예: 메일 발송·수신은 하고, 실제 회사 메일 연동과 첨부 처리는 범위 밖) |
+| 설계 | 기존 코드 탐색, 구현 방법 후보 제시 | 답장을 문의에 연결하는 기준(제목 표시 + 이관받은 부서 주소만 허용), 발송 실패 때도 이관은 확정한다는 정책, DB 표를 바꾸지 않는다는 제약 |
+| 구현 | 코드와 시험 코드 작성 | 기존 [회신 등록] 경로를 재사용하게 해 상태 전이·실행 기록·재처리가 화면 회신과 같도록 함 |
+| 검증 | 시험 실행 | 완료 기준(AC)마다 시험을 두고 전체 회귀 시험 통과를 확인, 실제 메일 서버(Mailpit)로 끝까지 직접 시연 |
+| 문제 해결 | 원인 분석과 수정안 작성 | 시연 중 **[지금 확인]을 눌러도 답장이 연결되지 않는 문제를 직접 발견**해 원인(메일을 열어 보면 "읽음"이 되어 확인 대상에서 빠짐)을 확인하고, 수정과 회귀 시험 추가까지 검증 |
+
+AI가 낸 코드는 그대로 받지 않고, 시험과 실제 실행 결과로 확인한 것만 커밋했습니다.
+
 ## 원본 이후 개인 고도화
 
-팀 프로젝트가 끝난 뒤(원본 마지막 커밋 2026-11-01) 이 저장소로 옮겨 이어서 개발한 내용입니다. 원본과 같은 방식으로 OpenSpec 제안서를 먼저 쓰고 구현했습니다.
+주제 변경으로 팀 개발이 멈춘 뒤(원본 마지막 커밋 2026-11-01) 이 저장소로 옮겨 이어서 개발한 내용입니다. 원본과 같은 방식으로 OpenSpec 제안서를 먼저 쓰고 구현했습니다.
 
 ### 1. 이관 메일 실제 발송·수신 — [제안서](openspec/changes/add-escalation-mail-live/proposal.md)
 
@@ -110,6 +128,31 @@ sequenceDiagram
 - **실제 확인**: Mailpit과 서버를 띄워 이관 → 요청 메일 도착 → 한국어 메일 프로그램 형식의 답장 → 주기 확인으로 회신 등록·재처리 실행까지 확인했습니다.
 - **다음 단계**: 받은 메일함·발송 인터페이스(`Inbox`, `Sender`)를 Microsoft Graph나 Gmail API 구현으로 바꾸면 실제 회사 메일에 연결할 수 있습니다.
 
+## 시스템 구성
+
+```mermaid
+flowchart LR
+    U[상담원 브라우저<br/>React · TypeScript · Vite] -->|REST /api| P
+    subgraph API[FastAPI 서버]
+        P[처리 흐름<br/>LangGraph] --> R[규칙 엔진<br/>우선순위·부서·SLA]
+        P --> M[개인정보 가림]
+        S[스케줄러<br/>SLA 경고·리마인드·메일 확인]
+    end
+    M -->|가린 글만| G[Gemini<br/>분류·초안·검증·임베딩]
+    P --> DB[(PostgreSQL 16<br/>+ pgvector)]
+    R --> DB
+    S --> DB
+    S <-->|SMTP · HTTP API| MP[Mailpit<br/>로컬 메일 서버]
+```
+
+| 기술적 결정 | 근거 |
+| --- | --- |
+| 우선순위·부서·기한은 **규칙 엔진**, 언어 모델은 읽기·쓰기만 | 운영진 규칙표로 100% 재현되는 값을 모델에 맡기면 틀릴 여지만 생김. 규칙 코드는 언어 모델 호출 코드를 import하지 않음 |
+| LangGraph로 **순서를 고정한 그래프** | 자율 에이전트 대신 처리 순서를 고정해 재현성을 확보하고, 복합 문의의 요청을 동시에 처리하며 단계마다 실행 기록을 남김 |
+| PostgreSQL 하나에 기준정보·서비스·벡터 검색 | 문서 검색(pgvector)과 업무 데이터를 한 DB에서 트랜잭션으로 다룸 |
+| 언어 모델 호출은 **한 계층**에서만, 보내기 직전 개인정보 가림 | 고객 이메일·전화번호가 외부 모델로 나가지 않게 한 곳에서 통제 |
+| 고객에게 가는 글은 **상담원 승인 뒤에만** 발송 | 근거 밖 문장·확정적 약속이 고객에게 그대로 나가는 사고를 막음 |
+
 ## 처리 흐름
 
 문의 1건마다 **티켓 그래프**가 돌고, 나뉜 요청마다 **하위 문의 그래프**가 동시에 돕니다.
@@ -137,6 +180,60 @@ flowchart TB
 ```
 
 **LangGraph를 쓴 이유**는 똑똑한 자율 에이전트가 필요해서가 아니라, 반대로 **처리 순서를 고정해 모델의 재량을 줄이면서도** 복합 문의의 요청을 동시에 돌리고 단계마다 실행 기록을 남기기 위해서였습니다. 우선순위·부서·기한처럼 규칙표로 100% 재현되는 것은 모델에 묻지 않습니다.
+
+## 데이터 모델
+
+스키마를 용도별로 나눴습니다. `ref`(기준정보 24표), `svc`(서비스 데이터), `gold`(운영진 정답 데이터, 서비스는 입력 열만 읽음), `eval`·`scoring`(팀 정답지와 채점)입니다. 아래는 서비스의 핵심 표입니다.
+
+```mermaid
+erDiagram
+    CUSTOMER ||--o{ TICKET : "문의"
+    TICKET ||--|{ SUB_TICKET : "요청별로 나눔"
+    TICKET ||--o{ TICKET_MESSAGE : "메시지"
+    SUB_TICKET ||--o{ TICKET_MESSAGE : "초안·회신"
+    SUB_TICKET ||--o{ INQUIRY_FIELD : "추출한 제공 정보"
+    SUB_TICKET ||--o{ TICKET_STATUS_HISTORY : "상태 전이"
+    TICKET ||--o{ AGENT_RUN : "처리 실행"
+    AGENT_RUN ||--|{ AGENT_STEP : "단계 기록"
+    PRODUCT ||--o{ SUB_TICKET : "제품"
+    TICKET {
+        text ticket_id PK
+        text customer_id FK
+        text language
+        text inquiry_body
+    }
+    SUB_TICKET {
+        text sub_ticket_id PK
+        text category_code
+        text urgency_flag
+        text priority
+        text assigned_dept
+        text escalated_to
+        text status
+        int version
+    }
+    TICKET_MESSAGE {
+        bigint message_id PK
+        text message_type
+        text message_status
+        text sender
+        text body
+        bool via_mail
+    }
+    AGENT_STEP {
+        bigint step_id PK
+        text step_name
+        text result
+        jsonb output_json
+        int input_tokens
+    }
+```
+
+- **상태·우선순위·기한은 하위 문의 단위**: 한 메일에 요청이 여러 개면 요청마다 부서와 기한이 다르기 때문입니다. 동시 수정은 `version`으로 막습니다.
+- **지우지 않는 기록**: 메시지, 상태 이력, 실행 기록은 넣기만 합니다. 발송된 메시지(SENT)는 DB 트리거가 수정·삭제를 막습니다(이관 메일 설계에 영향을 준 제약).
+- **정답 격리**: 서비스 코드는 정답 열을 읽지 않고 `gold.v_inputs`(입력 열)만 읽어, 평가가 오염되지 않게 했습니다.
+
+자세한 열 정의는 [테이블 정의서](docs/database/table-specification.md)에 있습니다.
 
 ## 주요 기능
 
@@ -175,6 +272,11 @@ cd frontend && npm install && npm run dev   # http://localhost:5173
 이관할 때 보낸 메일과 부서 답장은 http://localhost:8025 (Mailpit)에서 볼 수 있습니다. 메일은 밖으로 나가지 않습니다.
 
 학습 데이터(`data/`)와 `.env`는 저장소에 포함하지 않습니다. 시험은 `pip install -e "backend[test]" && cd backend && pytest`로 돌립니다.
+
+## API 문서와 데모
+
+- **API 문서**: 서버를 띄운 뒤 http://localhost:8000/docs 에서 Swagger 문서로 모든 API를 직접 호출해 볼 수 있습니다. API 계약은 [`frontend/openapi.json`](frontend/openapi.json)(49개)에 있고, 프론트엔드 타입은 이 계약에서 자동 생성합니다. 계약과 서버가 어긋나면 시험이 실패합니다.
+- **데모**: 부트캠프 기간에는 팀이 클라우드에 배포해 시연했고, 과정이 끝난 뒤 내려 현재는 운영하지 않습니다. 위 GIF는 로컬에서 실제 AI를 호출하며 녹화한 화면이고, [실행](#실행) 순서대로 직접 띄워 볼 수 있습니다.
 
 ## 문서
 
