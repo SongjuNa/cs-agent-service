@@ -158,23 +158,7 @@ sequenceDiagram
 - **지우지 않는 기록**: 메시지, 상태 이력, 실행 기록은 넣기만 합니다. 발송된 메시지(SENT)는 DB 트리거가 수정·삭제를 막습니다(이관 메일 설계에 영향을 준 제약).
 - **정답 격리**: 서비스 코드는 정답 열을 읽지 않고 `gold.v_inputs`(입력 열)만 읽어, 평가가 오염되지 않게 했습니다.
 
-<details>
-<summary><b>핵심 표 관계도(ERD) 보기</b></summary>
-
-```mermaid
-erDiagram
-    CUSTOMER ||--o{ TICKET : "문의"
-    TICKET ||--|{ SUB_TICKET : "요청별로 나눔"
-    TICKET ||--o{ TICKET_MESSAGE : "메시지"
-    SUB_TICKET ||--o{ TICKET_MESSAGE : "초안·회신"
-    SUB_TICKET ||--o{ INQUIRY_FIELD : "추출한 제공 정보"
-    SUB_TICKET ||--o{ TICKET_STATUS_HISTORY : "상태 전이"
-    TICKET ||--o{ AGENT_RUN : "처리 실행"
-    AGENT_RUN ||--|{ AGENT_STEP : "단계 기록"
-    PRODUCT ||--o{ SUB_TICKET : "제품"
-```
-
-</details>
+<p align="center"><img src="docs/assets/readme/cs-erd.png" alt="서비스 핵심 표 ERD: CUSTOMER, TICKET, SUB_TICKET, TICKET_MESSAGE, INQUIRY_FIELD, TICKET_STATUS_HISTORY, PRODUCT, AGENT_RUN, AGENT_STEP" width="85%"></p>
 
 자세한 열 정의는 [테이블 정의서](docs/database/table-specification.md)에 있습니다.
 
