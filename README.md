@@ -98,23 +98,7 @@ AI가 낸 코드는 그대로 받지 않고, 시험과 실제 실행 결과로 �
 
 <p align="center"><img src="docs/assets/readme/cs-mail.gif" alt="이관 요청 메일이 Mailpit에 도착하고, 부서 답장이 문의에 자동 연결된 뒤 AI가 RMA 번호를 반영해 초안을 다시 쓰는 화면" width="100%"></p>
 
-```mermaid
-sequenceDiagram
-    participant A as 상담원
-    participant S as CS Agent 서버
-    participant M as 메일 서버 (Mailpit)
-    participant D as 이관 부서
-    A->>S: 이관 + 메일로도 보내기
-    S->>M: 요청 메일 [ESC:하위 문의 번호]
-    M->>D: 메일 도착
-    D->>M: 답장
-    loop 30초마다
-        S->>M: 받은 메일함 확인
-    end
-    S->>S: 제목 표시·보낸 사람 검사 → 인용문 제거 → 부서 회신 등록
-    S->>S: 회신을 근거로 답변 초안 다시 생성 (LangGraph)
-    S-->>A: 초안 검토·발송
-```
+<p align="center"><img src="docs/assets/readme/cs-mail-seq.png" alt="이관 메일 흐름: 상담원 이관 → 서버가 [ESC:하위 문의 번호] 제목으로 메일 발송 → 부서 답장 → 30초마다 받은 메일함 확인 → 답장을 문의에 연결 → 회신을 근거로 초안 다시 생성 → 상담원 검토·발송" width="85%"></p>
 
 | 고민한 점 | 선택 |
 | --- | --- |
