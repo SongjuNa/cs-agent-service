@@ -239,6 +239,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/mail/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mail Config */
+        get: operations["mail_config_mail_config_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/dept-reply-demo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post Demo Reply
+         * @description 시연용 부서 답장. 실제 메일 프로그램 대신 부서 메일함 주소로 SMTP 답장을 보낸다. 문의에 연결하는 일은 하지 않는다.
+         */
+        post: operations["post_demo_reply_mail_dept_reply_demo_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/poll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post Poll
+         * @description 받은 메일함을 지금 확인한다. 연결된 회신마다 그 하위 문의를 다시 처리한다(화면 [회신 등록]과 같음).
+         */
+        post: operations["post_poll_mail_poll_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me/performance": {
         parameters: {
             query?: never;
@@ -644,6 +701,9 @@ export interface paths {
         /**
          * Post Escalate
          * @description 이관 확정 → ESCALATED, ESCALATION_NOTE SENT(FR-033 처리 1~4). 이관 안내 초안은 만들지 않는다(처리 5).
+         *
+         *     send_mail이고 메일 연동이 켜져 있으면 부서 메일함으로 요청 메일을 실제로 보낸다(add-escalation-mail-live).
+         *     메일이 실패해도 이관은 확정하고, 이관 메모의 via_mail을 false로 써서 이력이 "메일 발송"이라고 하지 않게 한다.
          */
         post: operations["post_escalate_sub_tickets__sub_ticket_id__escalate_post"];
         delete?: never;
@@ -1504,6 +1564,13 @@ export interface components {
             /** Stages */
             stages: components["schemas"]["DashStage"][];
         };
+        /** DemoReplyIn */
+        DemoReplyIn: {
+            /** Body */
+            body?: string | null;
+            /** Sub Ticket Id */
+            sub_ticket_id: string;
+        };
         /** Department */
         Department: {
             /** Dept Code */
@@ -1774,6 +1841,7 @@ export interface components {
             escalated_to: string;
             /** Escalation Reason */
             escalation_reason: string | null;
+            mail?: components["schemas"]["MailSent"] | null;
             /** Note Message Id */
             note_message_id: number | null;
             /** Status */
@@ -2016,6 +2084,74 @@ export interface components {
             received_at_utc: string | null;
             /** Source Ticket Id */
             source_ticket_id: string;
+        };
+        /** MailAccepted */
+        MailAccepted: {
+            /** Mail Id */
+            mail_id: string;
+            /** Reply Message Id */
+            reply_message_id: number;
+            /** Run Id */
+            run_id: number;
+            /** Sub Ticket Id */
+            sub_ticket_id: string;
+        };
+        /**
+         * MailConfig
+         * @description 화면이 메일 연동 상태를 아는 데 쓴다(변경 add-escalation-mail-live).
+         */
+        MailConfig: {
+            /** Cs Address */
+            cs_address: string;
+            /** Dept Domain */
+            dept_domain: string;
+            /** Enabled */
+            enabled: boolean;
+            /** Inbox Url */
+            inbox_url: string;
+            /** Poll Seconds */
+            poll_seconds: number;
+        };
+        /** MailDemoSent */
+        MailDemoSent: {
+            /** Sender */
+            sender: string;
+            /** Sent */
+            sent: boolean;
+            /** Subject */
+            subject: string;
+            /** To */
+            to: string;
+        };
+        /** MailPolled */
+        MailPolled: {
+            /** Accepted */
+            accepted: components["schemas"]["MailAccepted"][];
+            /** Skipped */
+            skipped: components["schemas"]["MailSkipped"][];
+        };
+        /**
+         * MailSent
+         * @description 이관 요청 메일 결과(변경 add-escalation-mail-live). 실패해도 이관은 확정된다.
+         */
+        MailSent: {
+            /** Error */
+            error?: string | null;
+            /** Sent */
+            sent: boolean;
+            /** Subject */
+            subject: string;
+            /** To */
+            to: string;
+        };
+        /** MailSkipped */
+        MailSkipped: {
+            /** Mail Id */
+            mail_id: string;
+            /** Reason */
+            reason: string | null;
+            /** Subject */
+            subject: string;
         };
         /** Mark */
         Mark: {
@@ -3404,6 +3540,79 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mail_config_mail_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailConfig"];
+                };
+            };
+        };
+    };
+    post_demo_reply_mail_dept_reply_demo_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemoReplyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailDemoSent"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_poll_mail_poll_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailPolled"];
                 };
             };
         };

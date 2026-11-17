@@ -2234,6 +2234,30 @@
         "title": "DashboardSummary",
         "type": "object"
       },
+      "DemoReplyIn": {
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "sub_ticket_id": {
+            "title": "Sub Ticket Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sub_ticket_id"
+        ],
+        "title": "DemoReplyIn",
+        "type": "object"
+      },
       "Department": {
         "properties": {
           "dept_code": {
@@ -3091,6 +3115,16 @@
             ],
             "title": "Escalation Reason"
           },
+          "mail": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MailSent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "note_message_id": {
             "anyOf": [
               {
@@ -3945,6 +3979,185 @@
           "gold_set"
         ],
         "title": "Loaded",
+        "type": "object"
+      },
+      "MailAccepted": {
+        "properties": {
+          "mail_id": {
+            "title": "Mail Id",
+            "type": "string"
+          },
+          "reply_message_id": {
+            "title": "Reply Message Id",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "integer"
+          },
+          "sub_ticket_id": {
+            "title": "Sub Ticket Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sub_ticket_id",
+          "run_id",
+          "reply_message_id",
+          "mail_id"
+        ],
+        "title": "MailAccepted",
+        "type": "object"
+      },
+      "MailConfig": {
+        "description": "화면이 메일 연동 상태를 아는 데 쓴다(변경 add-escalation-mail-live).",
+        "properties": {
+          "cs_address": {
+            "title": "Cs Address",
+            "type": "string"
+          },
+          "dept_domain": {
+            "title": "Dept Domain",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "inbox_url": {
+            "title": "Inbox Url",
+            "type": "string"
+          },
+          "poll_seconds": {
+            "title": "Poll Seconds",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "enabled",
+          "cs_address",
+          "dept_domain",
+          "inbox_url",
+          "poll_seconds"
+        ],
+        "title": "MailConfig",
+        "type": "object"
+      },
+      "MailDemoSent": {
+        "properties": {
+          "sender": {
+            "title": "Sender",
+            "type": "string"
+          },
+          "sent": {
+            "title": "Sent",
+            "type": "boolean"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "to": {
+            "title": "To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sent",
+          "sender",
+          "to",
+          "subject"
+        ],
+        "title": "MailDemoSent",
+        "type": "object"
+      },
+      "MailPolled": {
+        "properties": {
+          "accepted": {
+            "items": {
+              "$ref": "#/components/schemas/MailAccepted"
+            },
+            "title": "Accepted",
+            "type": "array"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/MailSkipped"
+            },
+            "title": "Skipped",
+            "type": "array"
+          }
+        },
+        "required": [
+          "accepted",
+          "skipped"
+        ],
+        "title": "MailPolled",
+        "type": "object"
+      },
+      "MailSent": {
+        "description": "이관 요청 메일 결과(변경 add-escalation-mail-live). 실패해도 이관은 확정된다.",
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "sent": {
+            "title": "Sent",
+            "type": "boolean"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "to": {
+            "title": "To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "to",
+          "subject",
+          "sent"
+        ],
+        "title": "MailSent",
+        "type": "object"
+      },
+      "MailSkipped": {
+        "properties": {
+          "mail_id": {
+            "title": "Mail Id",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mail_id",
+          "subject",
+          "reason"
+        ],
+        "title": "MailSkipped",
         "type": "object"
       },
       "Mark": {
@@ -8200,6 +8413,82 @@
         "summary": "Load"
       }
     },
+    "/mail/config": {
+      "get": {
+        "operationId": "mail_config_mail_config_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MailConfig"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Mail Config"
+      }
+    },
+    "/mail/dept-reply-demo": {
+      "post": {
+        "description": "시연용 부서 답장. 실제 메일 프로그램 대신 부서 메일함 주소로 SMTP 답장을 보낸다. 문의에 연결하는 일은 하지 않는다.",
+        "operationId": "post_demo_reply_mail_dept_reply_demo_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemoReplyIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MailDemoSent"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Demo Reply"
+      }
+    },
+    "/mail/poll": {
+      "post": {
+        "description": "받은 메일함을 지금 확인한다. 연결된 회신마다 그 하위 문의를 다시 처리한다(화면 [회신 등록]과 같음).",
+        "operationId": "post_poll_mail_poll_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MailPolled"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Post Poll"
+      }
+    },
     "/me/performance": {
       "get": {
         "description": "내 실적(변경 add-my-performance): 최근 days일 동안 내가 한 발송·이관·조정을 날짜별로, 내 담당 문의의 기한 충족을.",
@@ -9305,7 +9594,7 @@
     },
     "/sub-tickets/{sub_ticket_id}/escalate": {
       "post": {
-        "description": "이관 확정 → ESCALATED, ESCALATION_NOTE SENT(FR-033 처리 1~4). 이관 안내 초안은 만들지 않는다(처리 5).",
+        "description": "이관 확정 → ESCALATED, ESCALATION_NOTE SENT(FR-033 처리 1~4). 이관 안내 초안은 만들지 않는다(처리 5).\n\nsend_mail이고 메일 연동이 켜져 있으면 부서 메일함으로 요청 메일을 실제로 보낸다(add-escalation-mail-live).\n메일이 실패해도 이관은 확정하고, 이관 메모의 via_mail을 false로 써서 이력이 \"메일 발송\"이라고 하지 않게 한다.",
         "operationId": "post_escalate_sub_tickets__sub_ticket_id__escalate_post",
         "parameters": [
           {

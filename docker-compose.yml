@@ -24,6 +24,14 @@ services:
       LLM_MODEL_SMALL: ${LLM_MODEL_SMALL:-gemini-3.8-flash}
       LLM_MODEL_TRANSCRIBE: ${LLM_MODEL_TRANSCRIBE:-}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-gemini-embedding-2}
+      # 이관 메일 실제 발송·수신(add-escalation-mail-live). 메일은 아래 Mailpit으로만 가고 밖으로 나가지 않는다
+      MAIL_ENABLED: ${MAIL_ENABLED:-true}
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      MAILPIT_API_URL: http://mailpit:8025
+      MAILPIT_PUBLIC_URL: ${MAILPIT_PUBLIC_URL:-http://localhost:8025}
+      MAIL_POLL_SECONDS: ${MAIL_POLL_SECONDS:-30}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:5173}
     ports:
       - "8000:8000"
     volumes:
@@ -35,6 +43,15 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      mailpit:
+        condition: service_started
+
+  # 확인용 메일 서버. 보낸 메일과 부서 답장을 http://localhost:8025 에서 본다(밖으로 나가지 않음)
+  mailpit:
+    image: axllent/mailpit:v1.21.8
+    ports:
+      - "8025:8025"   # 웹 화면·API
+      - "1025:1025"   # SMTP
 
 volumes:
   db-data:

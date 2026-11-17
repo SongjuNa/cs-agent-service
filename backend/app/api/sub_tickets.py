@@ -14,9 +14,10 @@ from psycopg import Connection
 from pydantic import BaseModel
 
 from app.api import schemas
-from app.api.deps import Clients, get_clients, get_conn, get_connect
+from app.api.deps import Clients, Mail, get_clients, get_conn, get_connect, get_mail
 from app.api.tickets import process_dept_reply, process_edit
 from app.db.edits import Edit, EditError, apply_edit
+from app.mail import send_request
 from app.sla.adjust import AdjustError, adjust, preview
 from app.status.dept_reply import DeptError, register_reply, save_mail_draft
 from app.status.escalation import EscalateError, escalate
@@ -114,24 +115,42 @@ class EscalateIn(BaseModel):
     reason_code: str | None = None
     memo: str | None = None
     expected_version: int | None = None  # FR-025 예외 2행
-    send_mail: bool = False  # 이관 요청을 메일로도 보낸다(표시만, 실제 발송 연동은 아직 없음, add-escalation-mail)
+    send_mail: bool = False  # 이관 요청을 메일로도 보낸다. 메일 연동(MAIL_ENABLED)이 켜져 있으면 실제로 보낸다(add-escalation-mail-live)
 
 
 @router.post("/sub-tickets/{sub_ticket_id}/escalate", response_model=schemas.Escalated, response_model_exclude_unset=True)
 def post_escalate(sub_ticket_id: str, data: EscalateIn, conn: Connection = Depends(get_conn),
-                  x_agent_id: str | None = Header(default=None)) -> dict:
-    """이관 확정 → ESCALATED, ESCALATION_NOTE SENT(FR-033 처리 1~4). 이관 안내 초안은 만들지 않는다(처리 5)."""
+                  mail: Mail = Depends(get_mail), x_agent_id: str | None = Header(default=None)) -> dict:
+    """이관 확정 → ESCALATED, ESCALATION_NOTE SENT(FR-033 처리 1~4). 이관 안내 초안은 만들지 않는다(처리 5).
+
+    send_mail이고 메일 연동이 켜져 있으면 부서 메일함으로 요청 메일을 실제로 보낸다(add-escalation-mail-live).
+    메일이 실패해도 이관은 확정하고, 이관 메모의 via_mail을 false로 써서 이력이 "메일 발송"이라고 하지 않게 한다.
+    """
     if not x_agent_id or not x_agent_id.strip():
         raise HTTPException(400, "상담원 ID를 입력하세요")
+    sent: dict = {}
+    mailer = None
+    if data.send_mail and mail.enabled:
+        s = mail.settings
+
+        def mailer() -> bool:
+            result = send_request(conn, mail.sender, sub_ticket_id, data.memo, sender=s.mail_cs_address,
+                                  dept_domain=s.mail_dept_domain, app_base_url=s.app_base_url)
+            sent.update(result.as_dict())
+            return result.sent
     try:
-        return escalate(conn, sub_ticket_id, data.dept, data.reason_code, data.memo, x_agent_id.strip(),
-                        datetime.now(timezone.utc), expected_version=data.expected_version, send_mail=data.send_mail)
+        out = escalate(conn, sub_ticket_id, data.dept, data.reason_code, data.memo, x_agent_id.strip(),
+                       datetime.now(timezone.utc), expected_version=data.expected_version, send_mail=data.send_mail,
+                       mailer=mailer)
     except LookupError as exc:
         raise HTTPException(404, MSG_NOT_FOUND) from exc
     except ConcurrentChange as exc:
         raise HTTPException(409, str(exc)) from exc
     except EscalateError as exc:
         raise HTTPException(exc.status, str(exc)) from exc
+    if sent:
+        out["mail"] = sent
+    return out
 
 
 class DeptBodyIn(BaseModel):

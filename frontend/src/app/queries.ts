@@ -8,6 +8,11 @@ export function useDepartments() {
   return useQuery({ queryKey: ["ref", "departments"], queryFn: api.departments, staleTime: Infinity });
 }
 
+/** 이관 메일 연동 설정(add-escalation-mail-live). 켜져 있으면 실제 메일을 보내고 받는다 */
+export function useMailConfig() {
+  return useQuery({ queryKey: ["mail", "config"], queryFn: api.mailConfig, staleTime: Infinity });
+}
+
 export function useAgents() {
   return useQuery({ queryKey: ["ref", "agents"], queryFn: api.agents, staleTime: Infinity });
 }

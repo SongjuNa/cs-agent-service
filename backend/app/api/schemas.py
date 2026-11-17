@@ -542,6 +542,15 @@ class EditAccepted(Out):
     changes: Json
 
 
+class MailSent(Out):
+    """이관 요청 메일 결과(변경 add-escalation-mail-live). 실패해도 이관은 확정된다."""
+
+    to: str
+    subject: str
+    sent: bool
+    error: str | None = None
+
+
 class Escalated(Out):
     sub_ticket_id: str
     status: str
@@ -550,6 +559,7 @@ class Escalated(Out):
     assigned_dept: str | None
     note_message_id: int | None
     version: int | None
+    mail: MailSent | None = None  # send_mail이고 메일 연동이 켜져 있을 때만
 
 
 class DeptReplyAccepted(Out):
@@ -1096,3 +1106,38 @@ class AutoReviewed(Out):
     message_id: int
     reviewed_by: str
     reviewed_at_utc: datetime
+
+
+class MailConfig(Out):
+    """화면이 메일 연동 상태를 아는 데 쓴다(변경 add-escalation-mail-live)."""
+
+    enabled: bool
+    cs_address: str
+    dept_domain: str
+    inbox_url: str
+    poll_seconds: int
+
+
+class MailSkipped(Out):
+    mail_id: str
+    subject: str
+    reason: str | None
+
+
+class MailAccepted(Out):
+    sub_ticket_id: str
+    run_id: int
+    reply_message_id: int
+    mail_id: str
+
+
+class MailPolled(Out):
+    accepted: list[MailAccepted]
+    skipped: list[MailSkipped]
+
+
+class MailDemoSent(Out):
+    sent: bool
+    sender: str
+    to: str
+    subject: str

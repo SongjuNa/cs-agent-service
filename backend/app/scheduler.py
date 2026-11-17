@@ -26,6 +26,7 @@ log = logging.getLogger(__name__)
 INTERVAL_MINUTES = 5  # §6-4, FR-027 처리 1 "제안 5분"
 JOB_ID = "periodic_check"
 PURGE_JOB_ID = "purge_runs"
+MAIL_JOB_ID = "mail_poll"
 
 
 Gloss = Callable[[Connection, list[dict]], list[int]]  # 리마인드 대역(L7). 이 모듈은 언어 모델 계층을 import하지 않는다
@@ -72,8 +73,22 @@ def _purge() -> None:
         log.exception("실행 기록 보존 작업 실패")
 
 
-def start_scheduler(gloss: Gloss | None = None) -> BackgroundScheduler:
+def _mail(poll: Callable[[], dict]) -> None:
+    try:
+        result = poll()
+        if result["accepted"]:
+            log.info("부서 회신 메일 %d건 연결", len(result["accepted"]))
+    except Exception:  # 메일 서버가 잠깐 꺼져 있어도 다음 주기에 다시
+        log.exception("받은 메일함 확인 실패")
+
+
+def start_scheduler(gloss: Gloss | None = None, mail_poll: Callable[[], dict] | None = None,
+                    mail_seconds: int = 30) -> BackgroundScheduler:
+    """mail_poll이 있으면 받은 메일함 확인을 mail_seconds마다 따로 돌린다(변경 add-escalation-mail-live)."""
     scheduler = BackgroundScheduler(timezone="UTC")
+    if mail_poll:
+        scheduler.add_job(_mail, "interval", args=[mail_poll], seconds=mail_seconds, id=MAIL_JOB_ID, max_instances=1,
+                          coalesce=True)
     scheduler.add_job(_tick, "interval", args=[gloss], minutes=INTERVAL_MINUTES, id=JOB_ID, max_instances=1, coalesce=True)
     # 켜자마자 한 번, 그 뒤 하루마다(하루 안에 다시 켜도 빠지지 않게)
     scheduler.add_job(_purge, "interval", days=1, id=PURGE_JOB_ID, max_instances=1, coalesce=True,

@@ -186,6 +186,12 @@
 .tk-mailbox__prev dd { margin: 0; overflow-wrap: anywhere; }
 .tk-mailwait { display: flex; align-items: center; gap: var(--sp-12); padding: var(--sp-10) var(--sp-12); border: 1px dashed var(--color-line); border-radius: var(--r-md); font-size: var(--fs-s); }
 .tk-mailwait span { flex: 1; }
+/* 메일 연동이 켜졌을 때(add-escalation-mail-live): 안내 · 메일함 열기 · 지금 확인, 아래로 접는 시연 답장 */
+.tk-mailwait[data-live="true"] { flex-wrap: wrap; border-style: solid; border-color: var(--color-info, var(--color-line)); }
+.tk-mailwait[data-live="true"] span { flex: 1 1 60%; }
+.tk-mailwait details { flex-basis: 100%; }
+.tk-mailwait details summary { cursor: pointer; color: var(--color-muted, inherit); }
+.tk-mailwait details textarea { width: 100%; margin: var(--sp-8) 0; font: inherit; }
 
 /* 최신 목업 모양(변경 add-ticket-look): 둥근 뒤로 단추, 큰 AI 요약, 파란 띠의 "내 차례", 얇은 숫자 줄 */
 .tk-backcircle { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid var(--color-line); border-radius: 50%; background: var(--color-surface); color: var(--color-fg); cursor: pointer; }

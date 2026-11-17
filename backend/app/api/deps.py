@@ -49,3 +49,23 @@ class Clients:
 
 def get_clients() -> Clients:
     return Clients()
+
+
+class Mail:
+    """이관 메일 연결(변경 add-escalation-mail-live). 설정이 꺼져 있으면 enabled가 False이고 아무것도 보내지 않는다.
+    시험은 sender·inbox를 가짜로 바꿔 끼운다."""
+
+    def __init__(self, settings=None):
+        from app.mail import MailpitInbox, SmtpSender
+
+        self.settings = settings or get_settings()
+        self.sender = SmtpSender(self.settings.smtp_host, self.settings.smtp_port)
+        self.inbox = MailpitInbox(self.settings.mailpit_api_url, self.settings.mail_cs_address)
+
+    @property
+    def enabled(self) -> bool:
+        return self.settings.mail_enabled
+
+
+def get_mail() -> Mail:
+    return Mail()

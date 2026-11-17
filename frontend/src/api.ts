@@ -24,6 +24,9 @@ export type Sla = S["Sla"];
 export type Adjustment = S["Adjustment"];
 export type DeptReply = S["DeptReply"];
 export type DeptMail = S["DeptMail"];
+export type MailConfig = S["MailConfig"]; // 이관 메일 연동(add-escalation-mail-live)
+export type MailPolled = S["MailPolled"];
+export type Escalated = S["Escalated"];
 export type SubTicket = Omit<S["SubTicket"], "sub_ticket" | "evidence_rows" | "drafts" | "diagnosis" | "escalation" | "edits"> & {
   sub_ticket: Omit<S["SubTicketRow"], "evidence_json"> & { evidence_json: Candidate[] }; // 열은 NOT NULL DEFAULT []
   evidence_rows: EvidenceRow[];
@@ -278,12 +281,17 @@ export const api = {
   reply: (id: string, data: { body: string; language: string; received_at: string | null; target_sub_ticket_ids: string[] | null }) =>
     call<{ processing: boolean }>("POST", `/tickets/${encodeURIComponent(id)}/replies`, data),
   escalate: (subId: string, data: { dept: string; reason_code: string; memo: string; expected_version: number; send_mail?: boolean }) =>
-    call<unknown>("POST", `/sub-tickets/${encodeURIComponent(subId)}/escalate`, data),
+    call<Escalated>("POST", `/sub-tickets/${encodeURIComponent(subId)}/escalate`, data),
   deptReply: (subId: string, body: string, viaMail = false) =>
     call<{ processing: boolean }>("POST", `/sub-tickets/${encodeURIComponent(subId)}/dept-reply`, { body, via_mail: viaMail }),
   deptMail: (subId: string, body: string) =>
     call<{ message_id: number }>("POST", `/sub-tickets/${encodeURIComponent(subId)}/dept-mail`, { body }),
   departments: () => call<Department[]>("GET", "/ref/departments"),
+  mailConfig: () => call<MailConfig>("GET", "/mail/config"),
+  mailPoll: () => call<MailPolled>("POST", "/mail/poll"),
+  /** 시연: 부서 메일함에서 C/S로 답장을 실제 SMTP로 보낸다. 문의 연결은 mailPoll(또는 서버 주기 확인)이 한다 */
+  mailDemoReply: (subId: string, body: string) =>
+    call<S["MailDemoSent"]>("POST", "/mail/dept-reply-demo", { sub_ticket_id: subId, body }),
   agents: () => call<Agent[]>("GET", "/ref/agents"),
   inbox: (query: URLSearchParams) => call<Inbox>("GET", `/tickets?${query.toString()}`),
   workload: (query: URLSearchParams) => call<Workload>("GET", `/me/workload?${query.toString()}`),

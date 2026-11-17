@@ -7,6 +7,7 @@ IN_PROGRESS인 하위 문의를 ESCALATED로 바꾸고 이관 부서·사유를 
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime
 from typing import Any
 
@@ -39,8 +40,12 @@ class EscalateError(Exception):
 
 def escalate(conn: Connection, sub_ticket_id: str, dept: str | None, reason_code: str | None, memo: str | None,
              agent_id: str, at: datetime, expected_version: int | None = None,
-             send_mail: bool = False) -> dict[str, Any]:
-    """검사 순서: 사유 → 이미 이관 → 처리 중 → 부서(design 결정 1). 한 트랜잭션으로 쓰고, 처리 중이 아니면 거부를 실행 로그에 남긴다."""
+             send_mail: bool = False, mailer: Callable[[], bool] | None = None) -> dict[str, Any]:
+    """검사 순서: 사유 → 이미 이관 → 처리 중 → 부서(design 결정 1). 한 트랜잭션으로 쓰고, 처리 중이 아니면 거부를 실행 로그에 남긴다.
+
+    mailer가 있으면 send_mail일 때 이관이 정해진 뒤, 이관 메모를 쓰기 전에 같은 트랜잭션 안에서 부른다(add-escalation-mail-live).
+    보냈으면 True. 발송한 메모(SENT)는 고칠 수 없으므로 via_mail은 실제로 보냈는지에 맞춰 처음부터 쓴다.
+    """
     reason_code, dept, memo = (reason_code or "").strip(), (dept or "").strip(), (memo or "").strip()
     if not reason_code:
         raise EscalateError(MSG_NO_REASON, 400)
@@ -66,11 +71,12 @@ def escalate(conn: Connection, sub_ticket_id: str, dept: str | None, reason_code
                              WHERE sub_ticket_id = %s""", (dept, reason_code, sub_ticket_id))
             transition(conn, sub_ticket_id, "ESCALATED", "ESCALATE", at, agent_id, reason=reason_code)
             body = memo or f"이관: {dept} ({reason_code})"  # 본문 1자 이상(C-154)
+            via_mail = send_mail and (mailer() if mailer else True)
             (message_id,) = conn.execute(
                 """INSERT INTO svc.ticket_message (ticket_id, sub_ticket_id, sender, message_type, message_status, sent_at_utc,
                        language, body, sent_by_name, mask_count, via_mail)
                    VALUES (%s, %s, 'AGENT', 'ESCALATION_NOTE', 'SENT', %s, %s, %s, %s, %s, %s) RETURNING message_id""",
-                (ticket_id, sub_ticket_id, at, NOTE_LANGUAGE, body, agent_id, mask_text(body)[1], send_mail)).fetchone()
+                (ticket_id, sub_ticket_id, at, NOTE_LANGUAGE, body, agent_id, mask_text(body)[1], via_mail)).fetchone()
             version = conn.execute("SELECT version FROM svc.sub_ticket WHERE sub_ticket_id = %s",
                                    (sub_ticket_id,)).fetchone()[0]
     if status != "IN_PROGRESS":  # 허용되지 않은 전이: 거부하고 실행 로그에 남긴다(FR-025 예외 1행, 발송 API와 같은 모양)

@@ -4,8 +4,8 @@ from datetime import datetime, timezone
 
 from fastapi import FastAPI
 
-from app.api import assign, assist, autosend, dashboard, calls, cases, chunks, customers, gold_inputs, me, messages, notes, ref_lists, reference, runs, sub_tickets, tickets, translate
-from app.api.deps import open_connection
+from app.api import assign, assist, autosend, dashboard, calls, cases, chunks, customers, gold_inputs, mail, me, messages, notes, ref_lists, reference, runs, sub_tickets, tickets, translate
+from app.api.deps import Clients, Mail, open_connection
 from app.config import get_settings
 from app.db.runs import close_stale_runs
 from app.db.store import gloss_reminders
@@ -28,7 +28,13 @@ async def lifespan(app: FastAPI):
         logging.getLogger(__name__).info("고장 사전 벡터 %d개를 캐시에서 읽음", warm_cache())
     except Exception:  # noqa: BLE001
         logging.getLogger(__name__).exception("고장 사전 벡터 캐시 읽기 실패")
-    scheduler = start_scheduler(gloss_reminders(default_transport)) if get_settings().scheduler_enabled else None
+    settings = get_settings()
+    mail_poll = None
+    if settings.mail_enabled:  # 받은 메일함 확인(변경 add-escalation-mail-live)
+        mailer, clients = Mail(settings), Clients()
+        mail_poll = lambda: mail.poll_and_reprocess(open_connection, clients, mailer)  # noqa: E731
+    scheduler = (start_scheduler(gloss_reminders(default_transport), mail_poll, settings.mail_poll_seconds)
+                 if settings.scheduler_enabled else None)
     app.state.scheduler = scheduler
     yield
     if scheduler:
@@ -54,3 +60,4 @@ app.include_router(translate.router)
 app.include_router(assign.router)
 app.include_router(autosend.router)
 app.include_router(dashboard.router)
+app.include_router(mail.router)

@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { api, ApiError, type AdjustPreview, type SubTicket } from "../../api";
 import { CATEGORY, label } from "../../app/labels";
-import { useDepartments } from "../../app/queries";
+import { useDepartments, useMailConfig } from "../../app/queries";
 import { Banner, Button, Field, Modal } from "../../ui";
 
 const PRIORITIES = ["P1", "P2", "P3", "P4"];
@@ -147,8 +147,13 @@ export function EscalatePopup({ subs, onDone, onClose }: { subs: SubTicket[]; on
   const depts = useDepartments();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const live = useMailConfig().data; // 메일 연동(add-escalation-mail-live). 켜져 있으면 실제로 보낸다
+  const [mailFailed, setMailFailed] = useState<string | null>(null);
   const deptName = depts.data?.find((d) => d.dept_code === dept)?.dept_name_ko ?? dept;
-  const subject = `[${subId.replace(/-\d+$/, "")}] 이관 요청 · ${reason || "사유 선택 전"}`;
+  const subject = live?.enabled
+    ? `[ESC:${subId}] ${subId.replace(/-\d+$/, "")} 이관 요청 · ${reason || "사유 선택 전"}`
+    : `[${subId.replace(/-\d+$/, "")}] 이관 요청 · ${reason || "사유 선택 전"}`;
+  const to = live?.enabled && dept ? `${deptName} · ${dept.toLowerCase()}@${live.dept_domain}` : `${deptName} 담당 메일함`;
 
   function pick(id: string) {
     const c = open.find((s) => s.sub_ticket.sub_ticket_id === id)?.escalation?.escalation_candidates[0];
@@ -160,7 +165,9 @@ export function EscalatePopup({ subs, onDone, onClose }: { subs: SubTicket[]; on
     if (!reason) { setError("이관 사유를 고르세요"); return; } // FR-033 예외 1행
     setBusy(true);
     try {
-      await api.escalate(subId, { dept, reason_code: reason, memo: memo.trim(), expected_version: sub.version, send_mail: mail });
+      const res = await api.escalate(subId, { dept, reason_code: reason, memo: memo.trim(), expected_version: sub.version, send_mail: mail });
+      // 메일이 실패해도 이관은 확정된다. 창을 닫지 않고 알린 뒤 [닫기]로 끝낸다
+      if (res.mail && !res.mail.sent) { setMailFailed(`이관은 됐지만 메일을 보내지 못했습니다. ${res.mail.error ?? ""}`); return; }
       onDone();
     } catch (e) {
       setError(errorText(e, "이관 실패"));
@@ -171,7 +178,8 @@ export function EscalatePopup({ subs, onDone, onClose }: { subs: SubTicket[]; on
 
   return (
     <Modal title="이관" onClose={onClose} locked={busy}
-           footer={<><Button onClick={onClose}>취소</Button><Button variant="primary" busy={busy} disabled={!sub} onClick={() => void submit()}>이관</Button></>}>
+           footer={mailFailed ? <Button variant="primary" onClick={onDone}>닫기</Button>
+             : <><Button onClick={onClose}>취소</Button><Button variant="primary" busy={busy} disabled={!sub} onClick={() => void submit()}>이관</Button></>}>
       <div className="tk-form">
         {open.length > 1 && (
           <div className="is-wide">
@@ -202,15 +210,18 @@ export function EscalatePopup({ subs, onDone, onClose }: { subs: SubTicket[]; on
         <p className="tk-note">이관 부서는 이 시스템을 열지 않아도 됩니다. 부서가 메일에 답장하면 회신이 이 문의에 자동으로 연결되어, 따로 입력하지 않아도 됩니다.</p>
         {mail && (
           <dl className="tk-mailbox__prev">
-            <div><dt>받는 곳</dt><dd>{dept ? `${deptName} 담당 메일함` : "이관 부서를 고르세요"}</dd></div>
+            <div><dt>받는 곳</dt><dd>{dept ? to : "이관 부서를 고르세요"}</dd></div>
             <div><dt>제목</dt><dd>{subject}</dd></div>
             <div><dt>내용</dt><dd>{memo.trim() || <span className="tk-muted">메모를 쓰면 여기에 들어갑니다</span>}<span className="tk-note"> 문의 요약과 원문, 회신 방법이 함께 들어갑니다</span></dd></div>
           </dl>
         )}
-        <p className="tk-note">메일 연동은 화면 예시입니다. 실제 발송과 회신 인식은 아직 연결되어 있지 않습니다.</p>
+        {live?.enabled
+          ? <p className="tk-note">메일이 실제로 발송됩니다(보낸 사람 {live.cs_address}). 부서 답장은 {live.poll_seconds}초마다 확인해 이 문의에 연결합니다.</p>
+          : <p className="tk-note">메일 연동은 화면 예시입니다. 실제 발송과 회신 인식은 아직 연결되어 있지 않습니다.</p>}
       </div>
       {sub && <p className="tk-note">현재 담당 {sub.sub_ticket.assigned_dept ?? "—"}. 고객 이관 안내 초안은 만들지 않습니다.</p>}
       {error && <Banner tone="neg">{error}</Banner>}
+      {mailFailed && <Banner tone="neg">{mailFailed}</Banner>}
     </Modal>
   );
 }
