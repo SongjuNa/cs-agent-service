@@ -2,7 +2,7 @@
 
 해외 고객의 C/S 문의를 접수부터 회신, 부서 이관까지 돕는 AI Agent 서비스입니다.
 **정확해야 빨라진다: 근거로 검증된 답만 내보내는 C/S 에이전트**를 목표로 만들었습니다.
-**LS ELECTRIC 기업 연계 프로젝트**로, LS ELECTRIC이 제공한 교육용 합성 데이터(고객 문의 4,000건, 해결 사례 800건, 제품·정책 문서 107개)를 사용했습니다.
+**LS ELECTRIC 기업 연계 프로젝트**로, LS ITC가 교육용으로 제공한 LS ELECTRIC 합성 데이터(고객 문의 4,000건, 해결 사례 800건, 제품·정책 문서 107개)를 사용했습니다.
 SKKU × LS AI CAMPUS 1기 2조의 팀 프로젝트(주제 1)를 개인 저장소로 옮겨 정리했습니다.
 
 ![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
@@ -196,4 +196,4 @@ cd frontend && npm install && npm run dev   # http://localhost:5173
 
 ---
 
-화면과 평가에는 LS ELECTRIC이 교육용으로 제공한 합성 데이터와 시연용 가상 인물을 사용했습니다. 실제 LS ELECTRIC 제품·고객·업체 정보와는 관계가 없으며, 원본 데이터는 저장소에 포함하지 않습니다.
+화면과 평가에는 LS ITC가 교육용으로 제공한 LS ELECTRIC 합성 데이터와 시연용 가상 인물을 사용했습니다. 실제 LS ELECTRIC 제품·고객·업체 정보와는 관계가 없으며, 원본 데이터는 저장소에 포함하지 않습니다.
