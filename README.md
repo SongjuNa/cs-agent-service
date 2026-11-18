@@ -184,6 +184,27 @@ cd frontend && npm install && npm run dev   # http://localhost:5173
 
 원천 데이터(`data/`)와 `.env`는 저장소에 포함하지 않습니다. 테스트는 `pip install -e "backend[test]" && cd backend && pytest`로 실행합니다.
 
+## 주요 API
+
+전체 API 49개 중 문의 처리 흐름과 이관 메일 기능의 핵심만 추렸습니다. 전체 목록은 서버 실행 후 `/docs`(Swagger)나 [`frontend/openapi.json`](frontend/openapi.json)에서 볼 수 있습니다.
+
+★ 표시는 위 "내 역할" 표에 있는 기능입니다(LLM·RAG 기능, 개인 고도화).
+
+| 구분 | 메서드 · 경로 | 하는 일 |
+|---|---|---|
+| 문의 | `POST /tickets` | 문의 등록 |
+| 문의 | `GET /tickets` | 접수함 목록 (상태·담당자·처리 차례로 거르기) |
+| 문의 | `POST /tickets/{ticket_id}/reprocess` | 같은 문의를 새 실행으로 처음부터 다시 처리 (발송한 메시지는 유지) |
+| 실행 기록 | `GET /runs/{run_id}/steps` | 처리 단계별 실행 기록 조회 |
+| 답변 ★ | `POST /messages/{message_id}/verify` | 답변 초안 다시 검증 |
+| 답변 ★ | `POST /messages/{message_id}/gloss` | 상담원용 한국어 대역 다시 만들기 |
+| 답변 | `POST /messages/{message_id}/send` | 승인·발송 (확인이 필요한 항목이 있으면 409와 목록 반환) |
+| 이관 ★ | `POST /sub-tickets/{sub_ticket_id}/escalate` | 타부서 이관 확정 · 메일 연동이 켜져 있으면 부서 메일함으로 요청 메일 발송 (메일 발송은 개인 고도화) |
+| 이관 | `POST /sub-tickets/{sub_ticket_id}/dept-reply` | 부서 회신 등록 → 해당 하위 문의 다시 처리 |
+| 이관 메일 ★ | `POST /mail/poll` | 받은 메일함을 지금 확인하고, 연결된 회신마다 하위 문의 다시 처리 (개인 고도화) |
+| 이관 메일 ★ | `POST /mail/dept-reply-demo` | 시연용 부서 답장 (SMTP로 부서 메일함 주소에 답장 발송, 개인 고도화) |
+| 이관 메일 ★ | `GET /mail/config` | 메일 연동 설정 조회 (개인 고도화) |
+
 ## API 문서와 데모
 
 - **API 문서**: 서버를 띄운 뒤 http://localhost:8000/docs 에서 Swagger 문서로 모든 API를 직접 호출해 볼 수 있습니다. API 계약은 [`frontend/openapi.json`](frontend/openapi.json)(49개)에 있고, 프론트엔드 타입은 이 계약에서 자동 생성합니다. 계약과 서버가 어긋나면 테스트가 실패합니다.
