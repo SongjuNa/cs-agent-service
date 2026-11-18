@@ -114,7 +114,7 @@ AI가 낸 코드는 그대로 받지 않고, 시험과 실제 실행 결과로 �
 - **실제 확인**: Mailpit과 서버를 띄워 이관 → 요청 메일 도착 → 한국어 메일 프로그램 형식의 답장 → 주기 확인으로 회신 등록·재처리 실행까지 확인했습니다.
 - **다음 단계**: 받은 메일함·발송 인터페이스(`Inbox`, `Sender`)를 Microsoft Graph나 Gmail API 구현으로 바꾸면 실제 회사 메일에 연결할 수 있습니다.
 
-## 시스템 구성
+## 아키텍처
 
 <p align="center"><img src="docs/assets/readme/cs-architecture.png" alt="CS Agent 시스템 구성: React 화면, FastAPI·LangGraph 서버, Docker Compose(api, PostgreSQL+pgvector, Mailpit), Gemini" width="100%"></p>
 
